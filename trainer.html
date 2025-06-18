@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Weight Training</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .game-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+        }
+        
+        .weights-display {
+            background: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 10px 0;
+            border: 2px solid #cbd5e0;
+        }
+        
+        .example-display {
+            background: #fff5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 2px solid #fed7d7;
+        }
+        
+        .feature-table {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        .feature-column {
+            text-align: center;
+            padding: 8px 16px;
+            margin: 0 5px;
+            background: #e6fffa;
+            border-radius: 5px;
+            min-width: 80px;
+            border: 1px solid #81e6d9;
+        }
+        
+        .weight-adjustment {
+            background: #f0fff4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 2px solid #9ae6b4;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #9ae6b4;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .prediction {
+            font-size: 1.1em;
+            margin: 8px 0;
+        }
+        
+        .updated-prediction {
+            color: #2d3748;
+            font-weight: bold;
+        }
+        
+        .start-section {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .start-button {
+            font-size: 18px;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        
+        /* Updated Overlay Styles */
+        .hidden {
+            display: none !important; /* Added !important to ensure it overrides other display properties */
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex; /* Kept flex here, but the 'hidden' class with !important will override it */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .overlay-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .overlay-close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            cursor: pointer;
+            color: #718096;
+            transition: color 0.2s;
+        }
+
+        .overlay-close-button:hover {
+            color: #4a5568;
+        }
+
+        .overlay-content h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4a5568;
+        }
+
+        .overlay-content p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .overlay-content hr {
+            margin: 20px 0;
+            border-color: #e2e8f0;
+        }
+    </style>
+    <!-- Include MathJax for LaTeX rendering -->
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Machine Learning Weight Training</h1>
+        
+        <div id="start-section" class="start-section">
+            <p>Welcome to the machine learning weight training game!</p>
+            <p>You'll adjust model weights to improve predictions on training examples.</p>
+            <button class="start-button" onclick="startGame()">Start Training</button>
+        </div>
+        
+        <div id="game-section" class="hidden">
+            <div class="game-section">
+                <h3>Current Model Weights</h3>
+                <div id="weights-display" class="weights-display"></div>
+            </div>
+            
+            <div id="training-example" class="game-section hidden">
+                <h3>Training Instance</h3>
+                <div class="example-display">
+                    <div id="feature-display" class="feature-table"></div>
+                    <div id="label-prediction"></div>
+                </div>
+            </div>
+            
+            <div id="weight-adjustment" class="weight-adjustment hidden">
+                <h3>Adjust Weights</h3>
+                <p>Which weight would you like to adjust?</p>
+                <div class="buttons">
+                    <button onclick="selectWeight(0)">w1 (Weight 1)</button>
+                    <button onclick="selectWeight(1)">w2 (Weight 2)</button>
+                    <button onclick="selectWeight(2)">w0 (Bias)</button>
+                </div>
+                
+                <div id="adjustment-controls" class="hidden">
+                    <p id="current-weight-text"></p>
+                    <p>Adjust the weight up by 0.1 or down by 0.1:</p>
+                    <div class="buttons">
+                        <button onclick="adjustWeight('up')">⬆️ Up (+0.1)</button>
+                        <button onclick="adjustWeight('down')">⬇️ Down (-0.1)</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="result-display" class="hidden">
+                <div id="success-message" class="success hidden"></div>
+                <div class="buttons">
+                    <button onclick="nextExample()">Continue to Next Example</button>
+                    <button onclick="resetGame()" style="background: #e53e3e;">Reset Game</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calculation Overlay -->
+    <div id="calculation-overlay" class="overlay hidden">
+        <div class="overlay-content">
+            <button class="overlay-close-button" onclick="document.getElementById('calculation-overlay').classList.add('hidden')">&times;</button>
+            <h2>Calculation Details</h2>
+            <div id="overlay-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let trueWeights = [];
+        let currentWeights = [];
+        let currentInstance = [];
+        let currentLabel = 0;
+        let currentPrediction = 0;
+        let selectedWeightIndex = -1;
+        let N = 3; // Number of weights (w1, w2, w0/bias)
+
+        // Utility functions
+        function flip(num) {
+            return Math.random() < 0.5 ? -num : num;
+        }
+
+        function randWeights(n) {
+            let weights = [];
+            for (let i = 0; i < n; i++) {
+                weights.push(flip(Math.random() * 2));
+            }
+            return weights;
+        }
+
+        function genInstance(N) {
+            let instance = [];
+            // Generate N-1 features, and the last one is the bias term (always 1)
+            for (let i = 0; i < N - 1; i++) {
+                instance.push(flip(Math.round(Math.random() * 3 * 10) / 10)); // Features x1, x2
+            }
+            instance.push(1); // bias term (x0 or b)
+            return instance;
+        }
+
+        function sigmoid(x) {
+            return 1 / (1 + Math.exp(-x));
+        }
+
+        function dotProduct(a, b) {
+            // Calculates the linear combination (L) = x1*w1 + x2*w2 + x0*w0
+            return a.reduce((sum, val, i) => sum + val * b[i], 0);
+        }
+
+        function genLabel(instance, weights) {
+            const L = dotProduct(instance, weights);
+            const s = sigmoid(L);
+            return s > 0.5 ? 1 : 0; // Binary classification
+        }
+
+        function genPrediction(instance, weights) {
+            const L = dotProduct(instance, weights);
+            return sigmoid(L); // Raw sigmoid output
+        }
+
+        // Display functions
+        function showWeights() {
+            const display = document.getElementById('weights-display');
+            display.innerHTML = `The current weights of the model are: $w_1 = ${currentWeights[0].toFixed(2)}$, $w_2 = ${currentWeights[1].toFixed(2)}$, $w_0 = ${currentWeights[2].toFixed(2)}$`;
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise([display]); // Rerender MathJax
+            }
+        }
+
+        function showExample() {
+            const featureDisplay = document.getElementById('feature-display');
+            const labelPrediction = document.getElementById('label-prediction');
+            
+            // Create feature headers and values
+            let headerHTML = '';
+            let valueHTML = '';
+            
+            for (let i = 0; i < N - 1; i++) {
+                headerHTML += `<div class="feature-column"><strong>$x_${i + 1}$</strong></div>`;
+                valueHTML += `<div class="feature-column">${currentInstance[i]}</div>`;
+            }
+            
+            featureDisplay.innerHTML = `
+                <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                    ${headerHTML}
+                </div>
+                <div style="display: flex; justify-content: center;">
+                    ${valueHTML}
+                </div>
+            `;
+            
+            labelPrediction.innerHTML = `
+                <div class="prediction">Correct label: ${currentLabel}</div>
+                <div class="prediction">Model prediction: ${currentPrediction.toFixed(3)}</div>
+            `;
+
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise([featureDisplay, labelPrediction]); // Rerender MathJax
+            }
+        }
+
+        function showUpdatedExample(newPrediction) {
+            const labelPrediction = document.getElementById('label-prediction');
+            labelPrediction.innerHTML += `<div class="prediction updated-prediction">Updated prediction: ${newPrediction.toFixed(3)}</div>`;
+        }
+
+        // Game logic
+        function startGame() {
+            trueWeights = randWeights(N);
+            currentWeights = randWeights(N);
+            
+            document.getElementById('start-section').classList.add('hidden');
+            document.getElementById('game-section').classList.remove('hidden');
+            
+            showWeights();
+            generateNewExample();
+        }
+
+        function generateNewExample() {
+            currentInstance = genInstance(N);
+            currentLabel = genLabel(currentInstance, trueWeights);
+            currentPrediction = genPrediction(currentInstance, currentWeights);
+            
+            document.getElementById('training-example').classList.remove('hidden');
+            document.getElementById('weight-adjustment').classList.remove('hidden');
+            document.getElementById('result-display').classList.add('hidden');
+            document.getElementById('adjustment-controls').classList.add('hidden');
+            document.getElementById('success-message').classList.add('hidden');
+            
+            // Ensure overlay is hidden when starting new example
+            document.getElementById('calculation-overlay').classList.add('hidden'); 
+
+            showExample();
+            selectedWeightIndex = -1;
+        }
+
+        function selectWeight(index) {
+            // Direct mapping: button 0 = w1 (index 0), button 1 = w2 (index 1), button 2 = w0 (index 2)
+            selectedWeightIndex = index;
+            
+            const weightNames = ['w1', 'w2', 'w0'];
+            
+            document.getElementById('current-weight-text').textContent = 
+                `The current weight $${weightNames[selectedWeightIndex]}$ is ${currentWeights[selectedWeightIndex].toFixed(2)}`;
+            document.getElementById('adjustment-controls').classList.remove('hidden');
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise([document.getElementById('current-weight-text')]);
+            }
+        }
+
+        function adjustWeight(direction) {
+            if (selectedWeightIndex === -1) return;
+            
+            const originalWeights = [...currentWeights];
+            const originalPrediction = currentPrediction;
+            const oldError = Math.abs(currentLabel - currentPrediction);
+
+            const newWeightsAttempt = [...currentWeights];
+            if (direction === 'up') {
+                newWeightsAttempt[selectedWeightIndex] += 0.1;
+            } else {
+                newWeightsAttempt[selectedWeightIndex] -= 0.1;
+            }
+            
+            const newPredictionAttempt = genPrediction(currentInstance, newWeightsAttempt);
+            const newErrorAttempt = Math.abs(currentLabel - newPredictionAttempt);
+            
+            showUpdatedExample(newPredictionAttempt);
+            
+            const successMsg = document.getElementById('success-message');
+            let overlayHTML = '';
+            
+            if (newErrorAttempt < oldError) {
+                successMsg.textContent = '🎉 Good work! Your update brings the model closer to the label! 🎉';
+                successMsg.classList.remove('hidden');
+            } else {
+                successMsg.textContent = '⚠️ The update moved the model further from the label. Try a different adjustment next time.';
+                successMsg.style.background = '#fed7d7';
+                successMsg.style.color = '#742a2a';
+                successMsg.classList.remove('hidden');
+
+                // --- Start Calculations for Wrong Choice in Overlay ---
+                const weightNames = ['w_1', 'w_2', 'w_0']; // For LaTeX
+                const featureNames = ['x_1', 'x_2', '1']; // For LaTeX
+
+                // 1. Calculations for the user's chosen (wrong) adjustment
+                const L_attempt = dotProduct(currentInstance, newWeightsAttempt);
+                const sigmoid_attempt = sigmoid(L_attempt);
+
+                overlayHTML += `<h3>Your Adjustment:</h3>`;
+                overlayHTML += `<p>You adjusted weight $${weightNames[selectedWeightIndex]}$ ${direction === 'up' ? 'up' : 'down'} by $0.1$.</p>`;
+                overlayHTML += `<p>New Weights: $w_1 = ${newWeightsAttempt[0].toFixed(2)}$, $w_2 = ${newWeightsAttempt[1].toFixed(2)}$, $w_0 = ${newWeightsAttempt[2].toFixed(2)}$</p>`;
+                
+                let linearEquationAttempt = '';
+                for (let i = 0; i < N; i++) {
+                    linearEquationAttempt += `${currentInstance[i]} \\times ${newWeightsAttempt[i].toFixed(2)}`;
+                    if (i < N - 1) linearEquationAttempt += ' + ';
+                }
+
+                overlayHTML += `<p>Linear Combination ($L$): $$L = ${linearEquationAttempt} = ${L_attempt.toFixed(3)}$$</p>`;
+                overlayHTML += `<p>Sigmoid Output (Prediction): $$\\sigma(L) = \\sigma(${L_attempt.toFixed(3)}) = ${sigmoid_attempt.toFixed(3)}$$</p>`;
+                overlayHTML += `<p>Resulting Error: $$|\\text{Correct Label} - \\text{Prediction}| = |${currentLabel} - ${sigmoid_attempt.toFixed(3)}| = ${newErrorAttempt.toFixed(3)}$$</p>`;
+                overlayHTML += `<p>Your error ($${newErrorAttempt.toFixed(3)}$) is higher than the previous error ($${oldError.toFixed(3)}$).</p>`;
+                overlayHTML += `<hr>`;
+
+                // 2. Determine and calculate the "correct" adjustment
+                let idealNewWeights = [...originalWeights];
+                let idealNewPrediction = originalPrediction;
+                let idealNewError = oldError;
+                let correctDirectionMessage = "No adjustment (keeping current weights) was the better choice.";
+                let adjustmentDescription = "";
+
+                // Try adjusting in the opposite direction
+                const oppositeDirection = direction === 'up' ? 'down' : 'up';
+                const testWeightsOpposite = [...originalWeights];
+                if (oppositeDirection === 'up') {
+                    testWeightsOpposite[selectedWeightIndex] += 0.1;
+                } else {
+                    testWeightsOpposite[selectedWeightIndex] -= 0.1;
+                }
+                const testPredictionOpposite = genPrediction(currentInstance, testWeightsOpposite);
+                const testErrorOpposite = Math.abs(currentLabel - testPredictionOpposite);
+
+                if (testErrorOpposite < idealNewError) {
+                    idealNewWeights = testWeightsOpposite;
+                    idealNewPrediction = testPredictionOpposite;
+                    idealNewError = testErrorOpposite;
+                    correctDirectionMessage = `Adjusting weight $${weightNames[selectedWeightIndex]}$ ${oppositeDirection} by $0.1$ would have been better.`;
+                    adjustmentDescription = `(If you had adjusted ${weightNames[selectedWeightIndex]} ${oppositeDirection} by $0.1$)`;
+                }
+                
+                // Show calculations for the ideal scenario
+                const L_ideal = dotProduct(currentInstance, idealNewWeights);
+                const sigmoid_ideal = sigmoid(L_ideal);
+
+                overlayHTML += `<h3>Had you made the correct choice:</h3>`;
+                overlayHTML += `<p>${correctDirectionMessage}</p>`;
+                overlayHTML += `<p>Optimal Weights for this step: $w_1 = ${idealNewWeights[0].toFixed(2)}$, $w_2 = ${idealNewWeights[1].toFixed(2)}$, $w_0 = ${idealNewWeights[2].toFixed(2)}$ ${adjustmentDescription}</p>`;
+                
+                let linearEquationIdeal = '';
+                for (let i = 0; i < N; i++) {
+                    linearEquationIdeal += `${currentInstance[i]} \\times ${idealNewWeights[i].toFixed(2)}`;
+                    if (i < N - 1) linearEquationIdeal += ' + ';
+                }
+
+                overlayHTML += `<p>Linear Combination ($L$): $$L = ${linearEquationIdeal} = ${L_ideal.toFixed(3)}$$</p>`;
+                overlayHTML += `<p>Sigmoid Output (Prediction): $$\\sigma(L) = \\sigma(${L_ideal.toFixed(3)}) = ${sigmoid_ideal.toFixed(3)}$$</p>`;
+                overlayHTML += `<p>Resulting Error: $$|\\text{Correct Label} - \\text{Prediction}| = |${currentLabel} - ${sigmoid_ideal.toFixed(3)}| = ${idealNewError.toFixed(3)}$$</p>`;
+                overlayHTML += `<p>This would have resulted in a lower error ($${idealNewError.toFixed(3)}$) compared to your choice ($${newErrorAttempt.toFixed(3)}$).</p>`;
+
+
+                document.getElementById('overlay-content').innerHTML = overlayHTML;
+                document.getElementById('calculation-overlay').classList.remove('hidden');
+                if (typeof MathJax !== 'undefined') {
+                    MathJax.typesetPromise(['overlay-content']); // Rerender MathJax for overlay
+                }
+                // --- End Calculations for Wrong Choice in Overlay ---
+            }
+            
+            currentWeights = newWeightsAttempt;
+            document.getElementById('weight-adjustment').classList.add('hidden');
+            document.getElementById('result-display').classList.remove('hidden');
+            showWeights();
+        }
+
+        function nextExample() {
+            generateNewExample();
+        }
+
+        function resetGame() {
+            document.getElementById('start-section').classList.remove('hidden');
+            document.getElementById('game-section').classList.add('hidden');
+            
+            // Reset success message styling
+            const successMsg = document.getElementById('success-message');
+            successMsg.style.background = '#c6f6d5';
+            successMsg.style.color = '#22543d';
+
+            // Ensure overlay is hidden when resetting
+            document.getElementById('calculation-overlay').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
+<script>
+    // Ensure MathJax is loaded before using it
+    if (typeof MathJax !== 'undefined') {
+        MathJax.typesetPromise().then(() => {
+            console.log('MathJax typeset complete');
+        }).catch((err) => {
+            console.error('MathJax typesetting failed:', err);
+        });
+    }
+    else {
+        console.warn('MathJax is not loaded. Ensure the MathJax script is included correctly.');
+    }
+</script>
