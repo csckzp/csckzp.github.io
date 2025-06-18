@@ -534,7 +534,7 @@
                 document.getElementById('overlay-content').innerHTML = overlayHTML;
                 document.getElementById('calculation-overlay').classList.remove('hidden');
                 if (typeof MathJax !== 'undefined') {
-                    MathJax.typesetPromise(['overlay-content']); // Rerender MathJax for overlay
+                    MathJax.typesetPromise([document.getElementById('overlay-content')]); // Corrected DOM reference
                 }
                 // --- End Calculations for Wrong Choice in Overlay ---
             }
