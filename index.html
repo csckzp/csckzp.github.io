@@ -73,7 +73,7 @@
                 if (!match) continue;
 
                 for (let i = 0; i < 5; i++) {
-                    if ((feedback[i] !== '*') && (feedback !== '+')) {
+                    if ((feedback[i] === '.')) {
                         if (word.includes(guess[i])) {
                             match = false;
                             break;
