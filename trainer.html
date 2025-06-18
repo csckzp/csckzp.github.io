@@ -209,9 +209,20 @@
             border-color: #e2e8f0;
         }
     </style>
-    <!-- Include MathJax for LaTeX rendering -->
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <!-- Include MathJax -->
     <script type="text/javascript" id="MathJax-script" async
-      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js">
     </script>
 </head>
 <body>
@@ -553,16 +564,3 @@
     </script>
 </body>
 </html>
-<script>
-    // Ensure MathJax is loaded before using it
-    if (typeof MathJax !== 'undefined') {
-        MathJax.typesetPromise().then(() => {
-            console.log('MathJax typeset complete');
-        }).catch((err) => {
-            console.error('MathJax typesetting failed:', err);
-        });
-    }
-    else {
-        console.warn('MathJax is not loaded. Ensure the MathJax script is included correctly.');
-    }
-</script>
