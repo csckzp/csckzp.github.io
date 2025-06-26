@@ -27,7 +27,7 @@
         h1 {
             text-align: center;
             margin-bottom: 30px;
-            font-size: 2.5em;
+            font-size: 2.0em;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
         
@@ -47,7 +47,7 @@
         .slider-container label {
             display: block;
             margin-bottom: 10px;
-            font-size: 1.2em;
+            font-size: 1.0em;
             font-weight: bold;
             color: #ffffff;
         }
@@ -89,7 +89,7 @@
         }
         
         .metric-value {
-            font-size: 1.5em;
+            font-size: 1.2em;
             font-weight: bold;
             color: #00ff88;
         }
@@ -113,7 +113,7 @@
         
         .chart-title {
             text-align: center;
-            font-size: 1.3em;
+            font-size: 1.0em;
             font-weight: bold;
             margin-bottom: 15px;
             color: #ffffff;
@@ -161,7 +161,7 @@
             border: none;
             color: #ffffff;
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 0.9em;
             transition: all 0.3s ease;
             border-right: 1px solid #444;
         }
@@ -230,7 +230,7 @@
         .instance-label {
             padding: 2px 8px;
             border-radius: 4px;
-            font-size: 0.9em;
+            font-size: 0.7em;
             font-weight: bold;
         }
         
@@ -623,7 +623,7 @@
                 return `
                     <div class="instance-column">
                         <h4>${title} (${instances.length})</h4>
-                        <p style="font-size: 0.9em; color: #ccc; margin-bottom: 15px;">${description}</p>
+                        <p style="font-size: 0.7em; color: #ccc; margin-bottom: 15px;">${description}</p>
                         ${instances.slice(0, 20).map(item => `
                             <div class="instance-item">
                                 <span class="instance-score">${item.score.toFixed(3)}</span>
