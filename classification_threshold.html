@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classification Threshold Analyzer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .threshold-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .threshold-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .threshold-slider {
+            flex: 1;
+            min-width: 200px;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #e74c3c, #f39c12, #27ae60);
+            outline: none;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .threshold-slider:hover {
+            opacity: 1;
+        }
+
+        .threshold-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 3px solid white;
+        }
+
+        .threshold-value {
+            font-weight: bold;
+            font-size: 1em;
+            color: #2c3e50;
+            background: #ecf0f1;
+            padding: 6px 12px;
+            border-radius: 15px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* MODIFIED CSS: Ensure main-content uses flex and positions items */
+        .main-content {
+            display: flex; /* This is key for side-by-side layout */
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .metrics {
+            display: flex;
+            flex-direction: column; /* Stacks metric cards vertically */
+            gap: 10px;
+            min-width: 200px; /* Adjust as needed */
+            flex-shrink: 0; /* Prevents metrics from shrinking */
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-title {
+            font-size: 0.7em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .metric-description {
+            font-size: 0.6em;
+            opacity: 0.8;
+        }
+
+        .data-table {
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            flex: 1; /* Allows the table to take up remaining space */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.8em;
+        }
+
+        th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 8px;
+        }
+
+        td {
+            padding: 8px 10px;
+            text-align: center;
+            font-weight: 500;
+            border-bottom: 1px solid #f1f3f4;
+            transition: all 0.3s ease;
+            font-size: 0.85em;
+        }
+
+        tr:last-child td:first-child {
+            border-bottom-left-radius: 8px;
+        }
+
+        tr:last-child td:last-child {
+            border-bottom-right-radius: 8px;
+        }
+
+        .probability {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        /* Classification result colors */
+        .tp { background-color: #d4edda !important; color: #155724; }
+        .tn { background-color: #cce5ff !important; color: #004085; }
+        .fp { background-color: #f8d7da !important; color: #721c24; }
+        .fn { background-color: #fff3cd !important; color: #856404; }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.8em;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .threshold-control {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            /* MODIFIED CSS: For smaller screens, stack metrics and table */
+            .main-content {
+                flex-direction: column;
+            }
+
+            .metrics {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Classification Threshold Analyzer</h1>
+
+        <div class="controls">
+            <div class="threshold-control">
+                <span class="threshold-label">Classification Threshold:</span>
+                <input type="range" id="thresholdSlider" class="threshold-slider"
+                       min="0" max="1" step="0.01" value="0.5">
+                <span class="threshold-value" id="thresholdValue">0.50</span>
+            </div>
+        </div>
+
+        <div class="main-content"> <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-title">True Positive Rate</div>
+                    <div class="metric-value" id="tprValue">0.70</div>
+                    <div class="metric-description">Sensitivity</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">False Positive Rate</div>
+                    <div class="metric-value" id="fprValue">0.20</div>
+                    <div class="metric-description">1 - Specificity</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Precision</div>
+                    <div class="metric-value" id="precisionValue">0.78</div>
+                    <div class="metric-description">PPV</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">F1 Score</div>
+                    <div class="metric-value" id="f1Value">0.74</div>
+                    <div class="metric-description">Harmonic Mean</div>
+                </div>
+            </div>
+
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Index</th>
+                            <th>Probability</th>
+                            <th>Actual Label</th>
+                            <th>Predicted Label</th>
+                            <th>Classification</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item tp">
+                <div class="legend-color" style="background-color: #d4edda;"></div>
+                <span>True Positive (TP)</span>
+            </div>
+            <div class="legend-item tn">
+                <div class="legend-color" style="background-color: #cce5ff;"></div>
+                <span>True Negative (TN)</span>
+            </div>
+            <div class="legend-item fp">
+                <div class="legend-color" style="background-color: #f8d7da;"></div>
+                <span>False Positive (FP)</span>
+            </div>
+            <div class="legend-item fn">
+                <div class="legend-color" style="background-color: #fff3cd;"></div>
+                <span>False Negative (FN)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data based on your input
+        const data = [
+            {prob: 0.93, actual: '+'},
+            {prob: 0.92, actual: '+'},
+            {prob: 0.92, actual: '+'},
+            {prob: 0.83, actual: '+'},
+            {prob: 0.76, actual: '+'},
+            {prob: 0.70, actual: '-'},
+            {prob: 0.67, actual: '+'},
+            {prob: 0.59, actual: '+'},
+            {prob: 0.55, actual: '-'},
+            {prob: 0.53, actual: '+'},
+            {prob: 0.51, actual: '-'},
+            {prob: 0.43, actual: '-'},
+            {prob: 0.43, actual: '+'},
+            {prob: 0.38, actual: '-'},
+            {prob: 0.28, actual: '-'},
+            {prob: 0.27, actual: '+'},
+            {prob: 0.21, actual: '-'},
+            {prob: 0.20, actual: '-'},
+            {prob: 0.12, actual: '-'},
+            {prob: 0.11, actual: '-'}
+        ];
+
+        function getClassification(prob, actual, threshold) {
+            const predicted = prob >= threshold ? '+' : '-';
+
+            if (actual === '+' && predicted === '+') return 'TP';
+            if (actual === '-' && predicted === '-') return 'TN';
+            if (actual === '-' && predicted === '+') return 'FP';
+            if (actual === '+' && predicted === '-') return 'FN';
+        }
+
+        function calculateMetrics(threshold) {
+            let tp = 0, tn = 0, fp = 0, fn = 0;
+
+            data.forEach(item => {
+                const classification = getClassification(item.prob, item.actual, threshold);
+                switch(classification) {
+                    case 'TP': tp++; break;
+                    case 'TN': tn++; break;
+                    case 'FP': fp++; break;
+                    case 'FN': fn++; break;
+                }
+            });
+
+            const tpr = tp > 0 || fn > 0 ? tp / (tp + fn) : 0;
+            const fpr = fp > 0 || tn > 0 ? fp / (fp + tn) : 0;
+            const precision = tp > 0 || fp > 0 ? tp / (tp + fp) : 0;
+            const f1 = precision > 0 || tpr > 0 ? 2 * (precision * tpr) / (precision + tpr) : 0;
+
+            return { tpr, fpr, precision, f1, tp, tn, fp, fn };
+        }
+
+        function updateTable(threshold) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            data.forEach((item, index) => {
+                const predicted = item.prob >= threshold ? '+' : '-';
+                const classification = getClassification(item.prob, item.actual, threshold);
+
+                const row = document.createElement('tr');
+                row.className = classification.toLowerCase();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="probability">${item.prob.toFixed(2)}</td>
+                    <td>${item.actual}</td>
+                    <td>${predicted}</td>
+                    <td><strong>${classification}</strong></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateMetrics(threshold) {
+            const metrics = calculateMetrics(threshold);
+
+            document.getElementById('tprValue').textContent = metrics.tpr.toFixed(3);
+            document.getElementById('fprValue').textContent = metrics.fpr.toFixed(3);
+            document.getElementById('precisionValue').textContent = metrics.precision.toFixed(3);
+            document.getElementById('f1Value').textContent = metrics.f1.toFixed(3);
+        }
+
+        function updateDisplay() {
+            const threshold = parseFloat(document.getElementById('thresholdSlider').value);
+            document.getElementById('thresholdValue').textContent = threshold.toFixed(2);
+
+            updateTable(threshold);
+            updateMetrics(threshold);
+        }
+
+        // Event listener for slider
+        document.getElementById('thresholdSlider').addEventListener('input', updateDisplay);
+
+        // Initial display
+        updateDisplay();
+    </script>
+</body>
+</html>
