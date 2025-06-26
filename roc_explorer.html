@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive ROC Curve</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            border: 1px solid #444;
+        }
+        
+        .slider-container {
+            margin: 20px 0;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        input[type="range"] {
+            width: 300px;
+            height: 8px;
+            background: #444;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #ff3333;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(255, 51, 51, 0.5);
+        }
+        
+        .metrics {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .metric {
+            background: #2a2a2a;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin: 5px;
+            text-align: center;
+            min-width: 150px;
+            border: 1px solid #444;
+        }
+        
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .charts {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .chart-container {
+            flex: 1;
+            min-width: 300px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            border: 1px solid #444;
+        }
+        
+        .chart-title {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+        
+        canvas {
+            background: #f8f8f8;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #666;
+        }
+        
+        .explanation {
+            margin-top: 30px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            line-height: 1.6;
+            border: 1px solid #444;
+        }
+        
+        .explanation h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+        }
+        
+        .tab-container {
+            margin-top: 30px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            border: 1px solid #444;
+            overflow: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #1a1a1a;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #1a1a1a;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            border-right: 1px solid #444;
+        }
+        
+        .tab:last-child {
+            border-right: none;
+        }
+        
+        .tab.active {
+            background: #00ff88;
+            color: #000000;
+        }
+        
+        .tab:hover:not(.active) {
+            background: #333;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .instances-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .instance-column {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #444;
+        }
+        
+        .instance-column h4 {
+            margin-top: 0;
+            color: #00ff88;
+            text-align: center;
+        }
+        
+        .instance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            font-family: monospace;
+        }
+        
+        .instance-item:last-child {
+            border-bottom: none;
+        }
+        
+        .instance-score {
+            font-weight: bold;
+        }
+        
+        .instance-label {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .label-positive {
+            background: #ff3333;
+            color: white;
+        }
+        
+        .label-negative {
+            background: #3366ff;
+            color: white;
+        }
+        
+        .prediction-correct {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .prediction-incorrect {
+            background: #ff3333;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Interactive ROC Curve Explorer</h1>
+        
+        <div class="controls">
+            <div class="slider-container">
+                <label for="threshold">Classification Threshold: <span id="thresholdValue">0.50</span></label>
+                <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.5">
+            </div>
+            
+            <div class="metrics">
+                <div class="metric">
+                    <div>True Positive Rate</div>
+                    <div class="metric-value" id="tpr">0.50</div>
+                </div>
+                <div class="metric">
+                    <div>False Positive Rate</div>
+                    <div class="metric-value" id="fpr">0.50</div>
+                </div>
+                <div class="metric">
+                    <div>AUC Score</div>
+                    <div class="metric-value" id="auc">0.85</div>
+                </div>
+                <div class="metric">
+                    <div>Accuracy</div>
+                    <div class="metric-value" id="accuracy">0.75</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="charts">
+            <div class="chart-container">
+                <div class="chart-title">📊 Score Distribution</div>
+                <canvas id="histogramCanvas" width="400" height="300"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📈 ROC Curve</div>
+                <canvas id="rocCanvas" width="400" height="400"></canvas>
+            </div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('explanation')">📚 Understanding ROC</button>
+                <button class="tab" onclick="switchTab('instances')">🔍 Ranked Instances</button>
+            </div>
+            
+            <div id="explanation" class="tab-content active">
+                <h3>Understanding ROC Curves</h3>
+                <p><strong>ROC (Receiver Operating Characteristic)</strong> curves help evaluate binary classification models by plotting True Positive Rate vs False Positive Rate across different thresholds.</p>
+                
+                <p><strong>Key Concepts:</strong></p>
+                <p>• <strong>True Positive Rate (TPR)</strong> = Sensitivity = TP / (TP + FN) - How many actual positives we correctly identified</p>
+                <p>• <strong>False Positive Rate (FPR)</strong> = 1 - Specificity = FP / (FP + TN) - How many actual negatives we incorrectly classified as positive</p>
+                <p>• <strong>AUC (Area Under Curve)</strong> - Overall model performance. Higher is better (0.5 = random, 1.0 = perfect)</p>
+                
+                <p><strong>How to Use:</strong> Move the threshold slider to see how different cutoff points affect the trade-off between catching true positives and avoiding false positives. The shaded area represents the AUC score.</p>
+            </div>
+            
+            <div id="instances" class="tab-content">
+                <h3>Ranked Instances by Model Score</h3>
+                <p>Below are all instances ranked by their predicted scores. Green highlighting shows correct predictions, red shows incorrect ones.</p>
+                <div id="instancesDisplay"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate simulated data
+        function generateData() {
+            const n = 1000;
+            const data = [];
+            
+            // Generate class 0 (negative) samples - lower scores
+            for (let i = 0; i < n/2; i++) {
+                const score = Math.random() * 0.4 + Math.random() * 0.3; // Mostly 0-0.7
+                data.push({ score: Math.min(score, 1), label: 0 });
+            }
+            
+            // Generate class 1 (positive) samples - higher scores  
+            for (let i = 0; i < n/2; i++) {
+                const score = Math.random() * 0.4 + 0.3 + Math.random() * 0.3; // Mostly 0.3-1.0
+                data.push({ score: Math.min(score, 1), label: 1 });
+            }
+            
+            return data.sort(() => Math.random() - 0.5); // Shuffle
+        }
+        
+        const data = generateData();
+        
+        // Sort data by score for ranked display
+        const rankedData = [...data].sort((a, b) => b.score - a.score);
+        
+        // Calculate ROC curve points
+        function calculateROC() {
+            const thresholds = [];
+            const scores = data.map(d => d.score).sort((a, b) => b - a);
+            
+            // Add thresholds at unique score values plus 0 and 1
+            const uniqueScores = [...new Set(scores)];
+            thresholds.push(0);
+            uniqueScores.forEach(score => thresholds.push(score));
+            thresholds.push(1);
+            
+            const rocPoints = [];
+            
+            thresholds.forEach(threshold => {
+                let tp = 0, fp = 0, tn = 0, fn = 0;
+                
+                data.forEach(point => {
+                    const predicted = point.score >= threshold ? 1 : 0;
+                    if (point.label === 1 && predicted === 1) tp++;
+                    else if (point.label === 0 && predicted === 1) fp++;
+                    else if (point.label === 0 && predicted === 0) tn++;
+                    else if (point.label === 1 && predicted === 0) fn++;
+                });
+                
+                const tpr = tp / (tp + fn) || 0;
+                const fpr = fp / (fp + tn) || 0;
+                
+                rocPoints.push({ threshold, tpr, fpr, tp, fp, tn, fn });
+            });
+            
+            return rocPoints.sort((a, b) => a.fpr - b.fpr);
+        }
+        
+        const rocPoints = calculateROC();
+        
+        // Calculate AUC using trapezoidal rule
+        function calculateAUC(points) {
+            let auc = 0;
+            for (let i = 1; i < points.length; i++) {
+                const dx = points[i].fpr - points[i-1].fpr;
+                const avgHeight = (points[i].tpr + points[i-1].tpr) / 2;
+                auc += dx * avgHeight;
+            }
+            return auc;
+        }
+        
+        const auc = calculateAUC(rocPoints);
+        
+        // Find metrics for current threshold
+        function getMetricsForThreshold(threshold) {
+            let tp = 0, fp = 0, tn = 0, fn = 0;
+            
+            data.forEach(point => {
+                const predicted = point.score >= threshold ? 1 : 0;
+                if (point.label === 1 && predicted === 1) tp++;
+                else if (point.label === 0 && predicted === 1) fp++;
+                else if (point.label === 0 && predicted === 0) tn++;
+                else if (point.label === 1 && predicted === 0) fn++;
+            });
+            
+            const tpr = tp / (tp + fn) || 0;
+            const fpr = fp / (fp + tn) || 0;
+            const accuracy = (tp + tn) / (tp + fp + tn + fn) || 0;
+            
+            return { tpr, fpr, accuracy, tp, fp, tn, fn };
+        }
+        
+        // Draw histogram
+        function drawHistogram(threshold) {
+            const canvas = document.getElementById('histogramCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Create bins
+            const bins = 20;
+            const binWidth = 1 / bins;
+            const pos_counts = new Array(bins).fill(0);
+            const neg_counts = new Array(bins).fill(0);
+            
+            data.forEach(point => {
+                const binIndex = Math.min(Math.floor(point.score / binWidth), bins - 1);
+                if (point.label === 1) {
+                    pos_counts[binIndex]++;
+                } else {
+                    neg_counts[binIndex]++;
+                }
+            });
+            
+            const maxCount = Math.max(...pos_counts, ...neg_counts);
+            const barWidth = width / bins;
+            
+            // Draw bars
+            for (let i = 0; i < bins; i++) {
+                const x = i * barWidth;
+                
+                // Negative class (blue)
+                const negHeight = (neg_counts[i] / maxCount) * height * 0.4;
+                ctx.fillStyle = '#3366ff';
+                ctx.fillRect(x, height - negHeight, barWidth * 0.8, negHeight);
+                
+                // Positive class (red)  
+                const posHeight = (pos_counts[i] / maxCount) * height * 0.4;
+                ctx.fillStyle = '#ff3333';
+                ctx.fillRect(x, height - negHeight - posHeight, barWidth * 0.8, posHeight);
+            }
+            
+            // Draw threshold line
+            const thresholdX = threshold * width;
+            ctx.strokeStyle = '#ff3333';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(thresholdX, 0);
+            ctx.lineTo(thresholdX, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Add labels with better contrast
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('Negative Class', 10, 20);
+            ctx.fillStyle = '#3366ff';
+            ctx.fillRect(130, 8, 15, 10);
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillText('Positive Class', 10, 40);
+            ctx.fillStyle = '#ff3333';
+            ctx.fillRect(120, 28, 15, 10);
+            
+            // Axis labels
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('0', 5, height - 5);
+            ctx.fillText('1', width - 15, height - 5);
+            ctx.fillText('Prediction Score', width/2 - 50, height - 5);
+        }
+        
+        // Draw ROC curve
+        function drawROC(currentThreshold) {
+            const canvas = document.getElementById('rocCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            const padding = 40;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw axes
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, height - padding);
+            ctx.lineTo(width - padding, height - padding);
+            ctx.moveTo(padding, height - padding);
+            ctx.lineTo(padding, padding);
+            ctx.stroke();
+            
+            // Draw diagonal (random classifier)
+            ctx.strokeStyle = 'gray';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(padding, height - padding);
+            ctx.lineTo(width - padding, padding);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Fill AUC area
+            ctx.fillStyle = 'rgba(0, 255, 136, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(padding, height - padding);
+            
+            rocPoints.forEach(point => {
+                const x = padding + point.fpr * (width - 2 * padding);
+                const y = height - padding - point.tpr * (height - 2 * padding);
+                ctx.lineTo(x, y);
+            });
+            
+            ctx.lineTo(width - padding, height - padding);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw ROC curve
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            
+            rocPoints.forEach((point, i) => {
+                const x = padding + point.fpr * (width - 2 * padding);
+                const y = height - padding - point.tpr * (height - 2 * padding);
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Highlight current point
+            const currentMetrics = getMetricsForThreshold(currentThreshold);
+            const currentX = padding + currentMetrics.fpr * (width - 2 * padding);
+            const currentY = height - padding - currentMetrics.tpr * (height - 2 * padding);
+            
+            ctx.fillStyle = '#ff3333';
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 10, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Add white border to make it stand out
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 10, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Add labels with high contrast
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('False Positive Rate', width/2 - 70, height - 10);
+            
+            ctx.save();
+            ctx.translate(15, height/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillText('True Positive Rate', -70, 0);
+            ctx.restore();
+            
+            // Add tick marks and values with better contrast
+            ctx.font = 'bold 14px Arial';
+            for (let i = 0; i <= 1; i += 0.2) {
+                const x = padding + i * (width - 2 * padding);
+                const y = height - padding - i * (height - 2 * padding); // Fixed: subtract for Y-axis
+                
+                ctx.fillText(i.toFixed(1), x - 10, height - padding + 20);
+                ctx.fillText(i.toFixed(1), padding - 25, y + 5); // Fixed: use corrected y value
+            }
+        }
+        
+        // Update ranked instances display
+        function updateRankedInstances() {
+            const threshold = parseFloat(document.getElementById('threshold').value);
+            const container = document.getElementById('instancesDisplay');
+            
+            // Create columns for different prediction outcomes
+            const tp = [], fp = [], tn = [], fn = [];
+            
+            rankedData.forEach((item, index) => {
+                const predicted = item.score >= threshold ? 1 : 0;
+                const actual = item.label;
+                
+                const instanceData = {
+                    index: index + 1,
+                    score: item.score,
+                    actual: actual,
+                    predicted: predicted,
+                    correct: predicted === actual
+                };
+                
+                if (actual === 1 && predicted === 1) tp.push(instanceData);
+                else if (actual === 0 && predicted === 1) fp.push(instanceData);
+                else if (actual === 0 && predicted === 0) tn.push(instanceData);
+                else if (actual === 1 && predicted === 0) fn.push(instanceData);
+            });
+            
+            function createInstanceHTML(instances, title, description) {
+                if (instances.length === 0) return '';
+                
+                return `
+                    <div class="instance-column">
+                        <h4>${title} (${instances.length})</h4>
+                        <p style="font-size: 0.9em; color: #ccc; margin-bottom: 15px;">${description}</p>
+                        ${instances.slice(0, 20).map(item => `
+                            <div class="instance-item">
+                                <span class="instance-score">${item.score.toFixed(3)}</span>
+                                <div>
+                                    <span class="instance-label ${item.actual === 1 ? 'label-positive' : 'label-negative'}">
+                                        ${item.actual === 1 ? 'POS' : 'NEG'}
+                                    </span>
+                                    <span class="instance-label ${item.correct ? 'prediction-correct' : 'prediction-incorrect'}">
+                                        ${item.correct ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${instances.length > 20 ? `<p style="text-align: center; color: #888; margin-top: 10px;">... and ${instances.length - 20} more</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = `
+                <div class="instances-grid">
+                    ${createInstanceHTML(tp, '✅ True Positives', 'Correctly identified positive cases')}
+                    ${createInstanceHTML(fp, '❌ False Positives', 'Incorrectly classified as positive')}
+                    ${createInstanceHTML(fn, '⚠️ False Negatives', 'Missed positive cases')}
+                    ${createInstanceHTML(tn, '✅ True Negatives', 'Correctly identified negative cases')}
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #1a1a1a; border-radius: 10px; border: 1px solid #444;">
+                    <p><strong>Threshold: ${threshold.toFixed(2)}</strong> - Instances with scores ≥ ${threshold.toFixed(2)} are predicted as positive.</p>
+                    <p>Total instances: ${rankedData.length} | Showing top 20 per category</p>
+                </div>
+            `;
+        }
+        
+        // Tab switching function
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+            
+            // Update ranked instances if that tab is selected
+            if (tabName === 'instances') {
+                updateRankedInstances();
+            }
+        }
+        function updateDisplay() {
+            const threshold = parseFloat(document.getElementById('threshold').value);
+            const metrics = getMetricsForThreshold(threshold);
+            
+            document.getElementById('thresholdValue').textContent = threshold.toFixed(2);
+            document.getElementById('tpr').textContent = metrics.tpr.toFixed(3);
+            document.getElementById('fpr').textContent = metrics.fpr.toFixed(3);
+            document.getElementById('auc').textContent = auc.toFixed(3);
+            document.getElementById('accuracy').textContent = metrics.accuracy.toFixed(3);
+            
+            drawHistogram(threshold);
+            drawROC(threshold);
+        }
+        
+        // Event listeners
+        document.getElementById('threshold').addEventListener('input', updateDisplay);
+        
+        // Initial display
+        updateDisplay();
+    </script>
+</body>
+</html>
