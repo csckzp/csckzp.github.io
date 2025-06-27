@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bias-Variance Tradeoff Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 20px; /* Reduced padding for smaller banner */
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2em; /* Slightly smaller font for title */
+            margin-bottom: 5px; /* Reduced margin */
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1em; /* Slightly smaller font for subtitle */
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 0.5fr; /* Added a column for metrics panel */
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .controls-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .slider-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-value {
+            position: absolute;
+            right: 0;
+            top: -25px;
+            background: #495057;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .model-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .model-btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #e9ecef;
+            color: #495057;
+            font-size: 0.9em; /* Slightly smaller font */
+        }
+
+        .model-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .model-btn:hover:not(.active) {
+            background: #dee2e6;
+            transform: translateY(-1px);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px; /* Slightly smaller padding */
+            border: none;
+            border-radius: 10px;
+            font-size: 1em; /* Slightly smaller font */
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            margin-bottom: 10px; /* Reduced margin */
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .chart-container {
+            position: relative;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e9ecef;
+        }
+
+        .metrics-panel {
+            /* Adjusted grid-column to span 1 and moved to the right */
+            grid-column: 3 / 4; 
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px; /* Slightly reduced padding */
+            border: 2px solid #e9ecef;
+            margin-top: 0; /* Removed top margin */
+        }
+
+        .metrics-grid {
+            display: flex; /* Changed to flexbox for vertical stacking */
+            flex-direction: column; /* Stack vertically */
+            gap: 15px; /* Slightly reduced gap */
+        }
+
+        .metric-card {
+            background: white;
+            padding: 15px; /* Slightly reduced padding */
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .metric-value {
+            font-size: 1.8em; /* Slightly smaller font */
+            font-weight: bold;
+            margin-bottom: 3px; /* Reduced margin */
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 0.9em; /* Slightly smaller font */
+        }
+
+        .bias { color: #dc3545; }
+        .variance { color: #007bff; }
+        .total-error { color: #6f42c1; }
+        .complexity { color: #fd7e14; }
+
+        .explanation {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-radius: 10px;
+            padding: 15px; /* Slightly reduced padding */
+            margin-top: 15px; /* Slightly reduced margin */
+            border-left: 4px solid #ffc107;
+            font-size: 0.9em; /* Slightly smaller font */
+        }
+
+        .explanation h3 {
+            color: #856404;
+            margin-bottom: 8px; /* Slightly reduced margin */
+            font-size: 1.1em; /* Slightly smaller font */
+        }
+
+        .explanation p {
+            color: #856404;
+            line-height: 1.5; /* Slightly reduced line height */
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .metrics-panel {
+                grid-column: span 1;
+            }
+            
+            .model-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Bias-Variance Tradeoff Visualizer</h1>
+            <p>Explore how model complexity affects bias, variance, and total prediction error</p>
+        </div>
+
+        <div class="main-content">
+            <div class="controls-panel">
+                <h3 style="margin-bottom: 20px; color: #495057;">📊 Model Configuration</h3>
+                
+                <div class="control-group">
+                    <label>Select Model Complexity:</label>
+                    <div class="model-buttons">
+                        <button class="model-btn active" data-complexity="1">Simple Linear</button>
+                        <button class="model-btn" data-complexity="3">Moderate Poly</button>
+                        <button class="model-btn" data-complexity="8">Complex Poly</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Dataset Size:</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="dataSize" min="20" max="200" value="50" step="10">
+                        <span class="slider-value" id="dataSizeValue">50</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Noise Level:</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="noiseLevel" min="0.1" max="2.0" value="0.5" step="0.1">
+                        <span class="slider-value" id="noiseLevelValue">0.5</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Number of Bootstrap Samples:</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="bootstrapSamples" min="10" max="100" value="50" step="10">
+                        <span class="slider-value" id="bootstrapSamplesValue">50</span>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="trainModel">🚀 Train Model & Analyze</button>
+                <button class="action-btn" id="generateData" style="background: linear-gradient(135deg, #6c757d, #495057);">🔄 Generate New Dataset</button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Training models and computing bias-variance...</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="mainChart" width="400" height="300"></canvas>
+            </div>
+
+            <div class="metrics-panel">
+                <h3 style="margin-bottom: 20px; color: #495057; font-size: 1.2em;">📈 Bias-Variance Analysis</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value bias" id="biasValue">0.00</div>
+                        <div class="metric-label">Bias²</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value variance" id="varianceValue">0.00</div>
+                        <div class="metric-label">Variance</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value total-error" id="totalErrorValue">0.00</div>
+                        <div class="metric-label">Total Error</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value complexity" id="complexityValue">1</div>
+                        <div class="metric-label">Model Complexity</div>
+                    </div>
+                </div>
+
+                <div class="explanation" id="explanation">
+                    <h3>🎓 Understanding the Results</h3>
+                    <p>Select a model complexity and train to see how bias, variance, and total error change. Lower complexity models have high bias but low variance (underfitting), while higher complexity models have low bias but high variance (overfitting).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BiasVarianceVisualizer {
+            constructor() {
+                this.chart = null;
+                this.currentComplexity = 1;
+                this.dataSize = 50;
+                this.noiseLevel = 0.5;
+                this.bootstrapSamples = 50;
+                this.trueFunction = x => 0.3 * x * x + 0.5 * x + 0.2; // True underlying function
+                this.dataset = [];
+                this.testPoints = [];
+                this.regularization = 0.01; // L2 regularization parameter
+                
+                this.initializeChart();
+                this.setupEventListeners();
+                this.generateData();
+            }
+
+            initializeChart() {
+                const ctx = document.getElementById('mainChart').getContext('2d');
+                this.chart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Training Data',
+                            data: [],
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            pointRadius: 4
+                        }, {
+                            label: 'True Function',
+                            data: [],
+                            type: 'line',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            fill: false,
+                            pointRadius: 0,
+                            borderWidth: 3
+                        }, {
+                            label: 'Model Predictions',
+                            data: [],
+                            type: 'line',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            fill: false,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            borderDash: [5, 5]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Model Fitting Visualization',
+                                font: { size: 16, weight: 'bold' }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'X' },
+                                min: -2,
+                                max: 2
+                            },
+                            y: {
+                                title: { display: true, text: 'Y' },
+                                min: -1,
+                                max: 3
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                // Model complexity buttons
+                document.querySelectorAll('.model-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentComplexity = parseInt(e.target.dataset.complexity);
+                        document.getElementById('complexityValue').textContent = this.currentComplexity;
+                        this.updateExplanation();
+                    });
+                });
+
+                // Sliders
+                const sliders = ['dataSize', 'noiseLevel', 'bootstrapSamples'];
+                sliders.forEach(slider => {
+                    const element = document.getElementById(slider);
+                    const valueElement = document.getElementById(slider + 'Value');
+                    
+                    element.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        valueElement.textContent = value;
+                        this[slider] = value;
+                    });
+                });
+
+                // Buttons
+                document.getElementById('trainModel').addEventListener('click', () => this.trainAndAnalyze());
+                document.getElementById('generateData').addEventListener('click', () => this.generateData());
+            }
+
+            generateData() {
+                this.dataset = [];
+                const xMin = -1.5, xMax = 1.5; // Reduced range to minimize edge effects
+                
+                for (let i = 0; i < this.dataSize; i++) {
+                    const x = xMin + (xMax - xMin) * Math.random();
+                    const yTrue = this.trueFunction(x);
+                    const yNoisy = yTrue + (Math.random() - 0.5) * 2 * this.noiseLevel;
+                    this.dataset.push({ x, y: yNoisy });
+                }
+
+                // Generate test points for evaluation (within training range + small buffer)
+                this.testPoints = [];
+                const testMin = xMin - 0.2;
+                const testMax = xMax + 0.2;
+                for (let x = testMin; x <= testMax; x += 0.05) {
+                    this.testPoints.push({ x, yTrue: this.trueFunction(x) });
+                }
+
+                this.updateChart();
+            }
+
+            updateChart() {
+                // Update training data
+                this.chart.data.datasets[0].data = this.dataset;
+                
+                // Update true function
+                this.chart.data.datasets[1].data = this.testPoints.map(p => ({ x: p.x, y: p.yTrue }));
+                
+                this.chart.update();
+            }
+
+            polynomial(x, degree) {
+                let result = 0;
+                for (let i = 0; i <= degree; i++) {
+                    result += Math.pow(x, i);
+                }
+                return result;
+            }
+
+            fitPolynomial(data, degree) {
+                const n = data.length;
+                if (n === 0) return [];
+
+                // Create design matrix X and target vector y
+                const X = [];
+                const y = [];
+                
+                for (let i = 0; i < n; i++) {
+                    const row = [];
+                    for (let j = 0; j <= degree; j++) {
+                        row.push(Math.pow(data[i].x, j));
+                    }
+                    X.push(row);
+                    y.push(data[i].y);
+                }
+
+                // Add L2 regularization: (X^T X + λI) β = X^T y
+                const XTX = this.multiplyMatrices(this.transpose(X), X);
+                const XTy = this.multiplyMatrixVector(this.transpose(X), y);
+                
+                // Add regularization to diagonal (Ridge regression)
+                const lambda = this.regularization * (degree > 2 ? Math.pow(degree, 2) : 1);
+                for (let i = 0; i < XTX.length; i++) {
+                    XTX[i][i] += lambda;
+                }
+                
+                // Solve the regularized system
+                let coefficients = this.solveLinearSystem(XTX, XTy);
+                
+                // Clip extreme coefficients to prevent numerical instability
+                coefficients = coefficients.map(coef => {
+                    if (Math.abs(coef) > 10) {
+                        return Math.sign(coef) * 10;
+                    }
+                    return coef;
+                });
+                
+                return coefficients;
+            }
+
+            transpose(matrix) {
+                const rows = matrix.length;
+                const cols = matrix[0].length;
+                const result = [];
+                
+                for (let j = 0; j < cols; j++) {
+                    const row = [];
+                    for (let i = 0; i < rows; i++) {
+                        row.push(matrix[i][j]);
+                    }
+                    result.push(row);
+                }
+                
+                return result;
+            }
+
+            multiplyMatrices(A, B) {
+                const rowsA = A.length;
+                const colsA = A[0].length;
+                const colsB = B[0].length;
+                const result = [];
+                
+                for (let i = 0; i < rowsA; i++) {
+                    const row = [];
+                    for (let j = 0; j < colsB; j++) {
+                        let sum = 0;
+                        for (let k = 0; k < colsA; k++) {
+                            sum += A[i][k] * B[k][j];
+                        }
+                        row.push(sum);
+                    }
+                    result.push(row);
+                }
+                
+                return result;
+            }
+
+            multiplyMatrixVector(matrix, vector) {
+                const rows = matrix.length;
+                const result = [];
+                
+                for (let i = 0; i < rows; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < vector.length; j++) {
+                        sum += matrix[i][j] * vector[j];
+                    }
+                    result.push(sum);
+                }
+                
+                return result;
+            }
+
+            solveLinearSystem(A, b) {
+                const n = A.length;
+                const augmented = [];
+                
+                // Create augmented matrix
+                for (let i = 0; i < n; i++) {
+                    augmented[i] = [...A[i], b[i]];
+                }
+                
+                // Forward elimination with partial pivoting
+                for (let i = 0; i < n; i++) {
+                    // Find pivot
+                    let maxRow = i;
+                    for (let k = i + 1; k < n; k++) {
+                        if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                            maxRow = k;
+                        }
+                    }
+                    
+                    // Swap rows
+                    [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+                    
+                    // Check for singular matrix
+                    if (Math.abs(augmented[i][i]) < 1e-10) {
+                        // Add small regularization to diagonal
+                        augmented[i][i] += 1e-8;
+                    }
+                    
+                    // Eliminate column
+                    for (let k = i + 1; k < n; k++) {
+                        const factor = augmented[k][i] / augmented[i][i];
+                        for (let j = i; j <= n; j++) {
+                            augmented[k][j] -= factor * augmented[i][j];
+                        }
+                    }
+                }
+                
+                // Back substitution
+                const x = new Array(n);
+                for (let i = n - 1; i >= 0; i--) {
+                    x[i] = augmented[i][n];
+                    for (let j = i + 1; j < n; j++) {
+                        x[i] -= augmented[i][j] * x[j];
+                    }
+                    x[i] /= augmented[i][i];
+                }
+                
+                return x;
+            }
+
+            evaluatePolynomial(x, coefficients) {
+                let result = 0;
+                for (let i = 0; i < coefficients.length; i++) {
+                    result += coefficients[i] * Math.pow(x, i);
+                }
+                // Clip extreme predictions to prevent visualization issues
+                return Math.max(-5, Math.min(5, result));
+            }
+
+            bootstrap(data, size = null) {
+                if (!size) size = data.length;
+                const sample = [];
+                for (let i = 0; i < size; i++) {
+                    const randomIndex = Math.floor(Math.random() * data.length);
+                    sample.push(data[randomIndex]);
+                }
+                return sample;
+            }
+
+            async trainAndAnalyze() {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('trainModel').disabled = true;
+                
+                // Small delay to show loading animation
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const predictions = [];
+                const models = [];
+
+                // Generate bootstrap samples and train models
+                for (let i = 0; i < this.bootstrapSamples; i++) {
+                    const bootstrapSample = this.bootstrap(this.dataset);
+                    const coefficients = this.fitPolynomial(bootstrapSample, this.currentComplexity);
+                    models.push(coefficients);
+                    
+                    const prediction = this.testPoints.map(point => ({
+                        x: point.x,
+                        y: this.evaluatePolynomial(point.x, coefficients)
+                    }));
+                    predictions.push(prediction);
+                }
+
+                // Calculate bias, variance, and total error
+                const biasVariance = this.calculateBiasVariance(predictions);
+                
+                // Update metrics display
+                document.getElementById('biasValue').textContent = biasVariance.bias.toFixed(3);
+                document.getElementById('varianceValue').textContent = biasVariance.variance.toFixed(3);
+                document.getElementById('totalErrorValue').textContent = biasVariance.totalError.toFixed(3);
+                
+                // Update chart with average prediction
+                const avgPrediction = this.calculateAveragePrediction(predictions);
+                this.chart.data.datasets[2].data = avgPrediction;
+                this.chart.update();
+                
+                this.updateExplanation();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('trainModel').disabled = false;
+            }
+
+            calculateAveragePrediction(predictions) {
+                const avgPrediction = [];
+                for (let i = 0; i < this.testPoints.length; i++) {
+                    let sumY = 0;
+                    for (let j = 0; j < predictions.length; j++) {
+                        sumY += predictions[j][i].y;
+                    }
+                    avgPrediction.push({
+                        x: this.testPoints[i].x,
+                        y: sumY / predictions.length
+                    });
+                }
+                return avgPrediction;
+            }
+
+            calculateBiasVariance(predictions) {
+                let totalBias = 0;
+                let totalVariance = 0;
+                let totalError = 0;
+                
+                const numPoints = this.testPoints.length;
+                
+                for (let i = 0; i < numPoints; i++) {
+                    const trueY = this.testPoints[i].yTrue;
+                    const predictedValues = predictions.map(pred => pred[i].y);
+                    
+                    // Calculate mean prediction
+                    const meanPrediction = predictedValues.reduce((sum, y) => sum + y, 0) / predictedValues.length;
+                    
+                    // Bias² = (mean prediction - true value)²
+                    const bias = Math.pow(meanPrediction - trueY, 2);
+                    
+                    // Variance = average of (prediction - mean prediction)²
+                    const variance = predictedValues.reduce((sum, y) => sum + Math.pow(y - meanPrediction, 2), 0) / predictedValues.length;
+                    
+                    totalBias += bias;
+                    totalVariance += variance;
+                }
+                
+                const avgBias = totalBias / numPoints;
+                const avgVariance = totalVariance / numPoints;
+                const totalErr = avgBias + avgVariance + Math.pow(this.noiseLevel, 2); // Add noise term
+                
+                return {
+                    bias: avgBias,
+                    variance: avgVariance,
+                    totalError: totalErr
+                };
+            }
+
+            updateExplanation() {
+                const explanationElement = document.getElementById('explanation');
+                let explanation = '';
+                
+                if (this.currentComplexity === 1) {
+                    explanation = `
+                        <h3>📊 Simple Linear Model (High Bias, Low Variance)</h3>
+                        <p><strong>Underfitting:</strong> The linear model is too simple to capture the true quadratic relationship. 
+                        It has high bias because it consistently underfits the data, but low variance because it's stable across different training sets. 
+                        The model makes systematic errors but is consistent.</p>
+                    `;
+                } else if (this.currentComplexity === 3) {
+                    explanation = `
+                        <h3>⚖️ Moderate Polynomial Model (Balanced Bias-Variance)</h3>
+                        <p><strong>Good Fit:</strong> This model complexity is closer to optimal for the underlying quadratic function. 
+                        It achieves a good balance between bias and variance, resulting in lower total error. 
+                        The model can capture the main patterns without being overly sensitive to noise.</p>
+                    `;
+                } else {
+                    explanation = `
+                        <h3>🎭 Complex Polynomial Model (Low Bias, High Variance)</h3>
+                        <p><strong>Overfitting:</strong> The high-degree polynomial can fit the training data very closely (low bias) 
+                        but is highly sensitive to the specific training samples (high variance). Different bootstrap samples 
+                        produce very different models, leading to poor generalization despite low training error.</p>
+                    `;
+                }
+                
+                explanationElement.innerHTML = explanation;
+            }
+        }
+
+        // Initialize the visualizer when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new BiasVarianceVisualizer();
+        });
+    </script>
+</body>
+</html>
