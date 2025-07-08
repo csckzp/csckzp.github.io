@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bias-Variance Tradeoff Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .slider-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-value {
+            text-align: center;
+            font-weight: bold;
+            color: #495057;
+            margin-top: 5px;
+        }
+
+        .status-indicators {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .status-indicator {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            min-width: 80px;
+            transition: all 0.3s ease;
+        }
+
+        .high-bias {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .sweet-spot {
+            background: #51cf66;
+            color: white;
+        }
+
+        .high-variance {
+            background: #ffd93d;
+            color: #333;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .metric-label {
+            font-weight: bold;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .train-error {
+            color: #28a745;
+        }
+
+        .test-error {
+            color: #dc3545;
+        }
+
+        .explanation {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .explanation h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+
+        .toggle-group {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .toggle-group label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #2c3e50;
+            cursor: pointer;
+        }
+
+        .toggle-group input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+
+
+        @media (max-width: 768px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bias-Variance Tradeoff Demo</h1>
+        <p class="subtitle">Discover the fundamental challenge in machine learning and why ensemble methods are so powerful</p>
+
+        <div class="demo-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label for="complexity">Model Complexity (Decision Tree Max Depth)</label>
+                    <div class="slider-container">
+                        <input type="range" id="complexity" class="slider" min="1" max="15" value="3">
+                        <div class="slider-value" id="complexityValue">3</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="noise">Data Noise Level</label>
+                    <div class="slider-container">
+                        <input type="range" id="noise" class="slider" min="0" max="1" step="0.1" value="0.3">
+                        <div class="slider-value" id="noiseValue">0.3</div>
+                    </div>
+                </div>
+
+                <div class="status-indicators">
+                    <div class="status-indicator" id="statusIndicator">
+                        <div>Sweet Spot</div>
+                        <div style="font-size: 0.8em; margin-top: 5px;">Balanced</div>
+                    </div>
+                </div>
+
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">Training Error</div>
+                        <div class="metric-value train-error" id="trainError">0.15</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Test Error</div>
+                        <div class="metric-value test-error" id="testError">0.18</div>
+                    </div>
+                </div>
+
+                <div class="toggle-group">
+                    <label>
+                        <input type="checkbox" id="toggleTrueFunction" checked> True Function
+                    </label>
+                    <label>
+                        <input type="checkbox" id="toggleTrainData" checked> Training Data
+                    </label>
+                    <label>
+                        <input type="checkbox" id="toggleTestData" checked> Test Data
+                    </label>
+                    <label>
+                        <input type="checkbox" id="toggleModelPrediction" checked> Model Prediction
+                    </label>
+                </div>
+
+                <div class="explanation" id="explanation">
+                    <h3>Sweet Spot</h3>
+                    <p>Your model has found a good balance between bias and variance. It captures the underlying pattern without overfitting to noise.</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Model Fit Visualization</div>
+                <svg id="chart" width="100%" height="400"></svg>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #2196f3;"></div>
+                        <span>True Function</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4caf50;"></div>
+                        <span>Training Data</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff9800;"></div>
+                        <span>Test Data</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e91e63;"></div>
+                        <span>Model Prediction</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BiasVarianceDemo {
+            constructor() {
+                this.width = 500;
+                this.height = 400;
+                this.margin = { top: 20, right: 20, bottom: 40, left: 40 };
+                this.innerWidth = this.width - this.margin.left - this.margin.right;
+                this.innerHeight = this.height - this.margin.top - this.margin.bottom;
+                
+                // State for toggles
+                this.showTrueFunction = true;
+                this.showTrainData = true;
+                this.showTestData = true;
+                this.showModelPrediction = true;
+
+                this.setupChart();
+                this.setupControls();
+                this.generateData();
+                this.updateVisualization();
+            }
+
+            setupChart() {
+                const container = d3.select('#chart');
+                container.selectAll('*').remove();
+                
+                const containerWidth = container.node().getBoundingClientRect().width;
+                this.width = Math.min(containerWidth, 500);
+                this.innerWidth = this.width - this.margin.left - this.margin.right;
+                
+                const svg = container
+                    .attr('width', this.width)
+                    .attr('height', this.height);
+
+                this.g = svg.append('g')
+                    .attr('transform', `translate(${this.margin.left},${this.margin.top})`);
+
+                this.xScale = d3.scaleLinear()
+                    .domain([0, 10])
+                    .range([0, this.innerWidth]);
+
+                this.yScale = d3.scaleLinear()
+                    .domain([-3, 3])
+                    .range([this.innerHeight, 0]);
+
+                // Add axes
+                this.g.append('g')
+                    .attr('class', 'x-axis')
+                    .attr('transform', `translate(0,${this.innerHeight})`)
+                    .call(d3.axisBottom(this.xScale));
+
+                this.g.append('g')
+                    .attr('class', 'y-axis')
+                    .call(d3.axisLeft(this.yScale));
+            }
+
+            setupControls() {
+                const complexitySlider = document.getElementById('complexity');
+                const noiseSlider = document.getElementById('noise');
+                const toggleTrueFunction = document.getElementById('toggleTrueFunction');
+                const toggleTrainData = document.getElementById('toggleTrainData');
+                const toggleTestData = document.getElementById('toggleTestData');
+                const toggleModelPrediction = document.getElementById('toggleModelPrediction');
+
+                complexitySlider.addEventListener('input', () => {
+                    document.getElementById('complexityValue').textContent = complexitySlider.value;
+                    this.updateVisualization();
+                });
+
+                noiseSlider.addEventListener('input', () => {
+                    document.getElementById('noiseValue').textContent = noiseSlider.value;
+                    this.generateData();
+                    this.updateVisualization();
+                });
+
+                toggleTrueFunction.addEventListener('change', (event) => {
+                    this.showTrueFunction = event.target.checked;
+                    this.updateVisualization();
+                });
+
+                toggleTrainData.addEventListener('change', (event) => {
+                    this.showTrainData = event.target.checked;
+                    this.updateVisualization();
+                });
+
+                toggleTestData.addEventListener('change', (event) => {
+                    this.showTestData = event.target.checked;
+                    this.updateVisualization();
+                });
+
+                toggleModelPrediction.addEventListener('change', (event) => {
+                    this.showModelPrediction = event.target.checked;
+                    this.updateVisualization();
+                });
+            }
+
+            trueFunction(x) {
+                return Math.sin(x) + 0.3 * Math.sin(3 * x);
+            }
+
+            generateData() {
+                const noise = parseFloat(document.getElementById('noise').value);
+                
+                // Generate training data
+                this.trainData = [];
+                for (let i = 0; i < 50; i++) {
+                    const x = Math.random() * 10;
+                    const y = this.trueFunction(x) + (Math.random() - 0.5) * 2 * noise;
+                    this.trainData.push({ x, y });
+                }
+
+                // Generate test data
+                this.testData = [];
+                for (let i = 0; i < 30; i++) {
+                    const x = Math.random() * 10;
+                    const y = this.trueFunction(x) + (Math.random() - 0.5) * 2 * noise;
+                    this.testData.push({ x, y });
+                }
+
+                // Generate true function line
+                this.trueFunctionData = [];
+                for (let i = 0; i <= 100; i++) {
+                    const x = i * 10 / 100;
+                    const y = this.trueFunction(x);
+                    this.trueFunctionData.push({ x, y });
+                }
+            }
+
+            simpleModel(trainData, maxDepth) {
+                // Build a proper decision tree for regression
+                const tree = this.buildDecisionTree(trainData, maxDepth, 0);
+                
+                return x => this.predictWithTree(tree, x);
+            }
+
+            buildDecisionTree(data, maxDepth, currentDepth) {
+                // Base cases
+                if (currentDepth >= maxDepth || data.length <= 2) {
+                    return {
+                        isLeaf: true,
+                        prediction: d3.mean(data, d => d.y) || 0
+                    };
+                }
+
+                // Find best split
+                const bestSplit = this.findBestSplit(data);
+                
+                if (!bestSplit) {
+                    return {
+                        isLeaf: true,
+                        prediction: d3.mean(data, d => d.y) || 0
+                    };
+                }
+
+                // Split data
+                const leftData = data.filter(d => d.x <= bestSplit.threshold);
+                const rightData = data.filter(d => d.x > bestSplit.threshold);
+
+                // Recursively build subtrees
+                return {
+                    isLeaf: false,
+                    threshold: bestSplit.threshold,
+                    left: this.buildDecisionTree(leftData, maxDepth, currentDepth + 1),
+                    right: this.buildDecisionTree(rightData, maxDepth, currentDepth + 1)
+                };
+            }
+
+            findBestSplit(data) {
+                if (data.length <= 2) return null;
+
+                let bestThreshold = null;
+                let bestScore = Infinity;
+
+                // Sort data by x values
+                const sortedData = data.slice().sort((a, b) => a.x - b.x);
+
+                // Try splits between consecutive points
+                for (let i = 0; i < sortedData.length - 1; i++) {
+                    const threshold = (sortedData[i].x + sortedData[i + 1].x) / 2;
+                    
+                    const leftData = data.filter(d => d.x <= threshold);
+                    const rightData = data.filter(d => d.x > threshold);
+
+                    if (leftData.length === 0 || rightData.length === 0) continue;
+
+                    // Calculate weighted variance (impurity)
+                    const leftVariance = this.calculateVariance(leftData);
+                    const rightVariance = this.calculateVariance(rightData);
+                    
+                    const totalSize = data.length;
+                    const weightedVariance = 
+                        (leftData.length / totalSize) * leftVariance +
+                        (rightData.length / totalSize) * rightVariance;
+
+                    if (weightedVariance < bestScore) {
+                        bestScore = weightedVariance;
+                        bestThreshold = threshold;
+                    }
+                }
+
+                return bestThreshold ? { threshold: bestThreshold, score: bestScore } : null;
+            }
+
+            calculateVariance(data) {
+                if (data.length === 0) return 0;
+                
+                const mean = d3.mean(data, d => d.y);
+                const variance = d3.mean(data, d => Math.pow(d.y - mean, 2));
+                return variance;
+            }
+
+            predictWithTree(tree, x) {
+                if (tree.isLeaf) {
+                    return tree.prediction;
+                }
+
+                if (x <= tree.threshold) {
+                    return this.predictWithTree(tree.left, x);
+                } else {
+                    return this.predictWithTree(tree.right, x);
+                }
+            }
+
+            updateVisualization() {
+                const maxDepth = parseInt(document.getElementById('complexity').value);
+                
+                // Train model
+                const model = this.simpleModel(this.trainData, maxDepth);
+                
+                // Generate predictions with more points for smoother curves
+                const predictions = [];
+                for (let i = 0; i <= 200; i++) {
+                    const x = i * 10 / 200;
+                    const y = model(x);
+                    predictions.push({ x, y });
+                }
+
+                // Calculate errors
+                const trainError = d3.mean(this.trainData, d => Math.abs(d.y - model(d.x)));
+                const testError = d3.mean(this.testData, d => Math.abs(d.y - model(d.x)));
+
+                // Update display
+                document.getElementById('trainError').textContent = trainError.toFixed(3);
+                document.getElementById('testError').textContent = testError.toFixed(3);
+
+                // Update status
+                this.updateStatus(maxDepth, trainError, testError);
+
+                // Update chart
+                this.renderChart(predictions);
+            }
+
+            updateStatus(maxDepth, trainError, testError) {
+                const statusIndicator = document.getElementById('statusIndicator');
+                const explanation = document.getElementById('explanation');
+                
+                const errorDiff = testError - trainError;
+                
+                if (maxDepth <= 2) {
+                    statusIndicator.className = 'status-indicator high-bias';
+                    statusIndicator.innerHTML = '<div>High Bias</div><div style="font-size: 0.8em; margin-top: 5px;">Underfitting</div>';
+                    explanation.innerHTML = `
+                        <h3>High Bias (Underfitting)</h3>
+                        <p>Your decision tree is too shallow (depth ${maxDepth}). It can only make ${Math.pow(2, maxDepth)} leaf predictions at most, so it cannot capture the underlying pattern in the data. The model has high bias because it makes overly simple assumptions.</p>
+                    `;
+                } else if (maxDepth >= 10 || errorDiff > 0.4) {
+                    statusIndicator.className = 'status-indicator high-variance';
+                    statusIndicator.innerHTML = '<div>High Variance</div><div style="font-size: 0.8em; margin-top: 5px;">Overfitting</div>';
+                    explanation.innerHTML = `
+                        <h3>High Variance (Overfitting)</h3>
+                        <p>Your decision tree is too deep (depth ${maxDepth}). It creates very specific rules that fit the training noise too closely. Notice how test error (${testError.toFixed(3)}) is much higher than training error (${trainError.toFixed(3)}).</p>
+                    `;
+                } else {
+                    statusIndicator.className = 'status-indicator sweet-spot';
+                    statusIndicator.innerHTML = '<div>Sweet Spot</div><div style="font-size: 0.8em; margin-top: 5px;">Balanced</div>';
+                    explanation.innerHTML = `
+                        <h3>Sweet Spot</h3>
+                        <p>Your decision tree (depth ${maxDepth}) has found a good balance! It captures the main pattern without overfitting to noise. Training error: ${trainError.toFixed(3)}, Test error: ${testError.toFixed(3)}. This is why ensemble methods work - they combine multiple trees to stay in this sweet spot!</p>
+                    `;
+                }
+            }
+
+            renderChart(predictions) {
+                // Clear previous content
+                this.g.selectAll('.data-point').remove();
+                this.g.selectAll('.line').remove();
+
+                // Line generator
+                const line = d3.line()
+                    .x(d => this.xScale(d.x))
+                    .y(d => this.yScale(d.y))
+                    .curve(d3.curveMonotoneX);
+
+                // Draw true function
+                if (this.showTrueFunction) {
+                    this.g.append('path')
+                        .datum(this.trueFunctionData)
+                        .attr('class', 'line true-function-line')
+                        .attr('fill', 'none')
+                        .attr('stroke', '#2196f3')
+                        .attr('stroke-width', 3)
+                        .attr('opacity', 0.8)
+                        .attr('d', line);
+                }
+
+                // Draw model predictions
+                if (this.showModelPrediction) {
+                    this.g.append('path')
+                        .datum(predictions)
+                        .attr('class', 'line model-prediction-line')
+                        .attr('fill', 'none')
+                        .attr('stroke', '#e91e63')
+                        .attr('stroke-width', 3)
+                        .attr('opacity', 0.9)
+                        .attr('d', line);
+                }
+
+                // Draw training data
+                if (this.showTrainData) {
+                    this.g.selectAll('.train-point')
+                        .data(this.trainData)
+                        .enter().append('circle')
+                        .attr('class', 'data-point train-point')
+                        .attr('cx', d => this.xScale(d.x))
+                        .attr('cy', d => this.yScale(d.y))
+                        .attr('r', 4)
+                        .attr('fill', '#4caf50')
+                        .attr('opacity', 0.7);
+                }
+
+                // Draw test data
+                if (this.showTestData) {
+                    this.g.selectAll('.test-point')
+                        .data(this.testData)
+                        .enter().append('circle')
+                        .attr('class', 'data-point test-point')
+                        .attr('cx', d => this.xScale(d.x))
+                        .attr('cy', d => this.yScale(d.y))
+                        .attr('r', 4)
+                        .attr('fill', '#ff9800')
+                        .attr('opacity', 0.7);
+                }
+            }
+        }
+
+        // Initialize demo when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new BiasVarianceDemo();
+        });
+    </script>
+</body>
+</html>
