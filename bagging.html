@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Forest: Averaging Out Errors (Bagging)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            font-weight: 300;
+        }
+
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e8f4f8;
+        }
+
+        .controls {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            border-radius: 15px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls h3 {
+            margin-top: 0;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-item {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .bootstrap-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #00b894;
+        }
+
+        .bootstrap-display h4 {
+            margin-top: 0;
+            color: #00b894;
+        }
+
+        .data-points {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin: 10px 0;
+        }
+
+        .data-point {
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .tree-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #e17055;
+        }
+
+        .tree-info h4 {
+            margin-top: 0;
+            color: #e17055;
+        }
+
+        .explanation {
+            background: rgba(116, 185, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            border-left: 5px solid #74b9ff;
+        }
+
+        .explanation h3 {
+            color: #2d3436;
+            margin-top: 0;
+        }
+
+        .insight {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 184, 148, 0.3);
+        }
+
+        .insight h4 {
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        
+        .slider-container, .toggle-container {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+        }
+        .slider-container label, .toggle-container label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .slider-container input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity .2s;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background .2s;
+        }
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background .2s;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover,
+        .slider-container input[type="range"]::-moz-range-thumb:hover {
+            background: #e17055;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #2196F3;
+        }
+
+        input:focus + .toggle-slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+
+        input:checked + .toggle-slider:before {
+            -webkit-transform: translateX(26px);
+            -ms-transform: translateX(26px);
+            transform: translateX(26px);
+        }
+
+        @media (max-width: 768px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Random Forest: Averaging Out Errors</h1>
+        <p class="subtitle">Demonstrating Bagging (Bootstrap Aggregation)</p>
+
+        <div class="demo-container">
+            <div class="chart-container">
+                <canvas id="mainChart" width="500" height="400"></canvas>
+            </div>
+
+            <div class="controls">
+                <h3>🌳 Build Your Forest</h3>
+                <button class="btn" id="addTreeBtn">Add a Tree</button>
+                <button class="btn" id="resetBtn">Reset Forest</button>
+                
+                <div class="slider-container">
+                    <label for="noiseSlider">Data Noise Level: <span id="noiseValue">1.0</span></label>
+                    <input type="range" id="noiseSlider" min="0" max="3" step="0.1" value="1.0">
+                </div>
+
+                <div class="toggle-container">
+                    <label>Show Individual Trees:</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showTreesToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-item">Trees in Forest: <span class="stat-value" id="treeCount">0</span></div>
+                    <div class="stat-item">Avg. Tree Error: <span class="stat-value" id="avgError">-</span></div>
+                    <div class="stat-item">Ensemble Error: <span class="stat-value" id="ensembleError">-</span></div>
+                </div>
+
+                <div class="bootstrap-display" id="bootstrapDisplay" style="display: none;">
+                    <h4>🎲 Bootstrap Sample</h4>
+                    <p>Random sample with replacement:</p>
+                    <div class="data-points" id="bootstrapPoints"></div>
+                </div>
+
+                <div class="tree-info" id="treeInfo" style="display: none;">
+                    <h4>🌲 Tree Performance</h4>
+                    <p>Individual tree error: <span id="treeError">-</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <h3>🎯 Key Concepts</h3>
+            <p><strong>Bagging (Bootstrap Aggregation):</strong> Each tree is trained on a different bootstrap sample of the data (sampling with replacement).</p>
+            <p>Note: For demonstration purposes, the individual decision tree model used here is a simplified abstraction designed to illustrate overfitting, rather than a full implementation of a decision tree algorithm.</p>
+            <p><strong>Variance Reduction:</strong> Individual trees may overfit and show high variance, but averaging their predictions creates a smoother, more generalized model.</p>
+            <p><strong>Error Cancellation:</strong> Random errors from individual trees tend to cancel out when averaged, while systematic patterns are reinforced.</p>
+        </div>
+
+        <div class="insight" id="insight" style="display: none;">
+            <h4>🎉 The Magic of Averaging!</h4>
+            <p>Notice how the ensemble prediction (thick black line) is smoother and more stable than individual tree predictions. This is bagging in action!</p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for data and chart
+        let originalData = [];
+        let trees = [];
+        let chart;
+        let noiseLevel = 1.0; // Initial noise level
+        let showIndividualTrees = true; // Initial toggle state
+
+        // Generate synthetic dataset with noise
+        function generateData(noiseAmplitude) {
+            const data = [];
+            for (let i = 0; i < 40; i++) {
+                const x = (i / 39) * 10; // 0 to 10
+                const trueY = Math.sin(x) * 2 + x * 0.3; // True underlying pattern
+                const noise = (Math.random() - 0.5) * 2.0 * noiseAmplitude; // Noise controlled by slider
+                data.push({
+                    x: x,
+                    y: trueY + noise,
+                    trueY: trueY,
+                    id: i // Unique ID for robust tracking
+                });
+            }
+            return data;
+        }
+
+        // Simple decision tree implementation with better overfitting
+        function createDecisionTree(data) {
+            const sortedData = [...data].sort((a, b) => a.x - b.x);
+            const segments = [];
+            
+            for (let i = 0; i < sortedData.length - 1; i++) {
+                const p1 = sortedData[i];
+                const p2 = sortedData[i + 1];
+                
+                const noise1 = (Math.random() - 0.5) * 0.4; 
+                const noise2 = (Math.random() - 0.5) * 0.4;
+                
+                segments.push({
+                    x1: p1.x,
+                    x2: p2.x,
+                    y1: p1.y + noise1,
+                    y2: p2.y + noise2
+                });
+            }
+            
+            function predict(x) {
+                for (let segment of segments) {
+                    if (x >= segment.x1 && x <= segment.x2) {
+                        const t = (segment.x2 - segment.x1) !== 0 ? (x - segment.x1) / (segment.x2 - segment.x1) : 0;
+                        return segment.y1 + t * (segment.y2 - segment.y1);
+                    }
+                }
+                
+                // Handle edge cases
+                if (x < segments[0].x1) {
+                    return segments[0].y1;
+                } else if (x > segments[segments.length - 1].x2) {
+                    return segments[segments.length - 1].y2;
+                }
+                return NaN;
+            }
+            
+            return {
+                predict: predict,
+                error: calculateError(data, predict),
+                segments: segments
+            };
+        }
+
+        function calculateError(data, predictFn) {
+            let totalSquaredError = 0;
+            let validPredictionsCount = 0;
+            for (let point of data) {
+                const predicted = predictFn(point.x);
+                if (Number.isFinite(predicted)) {
+                    totalSquaredError += Math.pow(point.y - predicted, 2);
+                    validPredictionsCount++;
+                }
+            }
+            if (validPredictionsCount === 0) {
+                return 0; 
+            }
+            return Math.sqrt(totalSquaredError / validPredictionsCount);
+        }
+
+        function bootstrapSample(data, sampleSize) {
+            const sample = [];
+            for (let i = 0; i < sampleSize; i++) {
+                const randomIndex = Math.floor(Math.random() * data.length);
+                const point = data[randomIndex];
+                sample.push(point);
+            }
+            return sample;
+        }
+
+        // Initialize or re-initialize chart and data
+        function initializeDemo() {
+            // Get current noise level from slider
+            noiseLevel = parseFloat(document.getElementById('noiseSlider').value);
+            document.getElementById('noiseValue').textContent = noiseLevel.toFixed(1);
+            
+            // Get current toggle state
+            showIndividualTrees = document.getElementById('showTreesToggle').checked;
+
+            originalData = generateData(noiseLevel);
+            trees = [];
+
+            // If chart exists, destroy it before re-creating
+            if (chart) {
+                chart.destroy();
+            }
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Training Data',
+                        data: originalData.map(d => ({x: d.x, y: d.y})),
+                        backgroundColor: 'rgba(74, 144, 226, 0.6)',
+                        borderColor: 'rgba(74, 144, 226, 1)',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        showLine: false
+                    }, {
+                        label: 'True Pattern',
+                        data: originalData.map(d => ({x: d.x, y: d.trueY})),
+                        backgroundColor: 'rgba(0, 184, 148, 0)',
+                        borderColor: 'rgba(0, 184, 148, 1)',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        showLine: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'X'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Y'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                filter: function(legendItem, chartData) {
+                                    return ['Training Data', 'True Pattern', 'Ensemble Average'].includes(legendItem.text);
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Random Forest Bagging Demonstration'
+                        }
+                    }
+                }
+            });
+
+            // Reset UI elements
+            document.getElementById('bootstrapDisplay').style.display = 'none';
+            document.getElementById('treeInfo').style.display = 'none';
+            document.getElementById('insight').style.display = 'none';
+            document.getElementById('treeCount').textContent = '0';
+            document.getElementById('avgError').textContent = '-';
+            document.getElementById('ensembleError').textContent = '-';
+        }
+
+
+        function addTree() {
+            const bootstrapData = bootstrapSample(originalData, originalData.length);
+            
+            const tree = createDecisionTree(bootstrapData);
+            trees.push(tree);
+            
+            updateBootstrapDisplay(bootstrapData);
+            updateTreeInfo(tree.error);
+            updateChart(); // Call updateChart to redraw with potentially new tree
+            updateStats();
+            
+            if (trees.length >= 3) {
+                document.getElementById('insight').style.display = 'block';
+            }
+        }
+
+        function updateBootstrapDisplay(bootstrapData) {
+            const display = document.getElementById('bootstrapDisplay');
+            const pointsContainer = document.getElementById('bootstrapPoints');
+            
+            display.style.display = 'block';
+            pointsContainer.innerHTML = '';
+            
+            for (let i = 0; i < Math.min(10, bootstrapData.length); i++) {
+                const point = bootstrapData[i];
+                const span = document.createElement('span');
+                span.className = 'data-point';
+                span.textContent = `(${point.x.toFixed(1)}, ${point.y.toFixed(1)})`;
+                pointsContainer.appendChild(span);
+            }
+            
+            if (bootstrapData.length > 10) {
+                const span = document.createElement('span');
+                span.className = 'data-point';
+                span.textContent = `+${bootstrapData.length - 10} more...`;
+                pointsContainer.appendChild(span);
+            }
+        }
+
+        function updateTreeInfo(error) {
+            const display = document.getElementById('treeInfo');
+            const errorSpan = document.getElementById('treeError');
+            
+            display.style.display = 'block';
+            errorSpan.textContent = error.toFixed(3);
+        }
+
+        function updateChart() {
+            const xValues = [];
+            for (let i = 0; i <= 100; i++) {
+                xValues.push(i / 10);
+            }
+            
+            // Clear all previous tree and ensemble datasets to redraw based on toggle
+            chart.data.datasets = chart.data.datasets.filter(dataset => 
+                dataset.label === 'Training Data' || dataset.label === 'True Pattern'
+            );
+
+            // Add individual tree predictions if toggle is checked
+            if (showIndividualTrees) {
+                trees.forEach((tree, index) => {
+                    const treeColor = `hsl(${(index * 137.5) % 360}, 70%, 60%)`;
+                    const treeData = xValues.map(x => ({
+                        x: x,
+                        y: tree.predict(x)
+                    }));
+                    chart.data.datasets.push({
+                        label: `Tree ${index + 1}`, // Label for internal reference, hidden by legend filter
+                        data: treeData,
+                        backgroundColor: 'rgba(0, 0, 0, 0)',
+                        borderColor: treeColor,
+                        borderWidth: 1,
+                        pointRadius: 0,
+                        showLine: true,
+                        tension: 0
+                    });
+                });
+            }
+            
+            // Always add ensemble prediction if there are trees
+            if (trees.length > 0) {
+                const ensembleData = xValues.map(x => {
+                    const predictions = [];
+                    for(const tree of trees) {
+                        const pred = tree.predict(x);
+                        if (Number.isFinite(pred)) {
+                            predictions.push(pred);
+                        }
+                    }
+                    if (predictions.length === 0) return {x:x, y: NaN};
+                    const avgPrediction = predictions.reduce((a, b) => a + b, 0) / predictions.length;
+                    return {x: x, y: avgPrediction};
+                });
+                
+                chart.data.datasets.push({
+                    label: 'Ensemble Average',
+                    data: ensembleData,
+                    backgroundColor: 'rgba(0, 0, 0, 0)',
+                    borderColor: 'rgba(0, 0, 0, 1)',
+                    borderWidth: 4,
+                    pointRadius: 0,
+                    showLine: true,
+                    tension: 0.4
+                });
+            }
+            
+            chart.update('none');
+        }
+
+        function updateStats() {
+            document.getElementById('treeCount').textContent = trees.length;
+            
+            if (trees.length > 0) {
+                let totalAvgTreeError = 0;
+                let validTreeErrorsCount = 0;
+                for (const tree of trees) {
+                    if (Number.isFinite(tree.error)) {
+                        totalAvgTreeError += tree.error;
+                        validTreeErrorsCount++;
+                    }
+                }
+                const avgTreeError = validTreeErrorsCount > 0 ? totalAvgTreeError / validTreeErrorsCount : NaN;
+                document.getElementById('avgError').textContent = Number.isFinite(avgTreeError) ? avgTreeError.toFixed(3) : '-';
+                
+                let ensembleSquaredError = 0;
+                let validEnsemblePredictionsCount = 0;
+                for (let point of originalData) {
+                    const predictions = [];
+                    for(const tree of trees) {
+                        const pred = tree.predict(point.x);
+                        if (Number.isFinite(pred)) {
+                            predictions.push(pred);
+                        }
+                    }
+                    
+                    if (predictions.length > 0) {
+                        const avgPrediction = predictions.reduce((a, b) => a + b, 0) / predictions.length;
+                        if (Number.isFinite(avgPrediction)) {
+                            ensembleSquaredError += Math.pow(point.y - avgPrediction, 2);
+                            validEnsemblePredictionsCount++;
+                        }
+                    }
+                }
+                let ensembleError = 0;
+                if (validEnsemblePredictionsCount > 0) {
+                    ensembleError = Math.sqrt(ensembleSquaredError / validEnsemblePredictionsCount);
+                } else {
+                    ensembleError = NaN;
+                }
+                
+                document.getElementById('ensembleError').textContent = Number.isFinite(ensembleError) ? ensembleError.toFixed(3) : '-';
+            } else {
+                document.getElementById('avgError').textContent = '-';
+                document.getElementById('ensembleError').textContent = '-';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('addTreeBtn').addEventListener('click', addTree);
+        document.getElementById('resetBtn').addEventListener('click', initializeDemo); // Reset button now re-initializes
+        document.getElementById('noiseSlider').addEventListener('input', initializeDemo); // Slider change re-initializes
+        
+        // Toggle event listener
+        document.getElementById('showTreesToggle').addEventListener('change', function() {
+            showIndividualTrees = this.checked;
+            updateChart(); // Redraw chart with or without individual trees
+        });
+
+        // Initial setup on page load
+        initializeDemo();
+    </script>
+</body>
+</html>
