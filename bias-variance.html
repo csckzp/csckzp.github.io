@@ -280,7 +280,7 @@
                     </div>
                 </div>
 
-                <div class="metrics">
+                <div class="metrics" id="metricsContainer">
                     <div class="metric">
                         <div class="metric-label">Training Error</div>
                         <div class="metric-value train-error" id="trainError">0.15</div>
@@ -350,7 +350,7 @@
                 this.showTrueFunction = true;
                 this.showTrainData = true;
                 this.showTestData = true;
-                this.showModelPrediction = true;
+                this.showModelPrediction = true; // Initialize based on default checkbox state
 
                 this.setupChart();
                 this.setupControls();
@@ -399,6 +399,9 @@
                 const toggleTrainData = document.getElementById('toggleTrainData');
                 const toggleTestData = document.getElementById('toggleTestData');
                 const toggleModelPrediction = document.getElementById('toggleModelPrediction');
+                
+                // Set initial visibility of metrics based on the default state of the checkbox
+                this.updateMetricsVisibility(toggleModelPrediction.checked);
 
                 complexitySlider.addEventListener('input', () => {
                     document.getElementById('complexityValue').textContent = complexitySlider.value;
@@ -428,8 +431,15 @@
 
                 toggleModelPrediction.addEventListener('change', (event) => {
                     this.showModelPrediction = event.target.checked;
+                    this.updateMetricsVisibility(this.showModelPrediction); // Update visibility
                     this.updateVisualization();
                 });
+            }
+
+            // New helper function to control metrics visibility
+            updateMetricsVisibility(isVisible) {
+                const metricsContainer = document.getElementById('metricsContainer');
+                metricsContainer.style.visibility = isVisible ? 'visible' : 'hidden';
             }
 
             trueFunction(x) {
@@ -581,7 +591,7 @@
                 document.getElementById('trainError').textContent = trainError.toFixed(3);
                 document.getElementById('testError').textContent = testError.toFixed(3);
 
-                // Update status
+                // Update status (this logic can remain as is)
                 this.updateStatus(maxDepth, trainError, testError);
 
                 // Update chart
