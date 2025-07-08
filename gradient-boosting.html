@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Boosting: Learning from Errors</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #a77eea 0%, #ba4ba2 100%); /* Adjusted gradient */
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #a77eea, #ba4ba2); /* Adjusted gradient */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            font-weight: 300;
+        }
+
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 2px solid #f8e8f4; /* Adjusted border color */
+        }
+
+        .controls {
+            background: linear-gradient(135deg, #ff74b9, #e30984); /* Adjusted gradient */
+            border-radius: 15px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls h3 {
+            margin-top: 0;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #6b6bff, #8e8eff); /* Adjusted button color */
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(107, 107, 255, 0.3); /* Adjusted shadow */
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 107, 255, 0.4); /* Adjusted shadow */
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-item {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .residual-display { /* Renamed from bootstrap-display */
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #b80094; /* Adjusted color */
+        }
+
+        .residual-display h4 { /* Renamed from bootstrap-display h4 */
+            margin-top: 0;
+            color: #b80094; /* Adjusted color */
+        }
+
+        .data-points {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin: 10px 0;
+        }
+
+        .data-point {
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .features-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #fdcb6e;
+        }
+
+        .features-display h4 {
+            margin-top: 0;
+            color: #fdcb6e;
+        }
+
+        .tree-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #e17055;
+        }
+
+        .tree-info h4 {
+            margin-top: 0;
+            color: #e17055;
+        }
+
+        .explanation {
+            background: rgba(255, 116, 185, 0.1); /* Adjusted color */
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            border-left: 5px solid #ff74b9; /* Adjusted color */
+        }
+
+        .explanation h3 {
+            color: #2d3436;
+            margin-top: 0;
+        }
+
+        .insight {
+            background: linear-gradient(135deg, #b80094, #a00085); /* Adjusted gradient */
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(184, 0, 148, 0.3); /* Adjusted shadow */
+        }
+
+        .insight h4 {
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+
+        .slider-container {
+            margin-top: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-container label {
+            font-weight: bold;
+        }
+
+        .slider-container input[type="range"] {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #6b6bff; /* Adjusted color */
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #6b6bff; /* Adjusted color */
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+
+        @media (max-width: 768px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gradient Boosting: Learning from Errors</h1>
+        <p class="subtitle">Sequentially building models to correct past mistakes</p>
+
+        <div class="demo-container">
+            <div class="chart-container">
+                <canvas id="mainChart" width="500" height="400"></canvas>
+            </div>
+
+            <div class="controls">
+                <h3>📈 Boost Your Model</h3>
+                <button class="btn" id="addTreeBtn">Add a Tree</button>
+                <button class="btn" id="resetBtn">Reset Model</button>
+                <button class="btn" id="toggleDataBtn">Show Residuals</button> <div class="slider-container">
+                    <label for="learningRate">Learning Rate (<span id="learningRateValue">0.1</span>):</label>
+                    <input type="range" id="learningRate" min="0.01" max="1.0" step="0.01" value="0.1">
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">Trees in Ensemble: <span class="stat-value" id="treeCount">0</span></div>
+                    <div class="stat-item">Current Tree Error (on residuals): <span class="stat-value" id="currentTreeError">-</span></div>
+                    <div class="stat-item">Ensemble Error (on original Y): <span class="stat-value" id="ensembleError">-</span></div>
+                </div>
+
+                <div class="residual-display" id="residualDisplay" style="display: none;">
+                    <h4>📉 Residuals (Errors to Learn)</h4>
+                    <p>New tree learns to predict these values:</p>
+                    <div class="data-points" id="residualPoints"></div>
+                </div>
+
+                <div class="features-display" id="featuresDisplay" style="display: none;">
+                    <h4>🔍 Random Features (for tree diversity)</h4>
+                    <p>Selected features for this tree:</p>
+                    <div id="selectedFeatures"></div>
+                </div>
+
+                <div class="tree-info" id="treeInfo" style="display: none;">
+                    <h4>🌲 Tree Contribution</h4>
+                    <p>New tree's prediction added with learning rate.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <h3>🎯 Key Concepts</h3>
+            <p><strong>Sequential Learning:</strong> Unlike Bagging, Gradient Boosting builds trees sequentially. Each new tree attempts to correct the errors made by the *previous* ensemble of trees.</p>
+            <p><strong>Residuals:</strong> Errors are calculated as the difference between the actual value and the ensemble's current prediction (these are called residuals). The new tree is trained to predict these residuals.</p>
+            <p><strong>Learning Rate:</strong> Each new tree's prediction is scaled by a small learning rate before being added to the ensemble. This helps prevent overfitting and makes the learning process more robust.</p>
+            <p><strong>Error Reduction:</strong> By focusing on correcting errors, the ensemble gradually improves its fit to the data, typically leading to higher accuracy than individual trees or bagging alone.</p>
+        </div>
+
+        <div class="insight" id="insight" style="display: none;">
+            <h4>🚀 Power of Sequential Improvement!</h4>
+            <p>Watch how the ensemble prediction (thick black line) gradually approaches the true pattern by fixing the errors of the previous steps!</p>
+        </div>
+    </div>
+
+    <script>
+        // Generate synthetic dataset with noise
+        function generateData() {
+            const data = [];
+            for (let i = 0; i < 50; i++) {
+                const x = (i / 49) * 10; // 0 to 10
+                const trueY = Math.sin(x) * 2 + x * 0.3; // True underlying pattern
+                const noise = (Math.random() - 0.5) * 1.5; // Add noise
+                data.push({
+                    x: x,
+                    y: trueY + noise,
+                    trueY: trueY,
+                    id: i
+                });
+            }
+            return data;
+        }
+
+        // Simple "decision tree" implementation - now fits residuals
+        function createDecisionTree(data) {
+            // Simplified tree: just fit a linear regression to the data (X vs Residuals)
+            const n = data.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0; // Here sumY is actually sum(residuals)
+            
+            for (let point of data) {
+                sumX += point.x;
+                sumY += point.y; // 'y' here is the residual
+                sumXY += point.x * point.y;
+                sumX2 += point.x * point.x;
+            }
+            
+            // Handle case where n * sumX2 - sumX * sumX might be zero or very small
+            const denominator = (n * sumX2 - sumX * sumX);
+            let slope = 0;
+            let intercept = 0;
+
+            if (denominator !== 0) {
+                slope = (n * sumXY - sumX * sumY) / denominator;
+                intercept = (sumY - slope * sumX) / n;
+            } else {
+                // If all x values are the same, predict the mean of y (residuals)
+                intercept = sumY / n;
+            }
+            
+            // Add some slight randomness/non-linearity to simulate tree complexity
+            const randomFactor = (Math.random() - 0.5) * 0.2; // Reduced randomness for boosting stability
+            
+            return {
+                predict: (x) => slope * x + intercept + Math.sin(x + randomFactor) * 0.2, // Predicts residuals
+                error: calculateError(data, (x) => slope * x + intercept + Math.sin(x + randomFactor) * 0.2) // Error on residuals
+            };
+        }
+
+        function calculateError(data, predictFn) {
+            let totalError = 0;
+            for (let point of data) {
+                const predicted = predictFn(point.x);
+                totalError += Math.abs(point.y - predicted); // Absolute error
+            }
+            return totalError / data.length;
+        }
+
+        // Main application state
+        let originalData = generateData();
+        let trees = [];
+        let ensemblePredictions = originalData.map(d => ({x: d.x, y: 0})); // Initial ensemble prediction (start with 0 or average of Y)
+        let currentResidualsData = []; // To store the residuals for the chart toggle
+        let chart;
+        let learningRate = 0.1; // Default learning rate
+        let showTrainingData = true; // State for the toggle button
+
+        // Chart dataset indices:
+        const DATA_TRAINING = 0;
+        const DATA_TRUE_PATTERN = 1;
+        const DATA_ENSEMBLE = 2;
+        const DATA_RESIDUALS = 3; // New dataset for residuals
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Training Data',
+                        data: originalData.map(d => ({x: d.x, y: d.y})),
+                        backgroundColor: 'rgba(226, 74, 144, 0.6)', /* Adjusted color */
+                        borderColor: 'rgba(226, 74, 144, 1)', /* Adjusted color */
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        showLine: false,
+                        hidden: false // Initially visible
+                    }, {
+                        label: 'True Pattern',
+                        data: originalData.map(d => ({x: d.x, y: d.trueY})),
+                        backgroundColor: 'rgba(0, 184, 148, 0)',
+                        borderColor: 'rgba(0, 184, 148, 1)',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        showLine: true,
+                        tension: 0.4,
+                        hidden: false
+                    }, {
+                        label: 'Ensemble Prediction',
+                        data: ensemblePredictions,
+                        backgroundColor: 'rgba(0, 0, 0, 0)',
+                        borderColor: 'rgba(0, 0, 0, 1)',
+                        borderWidth: 4,
+                        pointRadius: 0,
+                        showLine: true,
+                        tension: 0.4,
+                        hidden: false
+                    }, { // New dataset for Residuals
+                        label: 'Current Residuals',
+                        data: [], // Will be populated dynamically
+                        backgroundColor: 'rgba(255, 165, 0, 0.6)', // Orange color for residuals
+                        borderColor: 'rgba(255, 165, 0, 1)',
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        showLine: false,
+                        hidden: true // Initially hidden
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'X'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Y'
+                            },
+                            beginAtZero: false // Residuals can be negative
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Gradient Boosting Demonstration'
+                        }
+                    }
+                }
+            });
+
+            // Initial ensemble prediction can be the average of Y, instead of 0
+            const initialPredictionValue = originalData.reduce((sum, d) => sum + d.y, 0) / originalData.length;
+            ensemblePredictions = originalData.map(d => ({x: d.x, y: initialPredictionValue}));
+            chart.data.datasets[DATA_ENSEMBLE].data = ensemblePredictions;
+            chart.update();
+            updateStats(); // Update stats with initial ensemble error
+        }
+
+        function addTree() {
+            // 1. Calculate residuals based on current ensemble predictions
+            const residualsData = originalData.map((d, i) => ({
+                x: d.x,
+                y: d.y - ensemblePredictions[i].y, // Residual = True Y - Current Ensemble Y
+                id: d.id // Keep original ID for consistency if needed
+            }));
+            currentResidualsData = residualsData; // Store for the toggle button
+
+            // Display residuals (simplified)
+            updateResidualDisplay(residualsData);
+
+            // Random feature selection (simplified - just for display as in original)
+            const allFeatures = ['x', 'x²', 'sin(x)', 'cos(x)', 'x³'];
+            const selectedFeatures = selectRandomFeatures(allFeatures, 3);
+            updateFeaturesDisplay(selectedFeatures);
+            
+            // 2. Create and train tree on residuals
+            const tree = createDecisionTree(residualsData);
+            trees.push(tree); // Store the tree that predicts residuals
+            
+            // 3. Update ensemble predictions by adding new tree's prediction scaled by learning rate
+            for (let i = 0; i < originalData.length; i++) {
+                ensemblePredictions[i].y += learningRate * tree.predict(originalData[i].x);
+            }
+            
+            // Update displays
+            updateTreeInfo(tree.error); // Tree error on residuals
+            updateChart(); // This will update the data, but not toggle the view
+            updateStats();
+            
+            // Show insight after first few trees
+            if (trees.length >= 3) {
+                document.getElementById('insight').style.display = 'block';
+            }
+        }
+
+        function updateResidualDisplay(residualsData) {
+            const display = document.getElementById('residualDisplay');
+            const pointsContainer = document.getElementById('residualPoints');
+            
+            display.style.display = 'block';
+            pointsContainer.innerHTML = '';
+            
+            // Show first 10 residual points
+            for (let i = 0; i < Math.min(10, residualsData.length); i++) {
+                const point = residualsData[i];
+                const span = document.createElement('span');
+                span.className = 'data-point';
+                span.textContent = `(${point.x.toFixed(1)}, ${point.y.toFixed(3)})`; // Y is now residual
+                pointsContainer.appendChild(span);
+            }
+            
+            if (residualsData.length > 10) {
+                const span = document.createElement('span');
+                span.className = 'data-point';
+                span.textContent = `+${residualsData.length - 10} more...`;
+                pointsContainer.appendChild(span);
+            }
+        }
+
+        function selectRandomFeatures(allFeatures, numFeatures) {
+            const shuffled = [...allFeatures].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, numFeatures);
+        }
+
+        function updateFeaturesDisplay(selectedFeatures) {
+            const display = document.getElementById('featuresDisplay');
+            const featuresContainer = document.getElementById('selectedFeatures');
+            
+            display.style.display = 'block';
+            featuresContainer.textContent = selectedFeatures.join(', ');
+        }
+
+        function updateTreeInfo(error) {
+            const display = document.getElementById('treeInfo');
+            const errorSpan = document.getElementById('currentTreeError');
+            
+            display.style.display = 'block';
+            errorSpan.textContent = error.toFixed(3);
+        }
+
+        function updateChart() {
+            const xValues = [];
+            for (let i = 0; i <= 100; i++) {
+                xValues.push(i / 10);
+            }
+            
+            // Update ensemble prediction line
+            const ensemblePredictionLineData = xValues.map(x => {
+                let currentEnsembleY = originalData.reduce((sum,d) => sum + d.y, 0) / originalData.length; // Start with the initial constant prediction
+                
+                for (let tree of trees) {
+                    currentEnsembleY += learningRate * tree.predict(x);
+                }
+                return {x: x, y: currentEnsembleY};
+            });
+            
+            chart.data.datasets[DATA_ENSEMBLE].data = ensemblePredictionLineData;
+
+            // Update residuals data for the toggle button to use
+            chart.data.datasets[DATA_RESIDUALS].data = currentResidualsData.map(d => ({x: d.x, y: d.y}));
+            
+            // The visibility of datasets is now controlled ONLY by toggleDataDisplay()
+            chart.update('none');
+        }
+
+        function updateStats() {
+            document.getElementById('treeCount').textContent = trees.length;
+            
+            // Current tree error (on residuals) is updated in updateTreeInfo
+            
+            // Calculate ensemble error on original Y values
+            let ensembleError = 0;
+            for (let point of originalData) {
+                // Find the corresponding ensemble prediction for this original data point's x
+                const ensemblePredY = ensemblePredictions.find(p => p.x === point.x)?.y;
+                if (ensemblePredY !== undefined) {
+                    ensembleError += Math.abs(point.y - ensemblePredY);
+                }
+            }
+            ensembleError /= originalData.length;
+            document.getElementById('ensembleError').textContent = ensembleError.toFixed(3);
+        }
+
+        function resetForest() {
+            trees = [];
+            
+            // Reset ensemble predictions to initial average
+            const initialPredictionValue = originalData.reduce((sum, d) => sum + d.y, 0) / originalData.length;
+            ensemblePredictions = originalData.map(d => ({x: d.x, y: initialPredictionValue}));
+            currentResidualsData = []; // Clear residuals data
+
+            // Reset chart datasets and visibility to show training data
+            chart.data.datasets[DATA_TRAINING].hidden = false;
+            chart.data.datasets[DATA_TRUE_PATTERN].hidden = false;
+            chart.data.datasets[DATA_ENSEMBLE].hidden = false;
+            chart.data.datasets[DATA_RESIDUALS].hidden = true; // Hide residuals
+
+            chart.data.datasets[DATA_ENSEMBLE].data = ensemblePredictions; // Update ensemble line data
+            document.getElementById('toggleDataBtn').textContent = 'Show Residuals'; // Reset button text
+            showTrainingData = true; // Reset toggle state
+
+            // Adjust y-axis scale back if it was changed for residuals
+            chart.options.scales.y.suggestedMin = undefined;
+            chart.options.scales.y.suggestedMax = undefined;
+            
+            chart.update('none');
+            
+            // Hide displays
+            document.getElementById('residualDisplay').style.display = 'none'; // Changed from bootstrapDisplay
+            document.getElementById('featuresDisplay').style.display = 'none';
+            document.getElementById('treeInfo').style.display = 'none';
+            document.getElementById('insight').style.display = 'none';
+            
+            // Reset stats
+            document.getElementById('treeCount').textContent = '0';
+            document.getElementById('currentTreeError').textContent = '-'; // Changed from avgError
+            document.getElementById('ensembleError').textContent = '-';
+        }
+
+        function toggleDataDisplay() {
+            showTrainingData = !showTrainingData;
+            const toggleButton = document.getElementById('toggleDataBtn');
+
+            if (showTrainingData) {
+                // Show Training Data, hide Residuals
+                chart.data.datasets[DATA_TRAINING].hidden = false;
+                chart.data.datasets[DATA_TRUE_PATTERN].hidden = false; // True pattern always with training data
+                chart.data.datasets[DATA_RESIDUALS].hidden = true;
+                toggleButton.textContent = 'Show Residuals';
+
+                // Reset y-axis scale to default for original data
+                chart.options.scales.y.suggestedMin = undefined;
+                chart.options.scales.y.suggestedMax = undefined;
+
+            } else {
+                // Hide Training Data, show Residuals
+                chart.data.datasets[DATA_TRAINING].hidden = true;
+                chart.data.datasets[DATA_TRUE_PATTERN].hidden = true; // Hide true pattern with residuals
+                chart.data.datasets[DATA_RESIDUALS].hidden = false;
+                toggleButton.textContent = 'Show Training Data';
+
+                // Adjust y-axis scale for residuals (which can be negative and smaller range)
+                const minResidual = currentResidualsData.reduce((min, p) => Math.min(min, p.y), Infinity);
+                const maxResidual = currentResidualsData.reduce((max, p) => Math.max(max, p.y), -Infinity);
+                const padding = (maxResidual - minResidual) * 0.1; // Add 10% padding
+
+                chart.options.scales.y.suggestedMin = minResidual - padding;
+                chart.options.scales.y.suggestedMax = maxResidual + padding;
+            }
+            chart.update();
+        }
+
+        // Event listeners
+        document.getElementById('addTreeBtn').addEventListener('click', addTree);
+        document.getElementById('resetBtn').addEventListener('click', resetForest);
+        document.getElementById('toggleDataBtn').addEventListener('click', toggleDataDisplay); // New event listener
+
+        document.getElementById('learningRate').addEventListener('input', (event) => {
+            learningRate = parseFloat(event.target.value);
+            document.getElementById('learningRateValue').textContent = learningRate.toFixed(2);
+        });
+
+        // Initialize
+        initChart();
+    </script>
+</body>
+</html>
