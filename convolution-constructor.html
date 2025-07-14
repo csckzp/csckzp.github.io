@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convolution Constructor: Building Feature Maps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e3e8ee;
+        }
+
+        .panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .visualization-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .grid-container {
+            text-align: center;
+        }
+
+        .grid-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+
+        .grid {
+            display: inline-grid;
+            gap: 2px;
+            background: #34495e;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .input-grid {
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        .filter-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .output-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 1px solid #bdc3c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .cell.highlighted {
+            background: #f39c12;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .cell.filter-active {
+            background: #e74c3c;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .cell.output-active {
+            background: #27ae60;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .cell input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            background: transparent;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: #34495e;
+            min-width: 80px;
+        }
+
+        .control-group input, .control-group select {
+            padding: 8px 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 6px;
+            transition: border-color 0.3s ease;
+        }
+
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+
+        .calculation-display {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .calculation-display h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .calculation-step {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 5px 0;
+            border: 1px solid #dee2e6;
+        }
+
+        .filter-library {
+            grid-column: 1 / -1;
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .filter-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .arrow {
+            font-size: 24px;
+            color: #667eea;
+            margin: 0 10px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .visualization-area {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cell {
+                width: 35px;
+                height: 35px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Convolution Constructor</h1>
+        <p class="subtitle">Building Feature Maps: Step-by-Step Visualization</p>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>🎯 Step-by-Step Convolution</h2>
+                <div class="visualization-area">
+                    <div class="grid-container">
+                        <div class="grid-label">Input Image (7×7)</div>
+                        <div class="grid input-grid" id="inputGrid"></div>
+                    </div>
+                    
+                    <div class="arrow">→</div>
+                    
+                    <div class="grid-container">
+                        <div class="grid-label">Filter (3×3)</div>
+                        <div class="grid filter-grid" id="filterGrid"></div>
+                    </div>
+                    
+                    <div class="arrow">→</div>
+                    
+                    <div class="grid-container">
+                        <div class="grid-label">Feature Map (5×5)</div>
+                        <div class="grid output-grid" id="outputGrid"></div>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Stride:</label>
+                        <input type="range" id="strideSlider" min="1" max="2" value="1">
+                        <span id="strideValue">1</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Padding:</label>
+                        <input type="checkbox" id="paddingToggle">
+                        <span>Zero Padding</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <button class="btn btn-primary" id="startBtn">Start Convolution</button>
+                        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+                    </div>
+                </div>
+
+                <div class="calculation-display" id="calculationDisplay">
+                    <h3>💡 Current Calculation</h3>
+                    <div id="calculationSteps"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🔧 Input & Filter Controls</h2>
+                
+                <div class="control-group">
+                    <label>Input Pattern:</label>
+                    <select id="inputPattern">
+                        <option value="vertical">Vertical Line</option>
+                        <option value="horizontal">Horizontal Line</option>
+                        <option value="square">Square</option>
+                        <option value="cross">Cross</option>
+                        <option value="diagonal">Diagonal</option>
+                        <option value="random">Random</option>
+                    </select>
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <h3>Custom Filter Editor</h3>
+                    <div class="grid filter-grid" id="customFilterGrid"></div>
+                    <button class="btn btn-secondary" id="applyCustomFilter" style="margin-top: 10px;">Apply Custom Filter</button>
+                </div>
+
+                <div class="filter-info">
+                    <h4>Current Filter: <span id="currentFilterName">Identity</span></h4>
+                    <p id="currentFilterDescription">No operation - output equals input</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel filter-library">
+            <h2>📚 Filter Library</h2>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="identity">Identity</button>
+                <button class="filter-btn" data-filter="blur">Blur</button>
+                <button class="filter-btn" data-filter="sharpen">Sharpen</button>
+                <button class="filter-btn" data-filter="edgeVertical">Vertical Edge</button>
+                <button class="filter-btn" data-filter="edgeHorizontal">Horizontal Edge</button>
+                <button class="filter-btn" data-filter="emboss">Emboss</button>
+                <button class="filter-btn" data-filter="outline">Outline</button>
+            </div>
+            <div class="filter-info">
+                <p><strong>What each filter detects:</strong></p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>Blur:</strong> Smooths the image by averaging neighboring pixels</li>
+                    <li><strong>Sharpen:</strong> Enhances edges and fine details</li>
+                    <li><strong>Vertical Edge:</strong> Detects vertical lines and boundaries</li>
+                    <li><strong>Horizontal Edge:</strong> Detects horizontal lines and boundaries</li>
+                    <li><strong>Emboss:</strong> Creates a 3D-like effect highlighting edges</li>
+                    <li><strong>Outline:</strong> Detects all edges and boundaries</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ConvolutionVisualizer {
+            constructor() {
+                this.inputSize = 7;
+                this.filterSize = 3;
+                this.stride = 1;
+                this.padding = false;
+                this.currentStep = 0;
+                this.isAnimating = false;
+                this.animationSpeed = 1000;
+                
+                this.filters = {
+                    identity: {
+                        name: "Identity",
+                        matrix: [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
+                        description: "No operation - output equals input"
+                    },
+                    blur: {
+                        name: "Blur",
+                        matrix: [[1/9, 1/9, 1/9], [1/9, 1/9, 1/9], [1/9, 1/9, 1/9]],
+                        description: "Smooths the image by averaging neighboring pixels"
+                    },
+                    sharpen: {
+                        name: "Sharpen",
+                        matrix: [[0, -1, 0], [-1, 5, -1], [0, -1, 0]],
+                        description: "Enhances edges and fine details"
+                    },
+                    edgeVertical: {
+                        name: "Vertical Edge",
+                        matrix: [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+                        description: "Detects vertical lines and boundaries"
+                    },
+                    edgeHorizontal: {
+                        name: "Horizontal Edge",
+                        matrix: [[-1, -2, -1], [0, 0, 0], [1, 2, 1]],
+                        description: "Detects horizontal lines and boundaries"
+                    },
+                    emboss: {
+                        name: "Emboss",
+                        matrix: [[-2, -1, 0], [-1, 1, 1], [0, 1, 2]],
+                        description: "Creates a 3D-like effect highlighting edges"
+                    },
+                    outline: {
+                        name: "Outline",
+                        matrix: [[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]],
+                        description: "Detects all edges and boundaries"
+                    }
+                };
+                
+                this.currentFilter = this.filters.identity;
+                this.inputData = [];
+                this.outputData = [];
+                
+                this.initializeGrids();
+                this.setupEventListeners();
+                this.generateInputPattern('vertical');
+                this.updateFilterDisplay();
+            }
+            
+            initializeGrids() {
+                this.createGrid('inputGrid', this.inputSize, this.inputSize, false);
+                this.createGrid('filterGrid', this.filterSize, this.filterSize, false);
+                this.createGrid('customFilterGrid', this.filterSize, this.filterSize, true);
+                this.createGrid('outputGrid', 5, 5, false);
+            }
+            
+            createGrid(gridId, rows, cols, editable) {
+                const grid = document.getElementById(gridId);
+                grid.innerHTML = '';
+                
+                for (let i = 0; i < rows * cols; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.index = i;
+                    cell.dataset.row = Math.floor(i / cols);
+                    cell.dataset.col = i % cols;
+                    
+                    if (editable) {
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.step = '0.1';
+                        input.value = '0';
+                        cell.appendChild(input);
+                    } else {
+                        cell.textContent = '0';
+                    }
+                    
+                    grid.appendChild(cell);
+                }
+            }
+            
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.startConvolution());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('inputPattern').addEventListener('change', (e) => this.generateInputPattern(e.target.value));
+                document.getElementById('strideSlider').addEventListener('input', (e) => this.updateStride(e.target.value));
+                document.getElementById('paddingToggle').addEventListener('change', (e) => this.updatePadding(e.target.checked));
+                document.getElementById('applyCustomFilter').addEventListener('click', () => this.applyCustomFilter());
+                
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.selectFilter(e.target.dataset.filter));
+                });
+            }
+            
+            generateInputPattern(pattern) {
+                const size = this.inputSize;
+                this.inputData = Array(size).fill().map(() => Array(size).fill(0));
+                
+                switch (pattern) {
+                    case 'vertical':
+                        for (let i = 0; i < size; i++) {
+                            this.inputData[i][Math.floor(size/2)] = 1;
+                        }
+                        break;
+                    case 'horizontal':
+                        for (let j = 0; j < size; j++) {
+                            this.inputData[Math.floor(size/2)][j] = 1;
+                        }
+                        break;
+                    case 'square':
+                        for (let i = 2; i < 5; i++) {
+                            for (let j = 2; j < 5; j++) {
+                                this.inputData[i][j] = 1;
+                            }
+                        }
+                        break;
+                    case 'cross':
+                        for (let i = 0; i < size; i++) {
+                            this.inputData[i][Math.floor(size/2)] = 1;
+                            this.inputData[Math.floor(size/2)][i] = 1;
+                        }
+                        break;
+                    case 'diagonal':
+                        for (let i = 0; i < size; i++) {
+                            this.inputData[i][i] = 1;
+                        }
+                        break;
+                    case 'random':
+                        for (let i = 0; i < size; i++) {
+                            for (let j = 0; j < size; j++) {
+                                this.inputData[i][j] = Math.random() > 0.7 ? 1 : 0;
+                            }
+                        }
+                        break;
+                }
+                
+                this.updateInputDisplay();
+            }
+            
+            updateInputDisplay() {
+                const cells = document.querySelectorAll('#inputGrid .cell');
+                cells.forEach((cell, index) => {
+                    const row = Math.floor(index / this.inputSize);
+                    const col = index % this.inputSize;
+                    cell.textContent = this.inputData[row][col].toFixed(1);
+                    cell.style.backgroundColor = this.inputData[row][col] > 0 ? '#3498db' : 'white';
+                    cell.style.color = this.inputData[row][col] > 0 ? 'white' : '#333';
+                });
+            }
+            
+            selectFilter(filterKey) {
+                this.currentFilter = this.filters[filterKey];
+                this.updateFilterDisplay();
+                this.updateFilterInfo();
+                
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`[data-filter="${filterKey}"]`).classList.add('active');
+            }
+            
+            updateFilterDisplay() {
+                const cells = document.querySelectorAll('#filterGrid .cell');
+                cells.forEach((cell, index) => {
+                    const row = Math.floor(index / this.filterSize);
+                    const col = index % this.filterSize;
+                    const value = this.currentFilter.matrix[row][col];
+                    cell.textContent = value.toFixed(1);
+                    
+                    if (value > 0) {
+                        cell.style.backgroundColor = '#e74c3c';
+                        cell.style.color = 'white';
+                    } else if (value < 0) {
+                        cell.style.backgroundColor = '#2980b9';
+                        cell.style.color = 'white';
+                    } else {
+                        cell.style.backgroundColor = 'white';
+                        cell.style.color = '#333';
+                    }
+                });
+                
+                // Update custom filter grid
+                const customCells = document.querySelectorAll('#customFilterGrid .cell input');
+                customCells.forEach((input, index) => {
+                    const row = Math.floor(index / this.filterSize);
+                    const col = index % this.filterSize;
+                    input.value = this.currentFilter.matrix[row][col];
+                });
+            }
+            
+            updateFilterInfo() {
+                document.getElementById('currentFilterName').textContent = this.currentFilter.name;
+                document.getElementById('currentFilterDescription').textContent = this.currentFilter.description;
+            }
+            
+            applyCustomFilter() {
+                const inputs = document.querySelectorAll('#customFilterGrid .cell input');
+                const matrix = [];
+                
+                for (let i = 0; i < this.filterSize; i++) {
+                    matrix[i] = [];
+                    for (let j = 0; j < this.filterSize; j++) {
+                        const index = i * this.filterSize + j;
+                        matrix[i][j] = parseFloat(inputs[index].value) || 0;
+                    }
+                }
+                
+                this.currentFilter = {
+                    name: "Custom",
+                    matrix: matrix,
+                    description: "User-defined custom filter"
+                };
+                
+                this.updateFilterDisplay();
+                this.updateFilterInfo();
+                
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            }
+            
+            updateStride(value) {
+                this.stride = parseInt(value);
+                document.getElementById('strideValue').textContent = value;
+                this.calculateOutputSize();
+            }
+            
+            updatePadding(checked) {
+                this.padding = checked;
+                this.calculateOutputSize();
+            }
+            
+            calculateOutputSize() {
+                const inputSize = this.padding ? this.inputSize + 2 : this.inputSize;
+                const outputSize = Math.floor((inputSize - this.filterSize) / this.stride) + 1;
+                
+                // Recreate output grid with new size
+                this.createGrid('outputGrid', outputSize, outputSize, false);
+                document.querySelector('#outputGrid').style.gridTemplateColumns = `repeat(${outputSize}, 1fr)`;
+            }
+            
+            async startConvolution() {
+                if (this.isAnimating) return;
+                
+                this.isAnimating = true;
+                this.reset();
+                
+                const outputSize = Math.floor((this.inputSize - this.filterSize) / this.stride) + 1;
+                let step = 0;
+                const totalSteps = outputSize * outputSize;
+                
+                for (let outputRow = 0; outputRow < outputSize; outputRow++) {
+                    for (let outputCol = 0; outputCol < outputSize; outputCol++) {
+                        const inputRow = outputRow * this.stride;
+                        const inputCol = outputCol * this.stride;
+                        
+                        await this.animateConvolutionStep(inputRow, inputCol, outputRow, outputCol);
+                        
+                        step++;
+                        this.updateProgress(step / totalSteps);
+                        
+                        if (step < totalSteps) {
+                            await this.sleep(this.animationSpeed);
+                        }
+                    }
+                }
+                
+                this.isAnimating = false;
+                this.clearHighlights();
+            }
+            
+            async animateConvolutionStep(inputRow, inputCol, outputRow, outputCol) {
+                this.clearHighlights();
+                
+                // Highlight input patch
+                const inputCells = document.querySelectorAll('#inputGrid .cell');
+                const filterCells = document.querySelectorAll('#filterGrid .cell');
+                
+                let calculation = [];
+                let sum = 0;
+                
+                for (let i = 0; i < this.filterSize; i++) {
+                    for (let j = 0; j < this.filterSize; j++) {
+                        const globalRow = inputRow + i;
+                        const globalCol = inputCol + j;
+                        const inputIndex = globalRow * this.inputSize + globalCol;
+                        const filterIndex = i * this.filterSize + j;
+                        
+                        if (globalRow < this.inputSize && globalCol < this.inputSize) {
+                            inputCells[inputIndex].classList.add('highlighted');
+                            filterCells[filterIndex].classList.add('filter-active');
+                            
+                            const inputValue = this.inputData[globalRow][globalCol];
+                            const filterValue = this.currentFilter.matrix[i][j];
+                            const product = inputValue * filterValue;
+                            
+                            calculation.push(`${inputValue} × ${filterValue.toFixed(1)} = ${product.toFixed(1)}`);
+                            sum += product;
+                        }
+                    }
+                }
+                
+                // Update calculation display
+                this.updateCalculationDisplay(calculation, sum);
+                
+                // Highlight output cell
+                const outputCells = document.querySelectorAll('#outputGrid .cell');
+                const outputSize = Math.floor((this.inputSize - this.filterSize) / this.stride) + 1;
+                const outputIndex = outputRow * outputSize + outputCol;
+                
+                if (outputCells[outputIndex]) {
+                    outputCells[outputIndex].classList.add('output-active');
+                    outputCells[outputIndex].textContent = sum.toFixed(1);
+                    
+                    // Color code the output
+                    if (sum > 0) {
+                        outputCells[outputIndex].style.backgroundColor = '#27ae60';
+                        outputCells[outputIndex].style.color = 'white';
+                    } else if (sum < 0) {
+                        outputCells[outputIndex].style.backgroundColor = '#e74c3c';
+                        outputCells[outputIndex].style.color = 'white';
+                    } else {
+                        outputCells[outputIndex].style.backgroundColor = '#95a5a6';
+                        outputCells[outputIndex].style.color = 'white';
+                    }
+                }
+            }
+            
+            updateCalculationDisplay(calculation, sum) {
+                const stepsDiv = document.getElementById('calculationSteps');
+                stepsDiv.innerHTML = `
+                    <div class="calculation-step">
+                        <strong>Element-wise multiplication:</strong><br>
+                        ${calculation.join(' + ')}
+                    </div>
+                    <div class="calculation-step">
+                        <strong>Sum:</strong> ${sum.toFixed(2)}
+                    </div>
+                `;
+            }
+            
+            clearHighlights() {
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.classList.remove('highlighted', 'filter-active', 'output-active');
+                });
+            }
+            
+            updateProgress(progress) {
+                document.getElementById('progressFill').style.width = `${progress * 100}%`;
+            }
+            
+            reset() {
+                this.clearHighlights();
+                this.updateProgress(0);
+                
+                // Clear output grid
+                const outputCells = document.querySelectorAll('#outputGrid .cell');
+                outputCells.forEach(cell => {
+                    cell.textContent = '0';
+                    cell.style.backgroundColor = 'white';
+                    cell.style.color = '#333';
+                });
+                
+                // Clear calculation display
+                document.getElementById('calculationSteps').innerHTML = '<p>Click "Start Convolution" to begin the visualization</p>';
+            }
+            
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Initialize the visualizer when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ConvolutionVisualizer();
+        });
+    </script>
+</body>
+</html>
