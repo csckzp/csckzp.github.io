@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pooling Power: Achieving Translation Invariance</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .grid-pair {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .grid-wrapper {
+            text-align: center;
+        }
+        
+        .grid-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 35px);
+            grid-template-rows: repeat(8, 35px);
+            gap: 2px;
+            margin: 10px auto;
+            border: 3px solid #34495e;
+            border-radius: 8px;
+            padding: 10px;
+            background: #ecf0f1;
+        }
+        
+        .pooled-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 45px);
+            grid-template-rows: repeat(4, 45px);
+            gap: 3px;
+            margin: 10px auto;
+            border: 3px solid #27ae60;
+            border-radius: 8px;
+            padding: 10px;
+            background: #d5f4e6;
+        }
+        
+        .grid-cell {
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #2c3e50;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .grid-cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        select {
+            padding: 8px 15px;
+            border: 2px solid #3498db;
+            border-radius: 20px;
+            background: white;
+            color: #2c3e50;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #2980b9;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+        }
+        
+        .info-box {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-box h3 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .arrow {
+            font-size: 2em;
+            color: #3498db;
+            margin: 0 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .receptive-field {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+        }
+        
+        .receptive-field h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #e74c3c;
+            padding-bottom: 10px;
+        }
+        
+        .rf-visualization {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .rf-layer {
+            text-align: center;
+        }
+        
+        .rf-grid {
+            display: grid;
+            gap: 2px;
+            margin: 10px auto;
+            border: 3px solid #e74c3c;
+            border-radius: 8px;
+            padding: 10px;
+            background: #fdf2f2;
+        }
+        
+        .rf-grid.input {
+            grid-template-columns: repeat(8, 20px);
+            grid-template-rows: repeat(8, 20px);
+        }
+        
+        .rf-grid.after-pooling {
+            grid-template-columns: repeat(4, 30px);
+            grid-template-rows: repeat(4, 30px);
+        }
+        
+        .rf-cell {
+            border: 1px solid #c0392b;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+        
+        .rf-cell.highlighted {
+            background: #e74c3c;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        
+        .rf-cell.receptive {
+            background: #fadbd8;
+            border-color: #e74c3c;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .grid-pair {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .rf-visualization {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: repeat(8, 25px);
+                grid-template-rows: repeat(8, 25px);
+            }
+            
+            .pooled-grid {
+                grid-template-columns: repeat(4, 35px);
+                grid-template-rows: repeat(4, 35px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏊‍♂️ Pooling Power: Achieving Translation Invariance</h1>
+            <p>Discover how pooling layers in CNNs create robustness to small shifts in object position while expanding receptive fields for better pattern recognition.</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="section">
+                <h2>🎯 Shift an Object Demonstration</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Pooling Type:</label>
+                        <select id="poolingType">
+                            <option value="max">Max Pooling</option>
+                            <option value="average">Average Pooling</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Shift Feature:</label>
+                        <button onclick="shiftFeature('left')">← Left</button>
+                        <button onclick="shiftFeature('right')">Right →</button>
+                        <button onclick="shiftFeature('up')">↑ Up</button>
+                        <button onclick="shiftFeature('down')">↓ Down</button>
+                    </div>
+                    <div class="control-group">
+                        <label>Reset:</label>
+                        <button onclick="resetFeature()">🔄 Reset</button>
+                    </div>
+                </div>
+                
+                <div class="grid-container">
+                    <div class="grid-pair">
+                        <div class="grid-wrapper">
+                            <div class="grid-title">Original Feature Map</div>
+                            <div class="feature-grid" id="originalGrid"></div>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="grid-wrapper">
+                            <div class="grid-title">Shifted Feature Map</div>
+                            <div class="feature-grid" id="shiftedGrid"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-pair">
+                        <div class="grid-wrapper">
+                            <div class="grid-title">Pooled Original</div>
+                            <div class="pooled-grid" id="pooledOriginal"></div>
+                        </div>
+                        <div class="arrow">≈</div>
+                        <div class="grid-wrapper">
+                            <div class="grid-title">Pooled Shifted</div>
+                            <div class="pooled-grid" id="pooledShifted"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <h3>🔍 Key Insight</h3>
+                    <p>Notice how the pooled outputs remain nearly identical even when the input feature is shifted! This is <strong>translation invariance</strong> - pooling makes CNNs robust to small positional changes in objects.</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📊 Pooling Operation Details</h2>
+                <div id="poolingDetails">
+                    <div class="info-box">
+                        <h3>Max Pooling (2x2)</h3>
+                        <p>Takes the maximum value from each 2x2 patch. This preserves the strongest activations and is excellent for detecting features regardless of their exact position within the pooling window.</p>
+                        <br>
+                        <p><strong>Example:</strong> [1, 3, 2, 4] → 4</p>
+                    </div>
+                    
+                    <div class="info-box" style="margin-top: 15px;">
+                        <h3>Average Pooling (2x2)</h3>
+                        <p>Computes the average value from each 2x2 patch. This creates a smoother representation and can help reduce noise while maintaining spatial information.</p>
+                        <br>
+                        <p><strong>Example:</strong> [1, 3, 2, 4] → 2.5</p>
+                    </div>
+                    
+                    <div class="info-box" style="margin-top: 15px;">
+                        <h3>Why Translation Invariance Matters</h3>
+                        <p>In real images, a cat's eye might be at pixel (100, 150) in one photo and (102, 148) in another. Without pooling, these would be completely different inputs to the network. Pooling creates local invariance that makes the network more robust.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="receptive-field">
+            <h2>🔍 Receptive Field Expansion</h2>
+            <p>Pooling doesn't just create translation invariance - it also expands the receptive field, allowing deeper layers to "see" larger regions of the original image.</p>
+            
+            <div class="rf-visualization">
+                <div class="rf-layer">
+                    <h3>Input Layer (8x8)</h3>
+                    <div class="rf-grid input" id="inputRF"></div>
+                    <p>Each cell represents 1 pixel</p>
+                </div>
+                
+                <div class="arrow">→</div>
+                
+                <div class="rf-layer">
+                    <h3>After 2x2 Pooling (4x4)</h3>
+                    <div class="rf-grid after-pooling" id="pooledRF"></div>
+                    <p>Each cell represents 2x2 pixels</p>
+                </div>
+            </div>
+            
+            <div class="controls" style="margin-top: 20px;">
+                <button onclick="showReceptiveField(0, 0)">Show RF: Top-Left</button>
+                <button onclick="showReceptiveField(1, 1)">Show RF: Center</button>
+                <button onclick="showReceptiveField(3, 3)">Show RF: Bottom-Right</button>
+                <button onclick="clearReceptiveField()">Clear Highlights</button>
+            </div>
+            
+            <div class="info-box">
+                <h3>🎯 Receptive Field Impact</h3>
+                <p>After pooling, each neuron in the next layer receives information from a 2x2 region instead of just 1x1. This compounds through the network - deeper layers can recognize increasingly complex patterns over larger areas!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let originalFeatureMap = [];
+        let shiftedFeatureMap = [];
+        let featurePosition = { x: 3, y: 3 };
+        let poolingType = 'max';
+        
+        // Initialize feature maps
+        function initializeFeatureMaps() {
+            // Create base feature map (8x8)
+            originalFeatureMap = Array(8).fill().map(() => Array(8).fill(0));
+            
+            // Add a feature pattern (representing detected "eye" or edge)
+            const featurePattern = [
+                [2, 4, 3],
+                [5, 9, 6],
+                [3, 7, 4]
+            ];
+            
+            // Place feature at current position
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (featurePosition.y + i < 8 && featurePosition.x + j < 8) {
+                        originalFeatureMap[featurePosition.y + i][featurePosition.x + j] = featurePattern[i][j];
+                    }
+                }
+            }
+            
+            // Add some background noise
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (originalFeatureMap[i][j] === 0) {
+                        originalFeatureMap[i][j] = Math.random() < 0.3 ? Math.floor(Math.random() * 2) + 1 : 0;
+                    }
+                }
+            }
+            
+            // Copy to shifted map initially
+            shiftedFeatureMap = originalFeatureMap.map(row => [...row]);
+        }
+        
+        // Render feature map
+        function renderFeatureMap(mapData, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    const value = mapData[i][j];
+                    cell.textContent = value;
+                    
+                    // Color based on value
+                    if (value === 0) {
+                        cell.style.backgroundColor = '#ecf0f1';
+                    } else if (value <= 3) {
+                        cell.style.backgroundColor = '#a8dadc';
+                    } else if (value <= 6) {
+                        cell.style.backgroundColor = '#457b9d';
+                        cell.style.color = 'white';
+                    } else {
+                        cell.style.backgroundColor = '#1d3557';
+                        cell.style.color = 'white';
+                    }
+                    
+                    container.appendChild(cell);
+                }
+            }
+        }
+        
+        // Apply pooling operation
+        function applyPooling(inputMap, type) {
+            const pooledMap = Array(4).fill().map(() => Array(4).fill(0));
+            
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const patch = [
+                        inputMap[i*2][j*2], inputMap[i*2][j*2+1],
+                        inputMap[i*2+1][j*2], inputMap[i*2+1][j*2+1]
+                    ];
+                    
+                    if (type === 'max') {
+                        pooledMap[i][j] = Math.max(...patch);
+                    } else {
+                        pooledMap[i][j] = Math.round((patch.reduce((a, b) => a + b) / 4) * 10) / 10;
+                    }
+                }
+            }
+            
+            return pooledMap;
+        }
+        
+        // Render pooled map
+        function renderPooledMap(mapData, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    const value = mapData[i][j];
+                    cell.textContent = value;
+                    
+                    // Color based on value
+                    if (value === 0) {
+                        cell.style.backgroundColor = '#d5f4e6';
+                    } else if (value <= 3) {
+                        cell.style.backgroundColor = '#a8e6cf';
+                    } else if (value <= 6) {
+                        cell.style.backgroundColor = '#27ae60';
+                        cell.style.color = 'white';
+                    } else {
+                        cell.style.backgroundColor = '#1e8449';
+                        cell.style.color = 'white';
+                    }
+                    
+                    container.appendChild(cell);
+                }
+            }
+        }
+        
+        // Shift feature in specified direction
+        function shiftFeature(direction) {
+            const newFeatureMap = Array(8).fill().map(() => Array(8).fill(0));
+            
+            // Copy background
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (originalFeatureMap[i][j] <= 3) {
+                        newFeatureMap[i][j] = originalFeatureMap[i][j];
+                    }
+                }
+            }
+            
+            // Calculate new position
+            let newX = featurePosition.x;
+            let newY = featurePosition.y;
+            
+            switch (direction) {
+                case 'left':
+                    newX = Math.max(0, newX - 1);
+                    break;
+                case 'right':
+                    newX = Math.min(5, newX + 1);
+                    break;
+                case 'up':
+                    newY = Math.max(0, newY - 1);
+                    break;
+                case 'down':
+                    newY = Math.min(5, newY + 1);
+                    break;
+            }
+            
+            // Place shifted feature
+            const featurePattern = [
+                [2, 4, 3],
+                [5, 9, 6],
+                [3, 7, 4]
+            ];
+            
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (newY + i < 8 && newX + j < 8) {
+                        newFeatureMap[newY + i][newX + j] = featurePattern[i][j];
+                    }
+                }
+            }
+            
+            shiftedFeatureMap = newFeatureMap;
+            updateVisualization();
+        }
+        
+        // Reset feature to original position
+        function resetFeature() {
+            featurePosition = { x: 3, y: 3 };
+            shiftedFeatureMap = originalFeatureMap.map(row => [...row]);
+            updateVisualization();
+        }
+        
+        // Update visualization
+        function updateVisualization() {
+            const currentPoolingType = document.getElementById('poolingType').value;
+            
+            renderFeatureMap(originalFeatureMap, 'originalGrid');
+            renderFeatureMap(shiftedFeatureMap, 'shiftedGrid');
+            
+            const pooledOriginal = applyPooling(originalFeatureMap, currentPoolingType);
+            const pooledShifted = applyPooling(shiftedFeatureMap, currentPoolingType);
+            
+            renderPooledMap(pooledOriginal, 'pooledOriginal');
+            renderPooledMap(pooledShifted, 'pooledShifted');
+        }
+        
+        // Initialize receptive field visualization
+        function initializeReceptiveField() {
+            const inputRF = document.getElementById('inputRF');
+            const pooledRF = document.getElementById('pooledRF');
+            
+            // Create input layer cells
+            for (let i = 0; i < 64; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'rf-cell';
+                cell.id = `input-${Math.floor(i/8)}-${i%8}`;
+                inputRF.appendChild(cell);
+            }
+            
+            // Create pooled layer cells
+            for (let i = 0; i < 16; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'rf-cell';
+                cell.id = `pooled-${Math.floor(i/4)}-${i%4}`;
+                pooledRF.appendChild(cell);
+            }
+        }
+        
+        // Show receptive field for a specific pooled neuron
+        function showReceptiveField(row, col) {
+            clearReceptiveField();
+            
+            // Highlight the selected pooled neuron
+            const pooledCell = document.getElementById(`pooled-${row}-${col}`);
+            pooledCell.classList.add('highlighted');
+            
+            // Highlight the receptive field in the input layer
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 2; j++) {
+                    const inputCell = document.getElementById(`input-${row*2 + i}-${col*2 + j}`);
+                    inputCell.classList.add('receptive');
+                }
+            }
+        }
+        
+        // Clear receptive field highlights
+        function clearReceptiveField() {
+            const cells = document.querySelectorAll('.rf-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('highlighted', 'receptive');
+            });
+        }
+        
+        // Event listeners
+        document.getElementById('poolingType').addEventListener('change', function() {
+            poolingType = this.value;
+            updateVisualization();
+        });
+        
+        // Initialize everything
+        initializeFeatureMaps();
+        initializeReceptiveField();
+        updateVisualization();
+    </script>
+</body>
+</html>
