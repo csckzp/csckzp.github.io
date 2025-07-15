@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Activation Functions Interactive</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+    .layer {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .node {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+    }
+    .plot {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="root"></div>
+  </div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const ACTIVATIONS = {
+      relu: x => Math.max(0, x),
+      sigmoid: x => 1 / (1 + Math.exp(-x)),
+      tanh: x => Math.tanh(x),
+    };
+
+    function linspace(start, end, num) {
+      const step = (end - start) / (num - 1);
+      return Array(num).fill().map((_, i) => start + i * step);
+    }
+
+    function applyLayerParallel(input, nodes) {
+      // For each input value, calculate the sum of outputs from all nodes in the layer
+      return input.map(xi =>
+        nodes.reduce((acc, { slope, intercept, activation }) =>
+          acc + ACTIVATIONS[activation](slope * xi + intercept), 0)
+      );
+    }
+
+    function applyNetwork(x, layers) {
+      return layers.reduce((prevOutput, layer) =>
+        applyLayerParallel(prevOutput, layer), x);
+    }
+
+    function ActivationInteractive() {
+      const [layers, setLayers] = useState([
+        [
+          { slope: 1, intercept: 0, activation: 'relu' },
+          { slope: 1, intercept: -1, activation: 'relu' }
+        ]
+      ]);
+
+      const x = linspace(-5, 5, 300);
+      const finalOutput = applyNetwork(x, layers);
+
+      React.useEffect(() => {
+        Plotly.newPlot('plot', [
+          {
+            x,
+            y: finalOutput,
+            type: 'scatter',
+            name: 'Network Output',
+            line: { color: 'purple' },
+          }
+        ], {
+          title: 'Network Output with Layer Stacking',
+          xaxis: { title: 'Input' },
+          yaxis: { title: 'Output' },
+          height: 400
+        });
+      }, [layers]);
+
+      function updateNode(layerIndex, nodeIndex, newProps) {
+        const newLayers = [...layers];
+        const node = { ...newLayers[layerIndex][nodeIndex], ...newProps };
+        newLayers[layerIndex][nodeIndex] = node;
+        setLayers(newLayers);
+      }
+
+      function addNode(layerIndex) {
+        const newLayers = [...layers];
+        newLayers[layerIndex].push({ slope: 1, intercept: 0, activation: 'relu' });
+        setLayers(newLayers);
+      }
+
+      function removeNode(layerIndex, nodeIndex) {
+        const newLayers = [...layers];
+        newLayers[layerIndex].splice(nodeIndex, 1);
+        setLayers(newLayers);
+      }
+
+      function addLayer() {
+        setLayers([...layers, [{ slope: 1, intercept: 0, activation: 'relu' }]]);
+      }
+
+      function removeLayer(layerIndex) {
+        const newLayers = layers.filter((_, i) => i !== layerIndex);
+        setLayers(newLayers);
+      }
+
+      return (
+        <div>
+          <h1>Building Nonlinearity: The Role of Activation Functions</h1>
+          <p>Stack multiple layers, each with parallel activation units. Adjust slope, intercept, and activation function.</p>
+
+          {layers.map((layer, layerIndex) => (
+            <div key={layerIndex} className="layer">
+              <h3>Layer {layerIndex + 1}</h3>
+              {layer.map((node, nodeIndex) => (
+                <div key={nodeIndex} className="node">
+                  <label>
+                    Slope
+                    <input
+                      type="number"
+                      value={node.slope}
+                      step="0.1"
+                      onChange={e => updateNode(layerIndex, nodeIndex, { slope: parseFloat(e.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    Intercept
+                    <input
+                      type="number"
+                      value={node.intercept}
+                      step="0.1"
+                      onChange={e => updateNode(layerIndex, nodeIndex, { intercept: parseFloat(e.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    Activation
+                    <select
+                      value={node.activation}
+                      onChange={e => updateNode(layerIndex, nodeIndex, { activation: e.target.value })}
+                    >
+                      <option value="relu">ReLU</option>
+                      <option value="sigmoid">Sigmoid</option>
+                      <option value="tanh">Tanh</option>
+                    </select>
+                  </label>
+                  <button onClick={() => removeNode(layerIndex, nodeIndex)}>Remove Node</button>
+                </div>
+              ))}
+              <button onClick={() => addNode(layerIndex)}>Add Node to Layer {layerIndex + 1}</button>
+              {layers.length > 1 && (
+                <button onClick={() => removeLayer(layerIndex)}>Remove Layer</button>
+              )}
+            </div>
+          ))}
+
+          <button onClick={addLayer} style={{ marginTop: '10px' }}>Add New Layer</button>
+
+          <div id="plot" className="plot"></div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ActivationInteractive />);
+  </script>
+</body>
+</html>
