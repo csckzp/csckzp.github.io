@@ -51,6 +51,7 @@
       relu: x => Math.max(0, x),
       sigmoid: x => 1 / (1 + Math.exp(-x)),
       tanh: x => Math.tanh(x),
+	  linear: x => x, // Add this line
     };
 
     function linspace(start, end, num) {
@@ -74,8 +75,9 @@
     function ActivationInteractive() {
       const [layers, setLayers] = useState([
         [
-          { slope: 1, intercept: 0, activation: 'relu' },
-          { slope: 1, intercept: -1, activation: 'relu' }
+          /*{ slope: 1, intercept: 0, activation: 'relu' },
+          { slope: 1, intercept: -1, activation: 'relu' }*/
+		  { slope: 1, intercept: 0, activation: 'linear' }
         ]
       ]);
 
@@ -108,7 +110,7 @@
 
       function addNode(layerIndex) {
         const newLayers = [...layers];
-        newLayers[layerIndex].push({ slope: 1, intercept: 0, activation: 'relu' });
+        newLayers[layerIndex].push({ slope: 1, intercept: 0, activation: 'linear' });
         setLayers(newLayers);
       }
 
@@ -119,7 +121,7 @@
       }
 
       function addLayer() {
-        setLayers([...layers, [{ slope: 1, intercept: 0, activation: 'relu' }]]);
+        setLayers([...layers, [{ slope: 1, intercept: 0, activation: 'linear' }]]);
       }
 
       function removeLayer(layerIndex) {
@@ -164,6 +166,7 @@
                       <option value="relu">ReLU</option>
                       <option value="sigmoid">Sigmoid</option>
                       <option value="tanh">Tanh</option>
+					  <option value="linear">Linear</option>
                     </select>
                   </label>
                   <button onClick={() => removeNode(layerIndex, nodeIndex)}>Remove Node</button>
