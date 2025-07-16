@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Preprocessing Playground</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .output-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #4a5568;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .control-group {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .control-group h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .checkbox-container:hover {
+            background-color: #f7fafc;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .checkbox-container label {
+            cursor: pointer;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .stop-words-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-top: 8px;
+            background: #f8fafc;
+        }
+
+        .result-display {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-wrap: break-word;
+        }
+
+        .token {
+            display: inline-block;
+            background: #e6fffa;
+            color: #234e52;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 15px;
+            font-size: 13px;
+            border: 1px solid #b2f5ea;
+        }
+
+        .ngram {
+            display: inline-block;
+            background: #fef5e7;
+            color: #744210;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 15px;
+            font-size: 13px;
+            border: 1px solid #f6e05e;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #718096;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .educational-note {
+            background: #ebf8ff;
+            border: 1px solid #bee3f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            color: #2b6cb0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .educational-note strong {
+            color: #2c5282;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NLP Preprocessing Playground</h1>
+        <p class="subtitle">Explore the impact of different preprocessing steps on your text data</p>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title">Input Text</h2>
+                <textarea id="inputText" placeholder="Enter your text here... Try something like: 'The quick brown foxes are running! They're jumping over the lazy dogs. Natural Language Processing is fascinating, isn't it?'">The quick brown foxes are running! They're jumping over the lazy dogs. Natural Language Processing is fascinating, isn't it?</textarea>
+            </div>
+            
+            <div class="output-section">
+                <h2 class="section-title">Processed Output</h2>
+                <div id="processedText" class="result-display"></div>
+                
+                <div class="metrics">
+                    <div class="metric-card">
+                        <div class="metric-number" id="tokenCount">0</div>
+                        <div class="metric-label">Tokens</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-number" id="uniqueTokens">0</div>
+                        <div class="metric-label">Unique Tokens</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-number" id="reductionPercent">0%</div>
+                        <div class="metric-label">Reduction</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Basic Preprocessing</h3>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="lowercase" checked>
+                    <label for="lowercase">Convert to Lowercase</label>
+                </div>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="removePunctuation" checked>
+                    <label for="removePunctuation">Remove Punctuation</label>
+                </div>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="removeStopWords">
+                    <label for="removeStopWords">Remove Stop Words</label>
+                </div>
+                <input type="text" id="customStopWords" class="stop-words-input" placeholder="Custom stop words (comma-separated)" value="the,a,an,and,or,but,in,on,at,to,for,of,with,by,is,are,was,were,be,been,being,have,has,had,do,does,did,will,would,could,should,may,might,can,i,you,he,she,it,we,they,me,him,her,us,them,my,your,his,her,its,our,their">
+            </div>
+            
+            <div class="control-group">
+                <h3>Word Normalization</h3>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="stemming">
+                    <label for="stemming">Apply Stemming</label>
+                </div>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="lemmatization">
+                    <label for="lemmatization">Apply Lemmatization</label>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>N-Gram Generation</h3>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="bigrams">
+                    <label for="bigrams">Generate Bi-grams</label>
+                </div>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="trigrams">
+                    <label for="trigrams">Generate Tri-grams</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="educational-note">
+            <strong>💡 Educational Insights:</strong> Watch how each preprocessing step affects your text! 
+            <strong>Stemming vs. Lemmatization:</strong> Stemming is faster but cruder (running → run), while lemmatization is more accurate (running → run, better → good). 
+            <strong>Stop Words:</strong> Removing common words reduces noise but may lose important context in some tasks. 
+            <strong>N-grams:</strong> Capture word sequences and context, useful for tasks like sentiment analysis where phrase meaning matters.
+        </div>
+    </div>
+
+    <script>
+        // Simple stemming algorithm (Porter Stemmer simplified)
+        function stem(word) {
+            // Basic stemming rules
+            const rules = [
+                [/ies$/, 'y'],
+                [/ied$/, 'y'],
+                [/ying$/, 'y'],
+                [/ing$/, ''],
+                [/ed$/, ''],
+                [/er$/, ''],
+                [/est$/, ''],
+                [/ly$/, ''],
+                [/ion$/, ''],
+                [/tion$/, ''],
+                [/ness$/, ''],
+                [/ment$/, ''],
+                [/ful$/, ''],
+                [/less$/, ''],
+                [/ous$/, ''],
+                [/ive$/, ''],
+                [/able$/, ''],
+                [/ible$/, ''],
+                [/al$/, ''],
+                [/ic$/, ''],
+                [/s$/, '']
+            ];
+            
+            let stemmed = word.toLowerCase();
+            for (let [pattern, replacement] of rules) {
+                if (pattern.test(stemmed)) {
+                    stemmed = stemmed.replace(pattern, replacement);
+                    break;
+                }
+            }
+            return stemmed;
+        }
+
+        // Simple lemmatization (dictionary-based)
+        function lemmatize(word) {
+            const lemmaDict = {
+                'running': 'run',
+                'ran': 'run',
+                'runs': 'run',
+                'foxes': 'fox',
+                'dogs': 'dog',
+                'jumping': 'jump',
+                'jumps': 'jump',
+                'jumped': 'jump',
+                'better': 'good',
+                'best': 'good',
+                'worse': 'bad',
+                'worst': 'bad',
+                'are': 'be',
+                'is': 'be',
+                'was': 'be',
+                'were': 'be',
+                'been': 'be',
+                'being': 'be',
+                'have': 'have',
+                'has': 'have',
+                'had': 'have',
+                'having': 'have',
+                'does': 'do',
+                'did': 'do',
+                'doing': 'do',
+                'done': 'do',
+                'goes': 'go',
+                'went': 'go',
+                'going': 'go',
+                'gone': 'go',
+                'children': 'child',
+                'mice': 'mouse',
+                'feet': 'foot',
+                'teeth': 'tooth',
+                'women': 'woman',
+                'men': 'man',
+                'people': 'person',
+                'they\'re': 'they are',
+                'isn\'t': 'is not',
+                'aren\'t': 'are not',
+                'wasn\'t': 'was not',
+                'weren\'t': 'were not',
+                'don\'t': 'do not',
+                'doesn\'t': 'does not',
+                'didn\'t': 'did not',
+                'won\'t': 'will not',
+                'wouldn\'t': 'would not',
+                'shouldn\'t': 'should not',
+                'couldn\'t': 'could not',
+                'can\'t': 'can not',
+                'mustn\'t': 'must not',
+                'fascinating': 'fascinate',
+                'processing': 'process',
+                'language': 'language',
+                'natural': 'natural'
+            };
+            
+            return lemmaDict[word.toLowerCase()] || word.toLowerCase();
+        }
+
+        // Generate n-grams
+        function generateNGrams(tokens, n) {
+            const ngrams = [];
+            for (let i = 0; i <= tokens.length - n; i++) {
+                ngrams.push(tokens.slice(i, i + n).join(' '));
+            }
+            return ngrams;
+        }
+
+        // Main processing function
+        function processText() {
+            const inputText = document.getElementById('inputText').value;
+            const options = {
+                lowercase: document.getElementById('lowercase').checked,
+                removePunctuation: document.getElementById('removePunctuation').checked,
+                removeStopWords: document.getElementById('removeStopWords').checked,
+                stemming: document.getElementById('stemming').checked,
+                lemmatization: document.getElementById('lemmatization').checked,
+                bigrams: document.getElementById('bigrams').checked,
+                trigrams: document.getElementById('trigrams').checked
+            };
+
+            let processedText = inputText;
+            let originalTokenCount = 0;
+            
+            // Get original token count
+            if (inputText.trim()) {
+                originalTokenCount = inputText.trim().split(/\s+/).length;
+            }
+
+            // Step 1: Convert to lowercase
+            if (options.lowercase) {
+                processedText = processedText.toLowerCase();
+            }
+
+            // Step 2: Remove punctuation
+            if (options.removePunctuation) {
+                processedText = processedText.replace(/[^\w\s]/g, '');
+            }
+
+            // Tokenize
+            let tokens = processedText.trim().split(/\s+/).filter(token => token.length > 0);
+
+            // Step 3: Remove stop words
+            if (options.removeStopWords) {
+                const customStopWords = document.getElementById('customStopWords').value
+                    .split(',')
+                    .map(word => word.trim().toLowerCase())
+                    .filter(word => word.length > 0);
+                
+                tokens = tokens.filter(token => !customStopWords.includes(token.toLowerCase()));
+            }
+
+            // Step 4: Apply stemming or lemmatization
+            if (options.stemming && !options.lemmatization) {
+                tokens = tokens.map(stem);
+            } else if (options.lemmatization) {
+                tokens = tokens.map(lemmatize);
+            }
+
+            // Generate results
+            let results = [];
+            
+            // Add individual tokens
+            if (tokens.length > 0) {
+                results.push(...tokens.map(token => ({type: 'token', value: token})));
+            }
+
+            // Add n-grams
+            if (options.bigrams && tokens.length >= 2) {
+                const bigrams = generateNGrams(tokens, 2);
+                results.push(...bigrams.map(bigram => ({type: 'ngram', value: bigram})));
+            }
+
+            if (options.trigrams && tokens.length >= 3) {
+                const trigrams = generateNGrams(tokens, 3);
+                results.push(...trigrams.map(trigram => ({type: 'ngram', value: trigram})));
+            }
+
+            // Display results
+            const outputElement = document.getElementById('processedText');
+            if (results.length === 0) {
+                outputElement.innerHTML = '<em>No tokens to display</em>';
+            } else {
+                outputElement.innerHTML = results.map(item => 
+                    `<span class="${item.type}">${item.value}</span>`
+                ).join('');
+            }
+
+            // Update metrics
+            const tokenCount = tokens.length;
+            const uniqueTokens = new Set(tokens).size;
+            const reductionPercent = originalTokenCount > 0 ? 
+                Math.round(((originalTokenCount - tokenCount) / originalTokenCount) * 100) : 0;
+
+            document.getElementById('tokenCount').textContent = tokenCount;
+            document.getElementById('uniqueTokens').textContent = uniqueTokens;
+            document.getElementById('reductionPercent').textContent = reductionPercent + '%';
+        }
+
+        // Event listeners
+        document.getElementById('inputText').addEventListener('input', processText);
+        document.getElementById('lowercase').addEventListener('change', processText);
+        document.getElementById('removePunctuation').addEventListener('change', processText);
+        document.getElementById('removeStopWords').addEventListener('change', processText);
+        document.getElementById('stemming').addEventListener('change', processText);
+        document.getElementById('lemmatization').addEventListener('change', processText);
+        document.getElementById('bigrams').addEventListener('change', processText);
+        document.getElementById('trigrams').addEventListener('change', processText);
+        document.getElementById('customStopWords').addEventListener('input', processText);
+
+        // Prevent both stemming and lemmatization being selected
+        document.getElementById('stemming').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('lemmatization').checked = false;
+            }
+            processText();
+        });
+
+        document.getElementById('lemmatization').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('stemming').checked = false;
+            }
+            processText();
+        });
+
+        // Initial processing
+        processText();
+    </script>
+</body>
+</html>
