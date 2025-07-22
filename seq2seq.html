@@ -431,99 +431,103 @@
     </div>
 
     <script>
-        let currentStep = 0;
-        let isAnimating = false;
-        let animationSpeed = 1500;
-        let isPaused = false;
-        let animationTimeout;
-        let inputTokens = [];
-        let outputTokens = [];
-        let encoderHiddenStates = [];
-        let decoderHiddenStates = [];
+    let currentStep = 0;
+    let isAnimating = false;
+    let animationSpeed = 1500;
+    let isPaused = false;
+    let animationTimeout;
+    let inputTokens = [];
+    let outputTokens = [];
+    let encoderHiddenStates = [];
+    let decoderHiddenStates = [];
 
-        // Translation cache to avoid repeated API calls
-        const translationCache = {};
-        
-        // Fallback translations for common phrases (used if API fails)
-        const fallbackTranslations = {
-            "i love bananas": "ich liebe bananas",
-            "hello world": "hallo welt",
-            "good morning": "guten morgen",
-            "thank you": "danke schön",
-            "how are you": "wie geht es dir",
-            "i am happy": "ich bin glücklich",
-            "the cat sleeps": "die katze schläft",
-            "we are learning": "wir lernen"
-        };
+    // Translation cache to avoid repeated API calls
+    const translationCache = {};
 
-        async function getTranslation(text) {
-            // Check cache first
-            const cacheKey = text.toLowerCase();
-            if (translationCache[cacheKey]) {
-                return translationCache[cacheKey];
-            }
+    // Fallback translations for common phrases (used if API fails)
+    const fallbackTranslations = {
+        "the weather today is beautiful": "das wetter heute ist schön", // Added your default input
+        "i love bananas": "ich liebe bananen", // Corrected German spelling
+        "hello world": "hallo welt",
+        "good morning": "guten morgen",
+        "thank you": "danke schön",
+        "how are you": "wie geht es dir",
+        "i am happy": "ich bin glücklich",
+        "the cat sleeps": "die katze schläft",
+        "we are learning": "wir lernen"
+    };
 
-            // Check fallback translations
-            if (fallbackTranslations[cacheKey]) {
-                translationCache[cacheKey] = fallbackTranslations[cacheKey];
-                return fallbackTranslations[cacheKey];
-            }
-
-            try {
-                // Use Google Translate API
-                const encodedText = encodeURIComponent(text);
-                const translateUrl = `https://translate.google.com/translate?js=n&sl=auto&tl=de&text=${encodedText}`;
-                
-                // Create a proxy request to avoid CORS issues
-                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(translateUrl)}`);
-                const data = await response.json();
-                
-                // Parse the translation from Google Translate response
-                const htmlContent = data.contents;
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlContent, 'text/html');
-                
-                // Try to extract translation from various possible locations
-                let translation = '';
-                
-                // Method 1: Look for specific translation elements
-                const translationElements = doc.querySelectorAll('[data-phrase-index]');
-                if (translationElements.length > 0) {
-                    translation = Array.from(translationElements).map(el => el.textContent).join(' ');
-                }
-                
-                // Method 2: Look for result text spans
-                if (!translation) {
-                    const resultSpans = doc.querySelectorAll('span[lang="de"]');
-                    if (resultSpans.length > 0) {
-                        translation = resultSpans[0].textContent;
-                    }
-                }
-                
-                // Method 3: Fallback pattern matching
-                if (!translation) {
-                    const match = htmlContent.match(/"([^"]*)"[^"]*"de"/);
-                    if (match && match[1]) {
-                        translation = match[1];
-                    }
-                }
-                
-                // Clean up and validate translation
-                if (translation && translation !== text) {
-                    translation = translation.trim().toLowerCase();
-                    translationCache[cacheKey] = translation;
-                    return translation;
-                }
-                
-            } catch (error) {
-                console.warn('Translation API failed, using fallback:', error);
-            }
-            
-            // Final fallback
-            const fallback = "deutsche übersetzung";
-            translationCache[cacheKey] = fallback;
-            return fallback;
+    async function getTranslation(text) {
+        // Check cache first
+        const cacheKey = text.toLowerCase();
+        if (translationCache[cacheKey]) {
+            console.log('Using cached translation.');
+            return translationCache[cacheKey];
         }
+
+        // Check fallback translations
+        if (fallbackTranslations[cacheKey]) {
+            console.log('Using fallback translation.');
+            translationCache[cacheKey] = fallbackTranslations[cacheKey];
+            return fallbackTranslations[cacheKey];
+        }
+
+        try {
+            // Use a more direct, but still unofficial, approach
+            // We'll try fetching directly and then via allorigins as a fallback if direct fails due to CORS
+            const encodedText = encodeURIComponent(text);
+            const translateUrl = `https://translate.google.com/translate_a/single?client=gtx&sl=auto&tl=de&dt=t&q=${encodedText}`;
+
+            let response;
+            try {
+                // Try direct fetch first (might fail due to CORS)
+                response = await fetch(translateUrl);
+            } catch (e) {
+                console.warn('Direct fetch failed, trying allorigins proxy:', e);
+                // Fallback to allorigins if direct fetch has CORS issues
+                response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(translateUrl)}`);
+                const proxyData = await response.json();
+                // Allorigins wraps the actual content in a 'contents' property
+                // We need to parse that content as JSON
+                if (proxyData && proxyData.contents) {
+                    try {
+                        const parsedContent = JSON.parse(proxyData.contents);
+                        const translation = parsedContent[0][0][0];
+                        if (translation && translation !== text) {
+                            const cleanedTranslation = translation.trim().toLowerCase();
+                            translationCache[cacheKey] = cleanedTranslation;
+                            return cleanedTranslation;
+                        }
+                    } catch (parseError) {
+                        console.error('Failed to parse proxy content as JSON:', parseError);
+                    }
+                }
+                throw new Error("Proxy translation failed or content not parseable.");
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // If direct fetch succeeded, parse the JSON directly
+            const data = await response.json();
+            const translation = data[0][0][0]; // This is a common structure for this unofficial endpoint
+
+            if (translation && translation !== text) {
+                const cleanedTranslation = translation.trim().toLowerCase();
+                translationCache[cacheKey] = cleanedTranslation;
+                return cleanedTranslation;
+            }
+
+        } catch (error) {
+            console.warn('Translation attempt failed, falling back to predefined translations:', error);
+        }
+
+        // Final fallback if all else fails
+        const fallback = "deutsche übersetzung";
+        translationCache[cacheKey] = fallback;
+        return fallback;
+    }
 
         function updateSpeed() {
             const slider = document.getElementById('speedSlider');
