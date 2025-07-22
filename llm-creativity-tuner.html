@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Creativity Tuner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .output-section {
+            background: #f1f3f4;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #dee2e6;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .prompt-input {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #ced4da;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 20px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .temperature-control {
+            margin-bottom: 20px;
+        }
+
+        .temperature-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .temperature-value {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .temperature-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            margin-bottom: 10px;
+        }
+
+        .temperature-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .temperature-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .temperature-hints {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output-text {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 200px;
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+
+        .probability-viz {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .viz-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #495057;
+        }
+
+        .probability-bars {
+            display: flex;
+            align-items: end;
+            justify-content: space-around;
+            height: 150px;
+            margin-bottom: 15px;
+            padding: 0 10px;
+        }
+
+        .prob-bar {
+            flex: 1;
+            margin: 0 3px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 4px 4px 0 0;
+            min-height: 5px;
+            transition: height 0.5s ease;
+            position: relative;
+        }
+
+        .prob-word {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .prob-value {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7em;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        .explanation {
+            background: #e3f2fd;
+            border: 2px solid #bbdefb;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .typing-animation {
+            animation: typing 0.5s infinite;
+        }
+
+        @keyframes typing {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 LLM Creativity Tuner</h1>
+            <p>Explore how temperature affects language model creativity and text generation. Watch how probability distributions change as you adjust the temperature parameter!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title">📝 Input Controls</h2>
+                <textarea 
+                    class="prompt-input" 
+                    id="promptInput" 
+                    placeholder="Enter your prompt here... 
+
+Try examples like:
+• Write a short story about a brave knight
+• Explain quantum physics like a pirate
+• Describe a sunset in three words
+• Once upon a time in a magical forest...">Write a short story about a brave knight and a dragon</textarea>
+                
+                <div class="temperature-control">
+                    <div class="temperature-label">
+                        <span>🌡️ Temperature</span>
+                        <span class="temperature-value" id="tempValue">1.0</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        class="temperature-slider" 
+                        id="tempSlider"
+                        min="0" 
+                        max="2" 
+                        step="0.1" 
+                        value="1.0">
+                    <div class="temperature-hints">
+                        <span>🎯 Conservative</span>
+                        <span>🎨 Creative</span>
+                    </div>
+                </div>
+
+                <button class="generate-btn" id="generateBtn">
+                    ✨ Generate Text
+                </button>
+            </div>
+
+            <div class="output-section">
+                <h2 class="section-title">📄 Generated Output</h2>
+                <div class="output-text" id="outputText">Click "Generate Text" to see how temperature affects the creativity and coherence of generated text!</div>
+                
+                <div class="probability-viz">
+                    <div class="viz-title">🎲 Next Word Probability Distribution</div>
+                    <div class="probability-bars" id="probabilityBars">
+                        <!-- Probability bars will be inserted here -->
+                    </div>
+                    <p style="font-size: 0.85em; color: #666; text-align: center; margin-top: 10px;">
+                        This visualization shows how temperature affects word selection probabilities
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <h3 style="margin-bottom: 10px;">🧠 How It Works:</h3>
+            <p><strong>Low Temperature (0.0-0.5):</strong> More conservative, predictable outputs. The model heavily favors the most likely next words, leading to coherent but potentially repetitive text.</p>
+            <br>
+            <p><strong>Medium Temperature (0.6-1.2):</strong> Balanced creativity and coherence. Good for most applications where you want natural-sounding but somewhat varied text.</p>
+            <br>
+            <p><strong>High Temperature (1.3-2.0+):</strong> Very creative and diverse outputs. The model considers many possible next words, leading to surprising but sometimes less coherent results.</p>
+            <br>
+            <p><strong>The Math:</strong> Temperature scales the probability distribution before sampling. Lower values make high-probability words even more likely, while higher values flatten the distribution, giving low-probability words more chances to be selected.</p>
+        </div>
+    </div>
+
+    <script>
+        // Simulated text generation based on temperature and prompt
+        const textTemplates = {
+            'knight': {
+                low: [
+                    "Once upon a time, there was a brave knight named Sir Arthur. He was known throughout the kingdom for his courage and honor. The knight lived in a grand castle and served his king faithfully.",
+                    "Sir Gareth was a noble knight who dedicated his life to protecting the innocent. He wore shining armor and carried a sword passed down through generations.",
+                    "In the medieval kingdom, Sir Edmund was regarded as the bravest knight. He followed the code of chivalry and never backed down from a challenge."
+                ],
+                medium: [
+                    "Sir Caelum adjusted his weathered armor as dawn broke over the misty valley. Dragons had been spotted near the village, and whispers of ancient magic filled the air. His trusty steed snorted nervously.",
+                    "The knight's azure cloak billowed dramatically as she approached the dragon's lair. Local tales spoke of treasures beyond imagination, but Lady Thorne cared only for the captive princess within.",
+                    "Sir Brennan had dreamed of this moment since childhood - facing a real dragon. His grandfather's stories seemed like fairy tales until smoke began rising from the forbidden mountain peaks."
+                ],
+                high: [
+                    "Crystalline moonbeams danced across Sir Zephyr's iridescent battle-squid armor. The dragon spoke in mathematical equations, each word reshaping reality's fabric. Purple butterflies whispered ancient secrets while gravity reversed itself twice.",
+                    "Sir Bumblethorne's enchanted socks glowed ominously as the dragon transformed into a philosophical debate about whether Tuesday exists. Meanwhile, his horse had learned to juggle flaming marshmallows and sing opera.",
+                    "The knight discovered that dragons were actually interdimensional librarians collecting overdue books. Her sword turned into a giant pencil eraser, perfectly suitable for correcting reality's grammatical errors."
+                ]
+            },
+            'pirate': {
+                low: [
+                    "Ahoy there, matey! Let me tell ye about this here science called quantum physics. It be the study of very small particles, smaller than atoms. These tiny bits behave in strange ways.",
+                    "Arr, quantum physics be about the tiniest pieces of matter, ye see. These particles be so small that they follow different rules than the big things we can see with our eyes.",
+                    "Listen well, ye landlubber! Quantum physics studies particles so wee that they make a grain of sand look like a mountain. These particles behave in mysterious ways."
+                ],
+                medium: [
+                    "Ahoy, ye curious scallywag! Quantum physics be like having magical treasure that exists in multiple chests at once, until ye open one and find where it truly lies. These particles dance between possibilities like spirits in the mist!",
+                    "Batten down the hatches, matey! In the quantum realm, particles be as slippery as eels - they can be in two places at once, pass through solid walls, and communicate instantly across vast oceans of space!",
+                    "Shiver me timbers! Quantum physics reveals that reality itself be more mysterious than any sea monster. Particles spin like whirlpools, disappear like morning fog, and reappear where least expected!"
+                ],
+                high: [
+                    "Blimey, ye quantum-sailing barnacle! These particles be dancing the cosmic jig while simultaneously brewing tea in seventeen dimensions. Me parrot speaks fluent uncertainty principle, and me ship sails through probability storms where X marks every spot at once!",
+                    "Arrr, the quantum seas be stranger than a mermaid's singing compass! Particles teleport like ghostly pirates, leaving trails of mathematical seaweed that taste like purple numbers and smell like tomorrow's dreams, savvy?",
+                    "By Blackbeard's quantumized beard! These wee particles be more rebellious than me entire crew - they refuse to have definite positions, insist on being waves and particles simultaneously, and keep stealing me treasure maps to fold them into origami universes!"
+                ]
+            },
+            'sunset': {
+                low: [
+                    "Beautiful orange glow.",
+                    "Warm golden light.",
+                    "Peaceful evening sky."
+                ],
+                medium: [
+                    "Crimson canvas unfolds.",
+                    "Amber whispers goodbye.",
+                    "Velvet dreams descend."
+                ],
+                high: [
+                    "Melancholy syrup bleeds.",
+                    "Cosmic marmalade erupts.",
+                    "Time hiccups golden."
+                ]
+            },
+            'forest': {
+                low: [
+                    "Once upon a time in a magical forest, there lived many woodland creatures. The trees were tall and green, and sunlight filtered through the leaves. It was a peaceful place where animals lived in harmony.",
+                    "In a deep, enchanted forest, ancient oak trees stretched their branches toward the sky. Squirrels gathered nuts while birds sang sweet melodies from their nests high above.",
+                    "The magical forest was home to deer, rabbits, and many other forest animals. A gentle stream flowed through the woods, providing fresh water for all who lived there."
+                ],
+                medium: [
+                    "Once upon a time in a mystical woodland realm, where silver dewdrops caught morning light like scattered diamonds, a peculiar fox with emerald eyes discovered a singing mushroom circle that hummed lullabies to sleeping fireflies.",
+                    "Deep within the Whispering Woods, where ancient trees shared secrets through their intertwined roots, a young deer stumbled upon a clearing where time moved backward and flowers bloomed into butterflies before taking flight.",
+                    "In the heart of the Enchanted Grove, where moonbeams were harvested by industrious pixies and bottled for winter's darkest nights, an unlikely friendship bloomed between a wise old owl and a mischievous sprite."
+                ],
+                high: [
+                    "Once upon a dimension in a forest of crystallized thoughts, purple elephants tap-danced on clouds while trees grew downward into the sky-soil where gravity tasted like Wednesday afternoons and sounds had colors that argued about mathematics.",
+                    "In a forest where time forgot its own birthday, sentient acorns elected a parliament of shadows while reality practiced yoga poses that accidentally created new species of philosophical mushrooms who debated the color of invisible rainbows.",
+                    "The quantum forest existed only on Tuesdays unless observed by left-handed sparrows who could translate the ancient language of tree-bark poetry into edible symphonies that tasted like the concept of purple dancing with infinity."
+                ]
+            },
+            'default': {
+                low: [
+                    "This is a very predictable response generated with low temperature. The words chosen are the most likely ones based on the training data. The text will be coherent and grammatically correct, but may lack creativity.",
+                    "Low temperature generation tends to produce conservative outputs. The language model selects words with high probability, resulting in safe and conventional text that follows expected patterns.",
+                    "When temperature is set to a low value, the model generates text that is logical and coherent. Each word choice represents the most statistically probable continuation of the sequence."
+                ],
+                medium: [
+                    "This response demonstrates moderate temperature settings, where creativity and coherence find a harmonious balance. The text explores interesting word choices while maintaining readability and meaningful connections between ideas.",
+                    "Medium temperature allows for creative expression while preserving logical flow. The model can surprise you with unexpected yet appropriate word selections, creating engaging content that feels both natural and inspired.",
+                    "With balanced temperature, the generation process becomes an intriguing dance between predictability and novelty. Ideas emerge organically, combining familiar concepts with fresh perspectives and delightful linguistic flourishes."
+                ],
+                high: [
+                    "Extraordinary temperature amplifies linguistic kaleidoscopes! Words pirouette through probability space, creating symphonic narratives where conventional logic transforms into crystalline imagination-butterflies that whisper secrets to quantum dictionaries.",
+                    "High-temperature generation unleashes creative chaos where sentences bloom into fractal gardens of unexpected meaning. Reality bends, words metamorphose, and language itself becomes a living entity dancing across dimensions of pure expression.",
+                    "Temperature's crescendo births textual alchemy! Mundane prompts transform into surreal expeditions through linguistic wonderlands where grammar rules vacation in parallel universes and creativity flows like liquid starlight through consciousness streams."
+                ]
+            }
+        };
+
+        // Probability distributions for visualization
+        const probabilityData = {
+            low: [
+                { word: 'the', prob: 0.45 },
+                { word: 'was', prob: 0.25 },
+                { word: 'and', prob: 0.15 },
+                { word: 'in', prob: 0.08 },
+                { word: 'to', prob: 0.07 }
+            ],
+            medium: [
+                { word: 'mystical', prob: 0.22 },
+                { word: 'ancient', prob: 0.20 },
+                { word: 'shimmering', prob: 0.18 },
+                { word: 'mysterious', prob: 0.16 },
+                { word: 'enchanted', prob: 0.14 },
+                { word: 'dancing', prob: 0.10 }
+            ],
+            high: [
+                { word: 'crystalline', prob: 0.12 },
+                { word: 'whimsical', prob: 0.11 },
+                { word: 'luminescent', prob: 0.10 },
+                { word: 'ethereal', prob: 0.09 },
+                { word: 'quantum', prob: 0.08 },
+                { word: 'rainbow', prob: 0.07 },
+                { word: 'spiraling', prob: 0.06 },
+                { word: 'melodic', prob: 0.05 }
+            ]
+        };
+
+        // DOM elements
+        const tempSlider = document.getElementById('tempSlider');
+        const tempValue = document.getElementById('tempValue');
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const outputText = document.getElementById('outputText');
+        const probabilityBars = document.getElementById('probabilityBars');
+
+        // Update temperature display
+        tempSlider.addEventListener('input', function() {
+            tempValue.textContent = this.value;
+            updateProbabilityVisualization(parseFloat(this.value));
+        });
+
+        // Generate button click handler
+        generateBtn.addEventListener('click', function() {
+            generateText();
+        });
+
+        // Allow Enter key in textarea to generate
+        promptInput.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateText();
+            }
+        });
+
+        function determinePromptType(prompt) {
+            const lowerPrompt = prompt.toLowerCase();
+            if (lowerPrompt.includes('knight') || lowerPrompt.includes('dragon')) return 'knight';
+            if (lowerPrompt.includes('pirate') || lowerPrompt.includes('quantum')) return 'pirate';
+            if (lowerPrompt.includes('sunset') && lowerPrompt.includes('three words')) return 'sunset';
+            if (lowerPrompt.includes('forest') || lowerPrompt.includes('upon a time')) return 'forest';
+            return 'default';
+        }
+
+        function getTemperatureCategory(temp) {
+            if (temp <= 0.5) return 'low';
+            if (temp <= 1.2) return 'medium';
+            return 'high';
+        }
+
+        function generateText() {
+            const prompt = promptInput.value.trim();
+            const temperature = parseFloat(tempSlider.value);
+            
+            if (!prompt) {
+                alert('Please enter a prompt first!');
+                return;
+            }
+
+            // Disable button and show loading
+            generateBtn.disabled = true;
+            generateBtn.textContent = '🤔 Generating...';
+            outputText.textContent = '';
+            outputText.classList.add('typing-animation');
+
+            // Simulate generation delay
+            setTimeout(() => {
+                const promptType = determinePromptType(prompt);
+                const tempCategory = getTemperatureCategory(temperature);
+                
+                const templates = textTemplates[promptType];
+                const randomTemplate = templates[tempCategory][Math.floor(Math.random() * templates[tempCategory].length)];
+                
+                // Simulate typing effect
+                typeText(randomTemplate);
+                
+                // Update visualization
+                updateProbabilityVisualization(temperature);
+                
+                // Re-enable button
+                generateBtn.disabled = false;
+                generateBtn.textContent = '✨ Generate Text';
+                outputText.classList.remove('typing-animation');
+            }, 1000);
+        }
+
+        function typeText(text) {
+            let index = 0;
+            outputText.textContent = '';
+            
+            const interval = setInterval(() => {
+                if (index < text.length) {
+                    outputText.textContent += text[index];
+                    index++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 30);
+        }
+
+        function updateProbabilityVisualization(temperature) {
+            const tempCategory = getTemperatureCategory(temperature);
+            const data = probabilityData[tempCategory];
+            
+            probabilityBars.innerHTML = '';
+            
+            data.forEach((item, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'prob-bar';
+                bar.style.height = `${item.prob * 300}px`;
+                
+                const word = document.createElement('div');
+                word.className = 'prob-word';
+                word.textContent = item.word;
+                
+                const value = document.createElement('div');
+                value.className = 'prob-value';
+                value.textContent = `${(item.prob * 100).toFixed(0)}%`;
+                
+                bar.appendChild(word);
+                bar.appendChild(value);
+                probabilityBars.appendChild(bar);
+            });
+        }
+
+        // Initialize visualization
+        updateProbabilityVisualization(1.0);
+    </script>
+</body>
+</html>
