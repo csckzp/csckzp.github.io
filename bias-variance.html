@@ -258,10 +258,18 @@
         <div class="demo-container">
             <div class="controls">
                 <div class="control-group">
-                    <label for="complexity">Model Complexity (Decision Tree Max Depth)</label>
+                    <label for="trueComplexity">True Function Complexity (Polynomial Degree)</label>
                     <div class="slider-container">
-                        <input type="range" id="complexity" class="slider" min="1" max="15" value="3">
-                        <div class="slider-value" id="complexityValue">3</div>
+                        <input type="range" id="trueComplexity" class="slider" min="1" max="6" value="3">
+                        <div class="slider-value" id="trueComplexityValue">3</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="modelComplexity">Model Complexity (Polynomial Degree)</label>
+                    <div class="slider-container">
+                        <input type="range" id="modelComplexity" class="slider" min="1" max="6" value="2">
+                        <div class="slider-value" id="modelComplexityValue">2</div>
                     </div>
                 </div>
 
@@ -393,7 +401,8 @@
             }
 
             setupControls() {
-                const complexitySlider = document.getElementById('complexity');
+                const trueComplexitySlider = document.getElementById('trueComplexity');
+                const modelComplexitySlider = document.getElementById('modelComplexity');
                 const noiseSlider = document.getElementById('noise');
                 const toggleTrueFunction = document.getElementById('toggleTrueFunction');
                 const toggleTrainData = document.getElementById('toggleTrainData');
@@ -403,8 +412,14 @@
                 // Set initial visibility of metrics based on the default state of the checkbox
                 this.updateMetricsVisibility(toggleModelPrediction.checked);
 
-                complexitySlider.addEventListener('input', () => {
-                    document.getElementById('complexityValue').textContent = complexitySlider.value;
+                trueComplexitySlider.addEventListener('input', () => {
+                    document.getElementById('trueComplexityValue').textContent = trueComplexitySlider.value;
+                    this.generateData();
+                    this.updateVisualization();
+                });
+
+                modelComplexitySlider.addEventListener('input', () => {
+                    document.getElementById('modelComplexityValue').textContent = modelComplexitySlider.value;
                     this.updateVisualization();
                 });
 
@@ -443,7 +458,34 @@
             }
 
             trueFunction(x) {
-                return Math.sin(x) + 0.3 * Math.sin(3 * x);
+                const degree = parseInt(document.getElementById('trueComplexity').value);
+                
+                // Generate polynomial based on selected degree
+                let result = 0;
+                const xNorm = (x - 5) / 5; // Normalize x to [-1, 1] range for better polynomial behavior
+                
+                switch(degree) {
+                    case 1: // Linear
+                        result = 0.5 * xNorm;
+                        break;
+                    case 2: // Quadratic
+                        result = 0.8 * xNorm + 0.6 * xNorm * xNorm;
+                        break;
+                    case 3: // Cubic
+                        result = 0.8 * xNorm + 0.6 * xNorm * xNorm - 0.4 * xNorm * xNorm * xNorm;
+                        break;
+                    case 4: // Quartic
+                        result = 0.7 * xNorm + 0.5 * xNorm * xNorm - 0.3 * xNorm * xNorm * xNorm + 0.2 * Math.pow(xNorm, 4);
+                        break;
+                    case 5: // Quintic
+                        result = 0.6 * xNorm + 0.4 * xNorm * xNorm - 0.3 * xNorm * xNorm * xNorm + 0.2 * Math.pow(xNorm, 4) - 0.1 * Math.pow(xNorm, 5);
+                        break;
+                    case 6: // Sextic
+                        result = 0.5 * xNorm + 0.4 * xNorm * xNorm - 0.2 * xNorm * xNorm * xNorm + 0.15 * Math.pow(xNorm, 4) - 0.1 * Math.pow(xNorm, 5) + 0.05 * Math.pow(xNorm, 6);
+                        break;
+                }
+                
+                return result;
             }
 
             generateData() {
@@ -474,106 +516,150 @@
                 }
             }
 
-            simpleModel(trainData, maxDepth) {
-                // Build a proper decision tree for regression
-                const tree = this.buildDecisionTree(trainData, maxDepth, 0);
+            polynomialModel(trainData, degree) {
+                // Fit polynomial regression of specified degree
+                const coefficients = this.fitPolynomial(trainData, degree);
                 
-                return x => this.predictWithTree(tree, x);
-            }
-
-            buildDecisionTree(data, maxDepth, currentDepth) {
-                // Base cases
-                if (currentDepth >= maxDepth || data.length <= 2) {
-                    return {
-                        isLeaf: true,
-                        prediction: d3.mean(data, d => d.y) || 0
-                    };
-                }
-
-                // Find best split
-                const bestSplit = this.findBestSplit(data);
-                
-                if (!bestSplit) {
-                    return {
-                        isLeaf: true,
-                        prediction: d3.mean(data, d => d.y) || 0
-                    };
-                }
-
-                // Split data
-                const leftData = data.filter(d => d.x <= bestSplit.threshold);
-                const rightData = data.filter(d => d.x > bestSplit.threshold);
-
-                // Recursively build subtrees
-                return {
-                    isLeaf: false,
-                    threshold: bestSplit.threshold,
-                    left: this.buildDecisionTree(leftData, maxDepth, currentDepth + 1),
-                    right: this.buildDecisionTree(rightData, maxDepth, currentDepth + 1)
+                return x => {
+                    const xNorm = (x - 5) / 5; // Same normalization as true function
+                    let result = 0;
+                    for (let i = 0; i <= degree; i++) {
+                        result += coefficients[i] * Math.pow(xNorm, i);
+                    }
+                    return result;
                 };
             }
 
-            findBestSplit(data) {
-                if (data.length <= 2) return null;
+            fitPolynomial(data, degree) {
+                // Create design matrix X and target vector y
+                const n = data.length;
+                const X = [];
+                const y = [];
+                
+                for (let i = 0; i < n; i++) {
+                    const xNorm = (data[i].x - 5) / 5;
+                    const row = [];
+                    for (let j = 0; j <= degree; j++) {
+                        row.push(Math.pow(xNorm, j));
+                    }
+                    X.push(row);
+                    y.push(data[i].y);
+                }
+                
+                // Solve normal equations: (X^T X) β = X^T y
+                const XTX = this.matrixMultiply(this.transpose(X), X);
+                const XTy = this.matrixVectorMultiply(this.transpose(X), y);
+                
+                // Add regularization to prevent overfitting
+                const lambda = 0.001;
+                for (let i = 0; i < XTX.length; i++) {
+                    XTX[i][i] += lambda;
+                }
+                
+                return this.solveLinearSystem(XTX, XTy);
+            }
 
-                let bestThreshold = null;
-                let bestScore = Infinity;
-
-                // Sort data by x values
-                const sortedData = data.slice().sort((a, b) => a.x - b.x);
-
-                // Try splits between consecutive points
-                for (let i = 0; i < sortedData.length - 1; i++) {
-                    const threshold = (sortedData[i].x + sortedData[i + 1].x) / 2;
-                    
-                    const leftData = data.filter(d => d.x <= threshold);
-                    const rightData = data.filter(d => d.x > threshold);
-
-                    if (leftData.length === 0 || rightData.length === 0) continue;
-
-                    // Calculate weighted variance (impurity)
-                    const leftVariance = this.calculateVariance(leftData);
-                    const rightVariance = this.calculateVariance(rightData);
-                    
-                    const totalSize = data.length;
-                    const weightedVariance = 
-                        (leftData.length / totalSize) * leftVariance +
-                        (rightData.length / totalSize) * rightVariance;
-
-                    if (weightedVariance < bestScore) {
-                        bestScore = weightedVariance;
-                        bestThreshold = threshold;
+            transpose(matrix) {
+                const rows = matrix.length;
+                const cols = matrix[0].length;
+                const result = [];
+                for (let j = 0; j < cols; j++) {
+                    result[j] = [];
+                    for (let i = 0; i < rows; i++) {
+                        result[j][i] = matrix[i][j];
                     }
                 }
-
-                return bestThreshold ? { threshold: bestThreshold, score: bestScore } : null;
+                return result;
             }
 
-            calculateVariance(data) {
-                if (data.length === 0) return 0;
+            matrixMultiply(A, B) {
+                const rowsA = A.length;
+                const colsA = A[0].length;
+                const colsB = B[0].length;
+                const result = [];
                 
-                const mean = d3.mean(data, d => d.y);
-                const variance = d3.mean(data, d => Math.pow(d.y - mean, 2));
-                return variance;
+                for (let i = 0; i < rowsA; i++) {
+                    result[i] = [];
+                    for (let j = 0; j < colsB; j++) {
+                        let sum = 0;
+                        for (let k = 0; k < colsA; k++) {
+                            sum += A[i][k] * B[k][j];
+                        }
+                        result[i][j] = sum;
+                    }
+                }
+                return result;
             }
 
-            predictWithTree(tree, x) {
-                if (tree.isLeaf) {
-                    return tree.prediction;
+            matrixVectorMultiply(A, v) {
+                const rows = A.length;
+                const result = [];
+                for (let i = 0; i < rows; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < A[i].length; j++) {
+                        sum += A[i][j] * v[j];
+                    }
+                    result[i] = sum;
                 }
+                return result;
+            }
 
-                if (x <= tree.threshold) {
-                    return this.predictWithTree(tree.left, x);
-                } else {
-                    return this.predictWithTree(tree.right, x);
+            solveLinearSystem(A, b) {
+                // Simple Gaussian elimination with partial pivoting
+                const n = A.length;
+                const augmented = [];
+                
+                // Create augmented matrix
+                for (let i = 0; i < n; i++) {
+                    augmented[i] = A[i].slice();
+                    augmented[i].push(b[i]);
                 }
+                
+                // Forward elimination
+                for (let i = 0; i < n; i++) {
+                    // Find pivot
+                    let maxRow = i;
+                    for (let k = i + 1; k < n; k++) {
+                        if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                            maxRow = k;
+                        }
+                    }
+                    
+                    // Swap rows
+                    [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+                    
+                    // Make all rows below this one 0 in current column
+                    for (let k = i + 1; k < n; k++) {
+                        if (Math.abs(augmented[i][i]) < 1e-10) continue;
+                        const factor = augmented[k][i] / augmented[i][i];
+                        for (let j = i; j < n + 1; j++) {
+                            augmented[k][j] -= factor * augmented[i][j];
+                        }
+                    }
+                }
+                
+                // Back substitution
+                const x = new Array(n);
+                for (let i = n - 1; i >= 0; i--) {
+                    x[i] = augmented[i][n];
+                    for (let j = i + 1; j < n; j++) {
+                        x[i] -= augmented[i][j] * x[j];
+                    }
+                    if (Math.abs(augmented[i][i]) > 1e-10) {
+                        x[i] /= augmented[i][i];
+                    } else {
+                        x[i] = 0; // Handle singular case
+                    }
+                }
+                
+                return x;
             }
 
             updateVisualization() {
-                const maxDepth = parseInt(document.getElementById('complexity').value);
+                const modelDegree = parseInt(document.getElementById('modelComplexity').value);
                 
                 // Train model
-                const model = this.simpleModel(this.trainData, maxDepth);
+                const model = this.polynomialModel(this.trainData, modelDegree);
                 
                 // Generate predictions with more points for smoother curves
                 const predictions = [];
@@ -591,39 +677,40 @@
                 document.getElementById('trainError').textContent = trainError.toFixed(3);
                 document.getElementById('testError').textContent = testError.toFixed(3);
 
-                // Update status (this logic can remain as is)
-                this.updateStatus(maxDepth, trainError, testError);
+                // Update status
+                this.updateStatus(modelDegree, trainError, testError);
 
                 // Update chart
                 this.renderChart(predictions);
             }
 
-            updateStatus(maxDepth, trainError, testError) {
+            updateStatus(modelDegree, trainError, testError) {
                 const statusIndicator = document.getElementById('statusIndicator');
                 const explanation = document.getElementById('explanation');
+                const trueDegree = parseInt(document.getElementById('trueComplexity').value);
                 
                 const errorDiff = testError - trainError;
                 
-                if (maxDepth <= 2) {
+                if (modelDegree < trueDegree - 1) {
                     statusIndicator.className = 'status-indicator high-bias';
                     statusIndicator.innerHTML = '<div>High Bias</div><div style="font-size: 0.8em; margin-top: 5px;">Underfitting</div>';
                     explanation.innerHTML = `
                         <h3>High Bias (Underfitting)</h3>
-                        <p>Your decision tree is too shallow (depth ${maxDepth}). It can only make ${Math.pow(2, maxDepth)} leaf predictions at most, so it cannot capture the underlying pattern in the data. The model has high bias because it makes overly simple assumptions.</p>
+                        <p>Your polynomial model (degree ${modelDegree}) is too simple to capture the true function (degree ${trueDegree}). The model has high bias because it makes overly simple assumptions and cannot represent the underlying complexity.</p>
                     `;
-                } else if (maxDepth >= 10 || errorDiff > 0.4) {
+                } else if (modelDegree > trueDegree + 1 || errorDiff > 0.3) {
                     statusIndicator.className = 'status-indicator high-variance';
                     statusIndicator.innerHTML = '<div>High Variance</div><div style="font-size: 0.8em; margin-top: 5px;">Overfitting</div>';
                     explanation.innerHTML = `
                         <h3>High Variance (Overfitting)</h3>
-                        <p>Your decision tree is too deep (depth ${maxDepth}). It creates very specific rules that fit the training noise too closely. Notice how test error (${testError.toFixed(3)}) is much higher than training error (${trainError.toFixed(3)}).</p>
+                        <p>Your polynomial model (degree ${modelDegree}) is too complex for the true function (degree ${trueDegree}). It fits the training noise too closely. Notice how test error (${testError.toFixed(3)}) is much higher than training error (${trainError.toFixed(3)}).</p>
                     `;
                 } else {
                     statusIndicator.className = 'status-indicator sweet-spot';
                     statusIndicator.innerHTML = '<div>Sweet Spot</div><div style="font-size: 0.8em; margin-top: 5px;">Balanced</div>';
                     explanation.innerHTML = `
                         <h3>Sweet Spot</h3>
-                        <p>Your decision tree (depth ${maxDepth}) has found a good balance! It captures the main pattern without overfitting to noise. Training error: ${trainError.toFixed(3)}, Test error: ${testError.toFixed(3)}. This is why ensemble methods work - they combine multiple trees to stay in this sweet spot!</p>
+                        <p>Your polynomial model (degree ${modelDegree}) has found a good balance with the true function (degree ${trueDegree})! It captures the main pattern without overfitting to noise. Training error: ${trainError.toFixed(3)}, Test error: ${testError.toFixed(3)}. This demonstrates the bias-variance tradeoff!</p>
                     `;
                 }
             }
