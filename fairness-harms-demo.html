@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithmic Fairness: Understanding Allocative and Representational Harm</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .harm-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .harm-title {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .harm-icon {
+            font-size: 2.5rem;
+        }
+
+        .allocative {
+            border-left: 6px solid #e74c3c;
+        }
+
+        .representational {
+            border-left: 6px solid #9b59b6;
+        }
+
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .demo-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+        }
+
+        .demo-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .controls {
+            margin-bottom: 25px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-value {
+            min-width: 60px;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .results {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+        }
+
+        .good {
+            background: #27ae60;
+        }
+
+        .warning {
+            background: #f39c12;
+        }
+
+        .danger {
+            background: #e74c3c;
+        }
+
+        .examples {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .examples h4 {
+            color: #2980b9;
+            margin-bottom: 15px;
+        }
+
+        .examples ul {
+            padding-left: 20px;
+        }
+
+        .examples li {
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .scenario-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .scenario-button {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .scenario-button:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        .scenario-button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .definition {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .definition h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .definition p {
+            color: #856404;
+            margin: 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        @media (max-width: 768px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .scenario-selector {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚖️ Algorithmic Fairness Demo</h1>
+            <p>Understanding Allocative and Representational Harm in Machine Learning Systems</p>
+        </div>
+
+        <!-- Allocative Harm Section -->
+        <div class="harm-section allocative">
+            <div class="harm-title">
+                <span class="harm-icon">💰</span>
+                <span>Allocative Harm</span>
+            </div>
+            
+            <div class="definition">
+                <h3>Definition</h3>
+                <p>Allocative harm occurs when a discriminatory system withholds certain opportunities, freedoms, or resources from specific groups. The effect is usually immediate and tangible.</p>
+            </div>
+
+            <div class="demo-container">
+                <div class="demo-panel">
+                    <div class="demo-title">🏦 Loan Approval System</div>
+                    
+                    <div class="scenario-selector">
+                        <button class="scenario-button active" onclick="setLoanScenario('fair')">Fair System</button>
+                        <button class="scenario-button" onclick="setLoanScenario('biased')">Biased System</button>
+                    </div>
+
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="loanApplicants">Number of Applicants per Group:</label>
+                            <div class="slider-container">
+                                <input type="range" id="loanApplicants" class="slider" min="50" max="500" value="200" step="25">
+                                <span class="slider-value" id="loanApplicantsValue">200</span>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="loanBias">Bias Level (when biased system selected):</label>
+                            <div class="slider-container">
+                                <input type="range" id="loanBias" class="slider" min="0" max="0.4" value="0.2" step="0.05">
+                                <span class="slider-value" id="loanBiasValue">0.20</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="loanChart"></canvas>
+                    </div>
+
+                    <div class="results" id="loanResults">
+                        <!-- Results will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="demo-panel">
+                    <div class="demo-title">💼 Hiring Recommendation System</div>
+                    
+                    <div class="scenario-selector">
+                        <button class="scenario-button active" onclick="setHiringScenario('fair')">Fair System</button>
+                        <button class="scenario-button" onclick="setHiringScenario('biased')">Biased System</button>
+                    </div>
+
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="hiringCandidates">Number of Candidates per Group:</label>
+                            <div class="slider-container">
+                                <input type="range" id="hiringCandidates" class="slider" min="50" max="500" value="150" step="25">
+                                <span class="slider-value" id="hiringCandidatesValue">150</span>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="hiringBias">Gender Bias Level:</label>
+                            <div class="slider-container">
+                                <input type="range" id="hiringBias" class="slider" min="0" max="0.5" value="0.15" step="0.05">
+                                <span class="slider-value" id="hiringBiasValue">0.15</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="hiringChart"></canvas>
+                    </div>
+
+                    <div class="results" id="hiringResults">
+                        <!-- Results will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="examples">
+                <h4>Real-World Examples of Allocative Harm:</h4>
+                <ul>
+                    <li><strong>COMPAS System:</strong> Criminal risk assessment tool showed higher false positive rates for Black defendants than white defendants</li>
+                    <li><strong>Credit Scoring:</strong> AI systems that approve loans at higher rates or better terms for certain racial groups</li>
+                    <li><strong>Healthcare Resource Allocation:</strong> Algorithms that allocate fewer resources to underrepresented communities</li>
+                    <li><strong>Job Matching:</strong> Resume screening tools that systematically favor certain demographic groups</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Representational Harm Section -->
+        <div class="harm-section representational">
+            <div class="harm-title">
+                <span class="harm-icon">🎭</span>
+                <span>Representational Harm</span>
+            </div>
+            
+            <div class="definition">
+                <h3>Definition</h3>
+                <p>Representational harm occurs when a system reinforces negative stereotypes along the lines of identity and protected class. Unlike allocative harm, the effects may not be realized until years or decades later.</p>
+            </div>
+
+            <div class="demo-container">
+                <div class="demo-panel">
+                    <div class="demo-title">👔 CEO Prediction System</div>
+                    
+                    <div class="scenario-selector">
+                        <button class="scenario-button active" onclick="setCeoScenario('current')">Current Reality</button>
+                        <button class="scenario-button" onclick="setCeoScenario('biased')">Amplified Bias</button>
+                    </div>
+
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="ceoDataPoints">Training Data Size:</label>
+                            <div class="slider-container">
+                                <input type="range" id="ceoDataPoints" class="slider" min="100" max="1000" value="500" step="50">
+                                <span class="slider-value" id="ceoDataPointsValue">500</span>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="ceoStereotype">Stereotype Amplification:</label>
+                            <div class="slider-container">
+                                <input type="range" id="ceoStereotype" class="slider" min="1" max="3" value="1.5" step="0.1">
+                                <span class="slider-value" id="ceoStereotypeValue">1.5x</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="ceoChart"></canvas>
+                    </div>
+
+                    <div class="results" id="ceoResults">
+                        <!-- Results will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="demo-panel">
+                    <div class="demo-title">🔍 Image Recognition Bias</div>
+                    
+                    <div class="scenario-selector">
+                        <button class="scenario-button active" onclick="setImageScenario('balanced')">Balanced Training</button>
+                        <button class="scenario-button" onclick="setImageScenario('skewed')">Skewed Training</button>
+                    </div>
+
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="imageAccuracy">Base Accuracy:</label>
+                            <div class="slider-container">
+                                <input type="range" id="imageAccuracy" class="slider" min="0.7" max="0.98" value="0.85" step="0.01">
+                                <span class="slider-value" id="imageAccuracyValue">85%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="imageBias">Skin Tone Bias:</label>
+                            <div class="slider-container">
+                                <input type="range" id="imageBias" class="slider" min="0" max="0.3" value="0.15" step="0.01">
+                                <span class="slider-value" id="imageBiasValue">15%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="imageChart"></canvas>
+                    </div>
+
+                    <div class="results" id="imageResults">
+                        <!-- Results will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="examples">
+                <h4>Real-World Examples of Representational Harm:</h4>
+                <ul>
+                    <li><strong>Google Photos:</strong> Labeled Black people as "gorillas" due to biased training data</li>
+                    <li><strong>Facial Recognition:</strong> Commercial systems showing significantly higher error rates for darker-skinned women</li>
+                    <li><strong>Word Embeddings:</strong> AI models that associate certain professions with specific genders (e.g., "nurse" with women, "engineer" with men)</li>
+                    <li><strong>Recommendation Systems:</strong> Showing stereotypical content that reinforces harmful cultural biases</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="harm-section">
+            <div class="harm-title">
+                <span class="harm-icon">📊</span>
+                <span>Comparison: Allocative vs Representational Harm</span>
+            </div>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Allocative Harm</th>
+                        <th>Representational Harm</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Timeline</strong></td>
+                        <td>Immediate, tangible effects</td>
+                        <td>Long-term, may take years/decades to manifest</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Nature</strong></td>
+                        <td>Withholds resources, opportunities, or freedoms</td>
+                        <td>Reinforces stereotypes and cultural biases</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Measurement</strong></td>
+                        <td>Easier to quantify (approval rates, error rates)</td>
+                        <td>Harder to measure, often qualitative</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Examples</strong></td>
+                        <td>Loan denials, hiring decisions, criminal sentencing</td>
+                        <td>Image labeling, search results, recommendation content</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mitigation</strong></td>
+                        <td>Fairness metrics, equalized odds, demographic parity</td>
+                        <td>Diverse training data, bias testing, inclusive design</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for charts
+        let loanChart, hiringChart, ceoChart, imageChart;
+        let loanScenario = 'fair';
+        let hiringScenario = 'fair';
+        let ceoScenario = 'current';
+        let imageScenario = 'balanced';
+
+        // Initialize all demos when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeLoanDemo();
+            initializeHiringDemo();
+            initializeCeoDemo();
+            initializeImageDemo();
+            
+            // Add event listeners for sliders
+            document.getElementById('loanApplicants').addEventListener('input', updateLoanDemo);
+            document.getElementById('loanBias').addEventListener('input', updateLoanDemo);
+            document.getElementById('hiringCandidates').addEventListener('input', updateHiringDemo);
+            document.getElementById('hiringBias').addEventListener('input', updateHiringDemo);
+            document.getElementById('ceoDataPoints').addEventListener('input', updateCeoDemo);
+            document.getElementById('ceoStereotype').addEventListener('input', updateCeoDemo);
+            document.getElementById('imageAccuracy').addEventListener('input', updateImageDemo);
+            document.getElementById('imageBias').addEventListener('input', updateImageDemo);
+        });
+
+        function updateSliderValue(sliderId, displayId, suffix = '') {
+            const slider = document.getElementById(sliderId);
+            const display = document.getElementById(displayId);
+            display.textContent = slider.value + suffix;
+        }
+
+        // Loan Demo Functions
+        function initializeLoanDemo() {
+            updateSliderValue('loanApplicants', 'loanApplicantsValue');
+            updateSliderValue('loanBias', 'loanBiasValue');
+            updateLoanDemo();
+        }
+
+        function setLoanScenario(scenario) {
+            loanScenario = scenario;
+            document.querySelectorAll('.harm-section.allocative .scenario-selector .scenario-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateLoanDemo();
+        }
+
+        function updateLoanDemo() {
+            updateSliderValue('loanApplicants', 'loanApplicantsValue');
+            updateSliderValue('loanBias', 'loanBiasValue');
+            
+            const applicants = parseInt(document.getElementById('loanApplicants').value);
+            const bias = parseFloat(document.getElementById('loanBias').value);
+            
+            // Simulate loan approvals
+            const baseApprovalRate = 0.65;
+            let groupAApprovals, groupBApprovals;
+            
+            if (loanScenario === 'fair') {
+                groupAApprovals = Math.round(applicants * baseApprovalRate);
+                groupBApprovals = Math.round(applicants * baseApprovalRate);
+            } else {
+                groupAApprovals = Math.round(applicants * baseApprovalRate);
+                groupBApprovals = Math.round(applicants * (baseApprovalRate - bias));
+            }
+            
+            // Update chart
+            if (loanChart) {
+                loanChart.destroy();
+            }
+            
+            const ctx = document.getElementById('loanChart').getContext('2d');
+            loanChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Majority Group', 'Minority Group'],
+                    datasets: [{
+                        label: 'Approved',
+                        data: [groupAApprovals, groupBApprovals],
+                        backgroundColor: ['#27ae60', '#e74c3c']
+                    }, {
+                        label: 'Denied',
+                        data: [applicants - groupAApprovals, applicants - groupBApprovals],
+                        backgroundColor: ['#bdc3c7', '#bdc3c7']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+            
+            // Update results
+            const approvalRateA = (groupAApprovals / applicants * 100).toFixed(1);
+            const approvalRateB = (groupBApprovals / applicants * 100).toFixed(1);
+            const disparity = Math.abs(approvalRateA - approvalRateB).toFixed(1);
+            
+            const resultsHtml = `
+                <div class="metric">
+                    <span class="metric-label">Majority Group Approval Rate:</span>
+                    <span class="metric-value ${approvalRateA > 60 ? 'good' : 'warning'}">${approvalRateA}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Minority Group Approval Rate:</span>
+                    <span class="metric-value ${approvalRateB > 60 ? 'good' : 'danger'}">${approvalRateB}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Rate Disparity:</span>
+                    <span class="metric-value ${disparity < 5 ? 'good' : disparity < 15 ? 'warning' : 'danger'}">${disparity}%</span>
+                </div>
+            `;
+            
+            document.getElementById('loanResults').innerHTML = resultsHtml;
+        }
+
+        // Hiring Demo Functions
+        function initializeHiringDemo() {
+            updateSliderValue('hiringCandidates', 'hiringCandidatesValue');
+            updateSliderValue('hiringBias', 'hiringBiasValue');
+            updateHiringDemo();
+        }
+
+        function setHiringScenario(scenario) {
+            hiringScenario = scenario;
+            document.querySelectorAll('.harm-section.allocative .demo-panel:nth-child(2) .scenario-selector .scenario-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateHiringDemo();
+        }
+
+        function updateHiringDemo() {
+            updateSliderValue('hiringCandidates', 'hiringCandidatesValue');
+            updateSliderValue('hiringBias', 'hiringBiasValue');
+            
+            const candidates = parseInt(document.getElementById('hiringCandidates').value);
+            const bias = parseFloat(document.getElementById('hiringBias').value);
+            
+            // Simulate hiring recommendations
+            const baseHiringRate = 0.25;
+            let maleHires, femaleHires;
+            
+            if (hiringScenario === 'fair') {
+                maleHires = Math.round(candidates * baseHiringRate);
+                femaleHires = Math.round(candidates * baseHiringRate);
+            } else {
+                maleHires = Math.round(candidates * (baseHiringRate + bias));
+                femaleHires = Math.round(candidates * baseHiringRate);
+            }
+            
+            // Update chart
+            if (hiringChart) {
+                hiringChart.destroy();
+            }
+            
+            const ctx = document.getElementById('hiringChart').getContext('2d');
+            hiringChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Male Recommended', 'Female Recommended', 'Not Recommended'],
+                    datasets: [{
+                        data: [maleHires, femaleHires, (candidates * 2) - maleHires - femaleHires],
+                        backgroundColor: ['#3498db', '#e91e63', '#95a5a6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Update results
+            const maleRate = (maleHires / candidates * 100).toFixed(1);
+            const femaleRate = (femaleHires / candidates * 100).toFixed(1);
+            const disparity = Math.abs(maleRate - femaleRate).toFixed(1);
+            
+            const resultsHtml = `
+                <div class="metric">
+                    <span class="metric-label">Male Recommendation Rate:</span>
+                    <span class="metric-value ${maleRate < 35 ? 'good' : 'warning'}">${maleRate}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Female Recommendation Rate:</span>
+                    <span class="metric-value ${femaleRate > 20 ? 'good' : 'danger'}">${femaleRate}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Gender Disparity:</span>
+                    <span class="metric-value ${disparity < 5 ? 'good' : disparity < 15 ? 'warning' : 'danger'}">${disparity}%</span>
+                </div>
+            `;
+            
+            document.getElementById('hiringResults').innerHTML = resultsHtml;
+        }
+
+        // CEO Demo Functions
+        function initializeCeoDemo() {
+            updateSliderValue('ceoDataPoints', 'ceoDataPointsValue');
+            updateSliderValue('ceoStereotype', 'ceoStereotypeValue', 'x');
+            updateCeoDemo();
+        }
+
+        function setCeoScenario(scenario) {
+            ceoScenario = scenario;
+            document.querySelectorAll('.harm-section.representational .scenario-selector .scenario-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateCeoDemo();
+        }
+
+        function updateCeoDemo() {
+            updateSliderValue('ceoDataPoints', 'ceoDataPointsValue');
+            updateSliderValue('ceoStereotype', 'ceoStereotypeValue', 'x');
+            
+            const dataPoints = parseInt(document.getElementById('ceoDataPoints').value);
+            const amplification = parseFloat(document.getElementById('ceoStereotype').value);
+            
+            // Real-world CEO statistics (approximately)
+            const realMaleRatio = 0.95; // 95% of Fortune 500 CEOs are male
+            const realFemaleRatio = 0.05;
+            
+            let predictedMale, predictedFemale;
+            
+            if (ceoScenario === 'current') {
+                predictedMale = realMaleRatio;
+                predictedFemale = realFemaleRatio;
+            } else {
+                // Amplified bias scenario
+                predictedMale = Math.min(0.98, realMaleRatio * amplification);
+                predictedFemale = 1 - predictedMale;
+            }
+            
+            // Update chart
+            if (ceoChart) {
+                ceoChart.destroy();
+            }
+            
+            const ctx = document.getElementById('ceoChart').getContext('2d');
+            ceoChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Male', 'Female'],
+                    datasets: [{
+                        label: 'Predicted CEO Likelihood',
+                        data: [predictedMale * 100, predictedFemale * 100],
+                        backgroundColor: ['#3498db', '#e91e63']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            // Update results
+            const resultsHtml = `
+                <div class="metric">
+                    <span class="metric-label">Male CEO Prediction:</span>
+                    <span class="metric-value ${predictedMale < 0.7 ? 'good' : predictedMale < 0.9 ? 'warning' : 'danger'}">${(predictedMale * 100).toFixed(1)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Female CEO Prediction:</span>
+                    <span class="metric-value ${predictedFemale > 0.3 ? 'good' : predictedFemale > 0.1 ? 'warning' : 'danger'}">${(predictedFemale * 100).toFixed(1)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Stereotype Reinforcement:</span>
+                    <span class="metric-value ${amplification < 1.2 ? 'good' : amplification < 2 ? 'warning' : 'danger'}">${amplification.toFixed(1)}x</span>
+                </div>
+            `;
+            
+            document.getElementById('ceoResults').innerHTML = resultsHtml;
+        }
+
+        // Image Recognition Demo Functions
+        function initializeImageDemo() {
+            updateSliderValue('imageAccuracy', 'imageAccuracyValue', '%');
+            updateSliderValue('imageBias', 'imageBiasValue', '%');
+            updateImageDemo();
+        }
+
+        function setImageScenario(scenario) {
+            imageScenario = scenario;
+            document.querySelectorAll('.harm-section.representational .demo-panel:nth-child(2) .scenario-selector .scenario-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateImageDemo();
+        }
+
+        function updateImageDemo() {
+            const accuracy = parseFloat(document.getElementById('imageAccuracy').value);
+            const bias = parseFloat(document.getElementById('imageBias').value);
+            
+            document.getElementById('imageAccuracyValue').textContent = Math.round(accuracy * 100) + '%';
+            document.getElementById('imageBiasValue').textContent = Math.round(bias * 100) + '%';
+            
+            let lightSkinAccuracy, darkSkinAccuracy;
+            
+            if (imageScenario === 'balanced') {
+                lightSkinAccuracy = accuracy;
+                darkSkinAccuracy = Math.max(0.5, accuracy - bias * 0.5);
+            } else {
+                lightSkinAccuracy = accuracy;
+                darkSkinAccuracy = Math.max(0.4, accuracy - bias);
+            }
+            
+            // Update chart
+            if (imageChart) {
+                imageChart.destroy();
+            }
+            
+            const ctx = document.getElementById('imageChart').getContext('2d');
+            imageChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Light Skin Tone', 'Dark Skin Tone'],
+                    datasets: [{
+                        label: 'Accuracy Rate',
+                        data: [lightSkinAccuracy * 100, darkSkinAccuracy * 100],
+                        backgroundColor: ['#f39c12', '#8b4513']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            // Update results
+            const accuracyGap = Math.abs(lightSkinAccuracy - darkSkinAccuracy) * 100;
+            
+            const resultsHtml = `
+                <div class="metric">
+                    <span class="metric-label">Light Skin Accuracy:</span>
+                    <span class="metric-value ${lightSkinAccuracy > 0.8 ? 'good' : 'warning'}">${(lightSkinAccuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Dark Skin Accuracy:</span>
+                    <span class="metric-value ${darkSkinAccuracy > 0.8 ? 'good' : darkSkinAccuracy > 0.7 ? 'warning' : 'danger'}">${(darkSkinAccuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Accuracy Gap:</span>
+                    <span class="metric-value ${accuracyGap < 5 ? 'good' : accuracyGap < 15 ? 'warning' : 'danger'}">${accuracyGap.toFixed(1)}%</span>
+                </div>
+            `;
+            
+            document.getElementById('imageResults').innerHTML = resultsHtml;
+        }
+    </script>
+</body>
+</html>
