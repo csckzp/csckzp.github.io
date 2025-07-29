@@ -370,6 +370,7 @@
                 this.monthLabels = ['0'];
                 this.featureDriftData = [0];
                 this.retrainEvents = [];
+                this.retrainMonths = []; // Track which months had retraining
                 
                 this.initializeCharts();
                 this.bindEventListeners();
@@ -391,18 +392,23 @@
                                 backgroundColor: 'rgba(52, 152, 219, 0.1)',
                                 borderWidth: 3,
                                 fill: true,
-                                tension: 0.4
+                                tension: 0.4,
+                                pointRadius: 3,
+                                pointHoverRadius: 6
                             },
                             {
                                 label: 'Retrain Events',
-                                data: this.retrainEvents,
+                                data: [], // Will be populated with retrain event points
                                 borderColor: '#27ae60',
                                 backgroundColor: '#27ae60',
                                 borderWidth: 0,
-                                pointRadius: 8,
-                                pointHoverRadius: 10,
+                                pointRadius: 10,
+                                pointHoverRadius: 12,
                                 showLine: false,
-                                type: 'scatter'
+                                fill: false,
+                                pointStyle: 'triangle',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2
                             }
                         ]
                     },
@@ -538,6 +544,7 @@
                 this.monthLabels = ['0'];
                 this.featureDriftData = [0];
                 this.retrainEvents = [];
+                this.retrainMonths = [];
                 
                 document.getElementById('startBtn').disabled = false;
                 document.getElementById('pauseBtn').disabled = true;
@@ -599,11 +606,14 @@
                 this.lastRetrainMonth = this.currentMonth;
                 this.retrainCount++;
                 
-                // Add retrain event to chart
-                this.retrainEvents.push({
-                    x: this.currentMonth,
-                    y: this.currentAccuracy
-                });
+                // Update the performance data at current month with retrained accuracy
+                if (this.performanceData.length > 0) {
+                    this.performanceData[this.performanceData.length - 1] = this.currentAccuracy;
+                }
+                
+                // Add retrain event marker and track the month
+                this.retrainEvents.push(this.currentAccuracy);
+                this.retrainMonths.push(this.currentMonth);
                 
                 this.addLogEntry(`Model retrained using ${retrainDataMonths} months of recent data. New accuracy: ${(this.currentAccuracy * 100).toFixed(1)}%`, 'retrain');
                 
@@ -615,13 +625,34 @@
                 // Update performance chart
                 this.performanceChart.data.labels = this.monthLabels;
                 this.performanceChart.data.datasets[0].data = this.performanceData;
-                this.performanceChart.data.datasets[1].data = this.retrainEvents;
+                
+                // Create retrain events data aligned with current months
+                // Only show retrain markers where they actually occurred
+                const retrainMarkers = new Array(this.monthLabels.length).fill(null);
+                let retrainIndex = 0;
+                
+                for (let i = 0; i < this.monthLabels.length; i++) {
+                    const month = parseInt(this.monthLabels[i]);
+                    // Check if this month has a retrain event
+                    if (retrainIndex < this.retrainEvents.length && 
+                        this.getRetrainMonth(retrainIndex) === month) {
+                        retrainMarkers[i] = this.retrainEvents[retrainIndex];
+                        retrainIndex++;
+                    }
+                }
+                
+                this.performanceChart.data.datasets[1].data = retrainMarkers;
                 this.performanceChart.update('none');
                 
                 // Update drift chart
                 this.driftChart.data.labels = this.monthLabels;
                 this.driftChart.data.datasets[0].data = this.featureDriftData;
                 this.driftChart.update('none');
+            }
+            
+            getRetrainMonth(retrainIndex) {
+                // Helper function to get the month when a specific retrain event occurred
+                return this.retrainMonths[retrainIndex] || -1;
             }
 
             updateUI() {

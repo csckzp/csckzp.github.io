@@ -509,7 +509,8 @@
             
             // Generate realistic but biased data reflecting real-world disparities
             for (let i = 0; i < sampleSize; i++) {
-                const group = i < sampleSize * 0.7 ? 'A' : 'B'; // 70% group A, 30% group B
+                // Randomly assign groups with 70% Group A, 30% Group B for more mixed distribution
+                const group = Math.random() < 0.7 ? 'A' : 'B';
                 const age = Math.floor(Math.random() * 40) + 18;
                 const priorOffenses = Math.floor(Math.random() * 5);
                 
@@ -549,9 +550,16 @@
             const tbody = document.getElementById('data-tbody');
             tbody.innerHTML = '';
             
-            // Show first 10 entries
-            for (let i = 0; i < Math.min(10, dataset.length); i++) {
-                const row = dataset[i];
+            // Show a representative sample with both groups
+            const groupAData = dataset.filter(d => d.group === 'A').slice(0, 6);
+            const groupBData = dataset.filter(d => d.group === 'B').slice(0, 4);
+            const sampleData = [...groupAData, ...groupBData];
+            
+            // Sort by ID to maintain order
+            sampleData.sort((a, b) => a.id - b.id);
+            
+            for (let i = 0; i < sampleData.length; i++) {
+                const row = sampleData[i];
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${row.id}</td>
