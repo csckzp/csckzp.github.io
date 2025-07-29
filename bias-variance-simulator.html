@@ -342,6 +342,10 @@
             const n = X.length;
             const m = X[0].length;
             
+            // Add regularization for high-degree polynomials to prevent numerical issues
+            // but still allow overfitting to be observable
+            const lambda = degree > 4 ? 0.001 : 0.0001;
+            
             // Create X'X matrix
             let XTX = Array(m).fill().map(() => Array(m).fill(0));
             let XTy = Array(m).fill(0);
@@ -355,17 +359,22 @@
                 }
             }
             
-            // Solve using Gaussian elimination (simplified)
+            // Add regularization to diagonal (ridge regression)
+            for(let i = 0; i < m; i++) {
+                XTX[i][i] += lambda;
+            }
+            
+            // Solve using Gaussian elimination (improved)
             let coeffs = solveLinearSystem(XTX, XTy);
-            return coeffs;
+            return coeffs || Array(m).fill(0); // Fallback if system fails
         }
         
-        // Simple linear system solver
+        // Simple linear system solver (improved)
         function solveLinearSystem(A, b) {
             const n = A.length;
             let augmented = A.map((row, i) => [...row, b[i]]);
             
-            // Forward elimination
+            // Forward elimination with partial pivoting
             for(let i = 0; i < n; i++) {
                 // Find pivot
                 let maxRow = i;
@@ -374,11 +383,18 @@
                         maxRow = k;
                     }
                 }
+                
+                // Check for singular matrix
+                if(Math.abs(augmented[maxRow][i]) < 1e-12) {
+                    console.warn('Matrix is singular or near-singular');
+                    return null;
+                }
+                
                 [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
                 
                 // Make all rows below this one 0 in current column
                 for(let k = i + 1; k < n; k++) {
-                    const factor = augmented[k][i] / (augmented[i][i] + 1e-10);
+                    const factor = augmented[k][i] / augmented[i][i];
                     for(let j = i; j <= n; j++) {
                         augmented[k][j] -= factor * augmented[i][j];
                     }
@@ -392,7 +408,7 @@
                 for(let j = i + 1; j < n; j++) {
                     x[i] -= augmented[i][j] * x[j];
                 }
-                x[i] /= (augmented[i][i] + 1e-10);
+                x[i] /= augmented[i][i];
             }
             
             return x;
@@ -410,13 +426,22 @@
             });
         }
         
-        // Generate random sample
-        function generateSample(xRange, trueFunction, noiseLevel, size) {
+        // Generate random sample with option for test set
+        function generateSample(xRange, trueFunction, noiseLevel, size, isTestSet = false) {
             let x = [];
-            for(let i = 0; i < size; i++) {
-                x.push(xRange[0] + Math.random() * (xRange[1] - xRange[0]));
+            
+            if (isTestSet) {
+                // For test set, use a more systematic sampling to better evaluate overfitting
+                for(let i = 0; i < size; i++) {
+                    x.push(xRange[0] + (i / (size - 1)) * (xRange[1] - xRange[0]));
+                }
+            } else {
+                // For training set, use random sampling
+                for(let i = 0; i < size; i++) {
+                    x.push(xRange[0] + Math.random() * (xRange[1] - xRange[0]));
+                }
+                x.sort((a, b) => a - b);
             }
-            x.sort((a, b) => a - b);
             
             let yTrue = generateTrueFunction(x, trueFunction);
             let y = yTrue.map(val => val + (Math.random() - 0.5) * 2 * noiseLevel);
@@ -473,7 +498,7 @@
                 'linear': 1,
                 'quadratic': 2,
                 'cubic': 3,
-                'high': 8
+                'high': 12  // Increased to make overfitting more obvious
             };
             const degree = complexityMap[modelType];
             
@@ -493,15 +518,24 @@
             for(let i = 0; i < numSamples; i++) {
                 const sample = generateSample([-1, 1], dataset, noiseLevel, trainSize);
                 const coeffs = fitPolynomial(sample.x, sample.y, degree);
-                const predictions = predict(xTest, coeffs);
-                allPredictions.push(predictions);
                 
-                // Calculate errors
-                const trainPred = predict(sample.x, coeffs);
-                const trainError = sample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.y.length;
-                const testError = yTrueTest.reduce((sum, val, idx) => sum + Math.pow(val - predictions[idx], 2), 0) / yTrueTest.length;
-                trainErrors.push(trainError);
-                testErrors.push(testError);
+                if (coeffs) {
+                    const predictions = predict(xTest, coeffs);
+                    allPredictions.push(predictions);
+                    
+                    // Calculate errors
+                    const trainPred = predict(sample.x, coeffs);
+                    const trainError = sample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.y.length;
+                    const testError = yTrueTest.reduce((sum, val, idx) => sum + Math.pow(val - predictions[idx], 2), 0) / yTrueTest.length;
+                    trainErrors.push(trainError);
+                    testErrors.push(testError);
+                }
+            }
+            
+            // Ensure we have enough valid predictions
+            if (allPredictions.length === 0) {
+                console.error('No valid models could be fitted');
+                return;
             }
             
             // Calculate bias and variance
@@ -563,26 +597,37 @@
             let trainCurve = [];
             let testCurve = [];
             
+            // Generate a fixed test set for consistent evaluation
+            const testSet = generateSample([-1, 1], dataset, noiseLevel, 100, true);
+            
             for(let size of sampleSizes) {
                 let trainErrs = [];
                 let testErrs = [];
                 
                 for(let i = 0; i < 10; i++) {
-                    const sample = generateSample([-1, 1], dataset, noiseLevel, size);
-                    const coeffs = fitPolynomial(sample.x, sample.y, degree);
+                    const trainSample = generateSample([-1, 1], dataset, noiseLevel, size, false);
+                    const coeffs = fitPolynomial(trainSample.x, trainSample.y, degree);
                     
-                    const trainPred = predict(sample.x, coeffs);
-                    const testPred = predict(xTest, coeffs);
-                    
-                    const trainErr = sample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.y.length;
-                    const testErr = yTrueTest.reduce((sum, val, idx) => sum + Math.pow(val - testPred[idx], 2), 0) / yTrueTest.length;
-                    
-                    trainErrs.push(trainErr);
-                    testErrs.push(testErr);
+                    if (coeffs) {
+                        const trainPred = predict(trainSample.x, coeffs);
+                        const testPred = predict(testSet.x, coeffs);
+                        
+                        // Use true values for test error (without noise from this specific test sample)
+                        const trainErr = trainSample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / trainSample.y.length;
+                        const testErr = testSet.yTrue.reduce((sum, val, idx) => sum + Math.pow(val - testPred[idx], 2), 0) / testSet.yTrue.length;
+                        
+                        trainErrs.push(trainErr);
+                        testErrs.push(testErr);
+                    }
                 }
                 
-                trainCurve.push(trainErrs.reduce((a, b) => a + b) / trainErrs.length);
-                testCurve.push(testErrs.reduce((a, b) => a + b) / testErrs.length);
+                if (trainErrs.length > 0) {
+                    trainCurve.push(trainErrs.reduce((a, b) => a + b) / trainErrs.length);
+                    testCurve.push(testErrs.reduce((a, b) => a + b) / testErrs.length);
+                } else {
+                    trainCurve.push(NaN);
+                    testCurve.push(NaN);
+                }
             }
             
             const learningTraces = [
