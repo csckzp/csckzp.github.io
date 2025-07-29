@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Risk Assessment - Educational Tool</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Machine Learning Risk Assessment Tool</h1>
+        <p>An interactive guide to understanding ML decision risks for undergraduate students</p>
+    </header>
+
+    <main>
+        <section class="introduction">
+            <h2>Understanding ML Risk Factors</h2>
+            <p>Click on any cell in the risk matrix below to learn more about how different ML decisions impact performance, execution, and societal outcomes.</p>
+        </section>
+
+        <section class="risk-matrix-container">
+            <h3>Risk Assessment Matrix</h3>
+            <table class="risk-matrix" id="riskMatrix">
+                <thead>
+                    <tr>
+                        <th>Decision</th>
+                        <th>Performance Failure</th>
+                        <th>Execution Bottleneck</th>
+                        <th>Societal Failure</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="decision-cell">Translation of problem goal to label</td>
+                        <td class="risk-cell medium-risk" data-risk="medium" data-category="performance" data-decision="translation">Med Risk</td>
+                        <td class="risk-cell low-risk" data-risk="low" data-category="execution" data-decision="translation">Low Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="societal" data-decision="translation">High Risk</td>
+                    </tr>
+                    <tr>
+                        <td class="decision-cell">Choice of Tech Stack</td>
+                        <td class="risk-cell medium-risk" data-risk="medium" data-category="performance" data-decision="techstack">Med Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="execution" data-decision="techstack">High Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="societal" data-decision="techstack">High Risk</td>
+                    </tr>
+                    <tr>
+                        <td class="decision-cell">Sample size used</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="performance" data-decision="samplesize">High Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="execution" data-decision="samplesize">High Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="societal" data-decision="samplesize">High Risk</td>
+                    </tr>
+                    <tr>
+                        <td class="decision-cell">Features created</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="performance" data-decision="features">High Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="execution" data-decision="features">High Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="societal" data-decision="features">High Risk</td>
+                    </tr>
+                    <tr>
+                        <td class="decision-cell">Model candidate set tested</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="performance" data-decision="modelset">High Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="execution" data-decision="modelset">High Risk</td>
+                        <td class="risk-cell low-risk" data-risk="low" data-category="societal" data-decision="modelset">Low Risk</td>
+                    </tr>
+                    <tr>
+                        <td class="decision-cell">Performance metrics used</td>
+                        <td class="risk-cell medium-risk" data-risk="medium" data-category="performance" data-decision="metrics">Med Risk</td>
+                        <td class="risk-cell low-risk" data-risk="low" data-category="execution" data-decision="metrics">Low Risk</td>
+                        <td class="risk-cell high-risk" data-risk="high" data-category="societal" data-decision="metrics">High Risk</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="info-panel" id="infoPanel">
+            <h3>Risk Information</h3>
+            <div id="riskContent">
+                <p>Select a cell in the risk matrix to learn more about specific risk factors and their implications.</p>
+            </div>
+        </section>
+
+        <section class="concepts-section">
+            <h3>Key Concepts</h3>
+            <div class="concepts-grid">
+                <div class="concept-card" id="performanceCard">
+                    <h4>Performance Failure</h4>
+                    <p>Risks related to model accuracy, precision, recall, and overall predictive performance.</p>
+                    <button class="learn-more-btn" data-concept="performance">Learn More</button>
+                </div>
+                <div class="concept-card" id="executionCard">
+                    <h4>Execution Bottleneck</h4>
+                    <p>Risks related to computational efficiency, resource usage, and scalability.</p>
+                    <button class="learn-more-btn" data-concept="execution">Learn More</button>
+                </div>
+                <div class="concept-card" id="societalCard">
+                    <h4>Societal Failure</h4>
+                    <p>Risks related to bias, fairness, privacy, and broader social implications.</p>
+                    <button class="learn-more-btn" data-concept="societal">Learn More</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="quiz-section" id="quizSection" style="display: none;">
+            <h3>Quick Quiz</h3>
+            <div id="quizContent">
+                <!-- Quiz questions will be populated by JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Educational Tool for Machine Learning Risk Assessment | Click elements to explore concepts</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
