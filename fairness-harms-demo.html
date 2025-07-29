@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Algorithmic Fairness: Understanding Allocative and Representational Harm</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -566,20 +566,38 @@
 
         // Initialize all demos when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            initializeLoanDemo();
-            initializeHiringDemo();
-            initializeCeoDemo();
-            initializeImageDemo();
+            console.log('DOM loaded, initializing demos...');
+            try {
+                initializeLoanDemo();
+                initializeHiringDemo();
+                initializeCeoDemo();
+                initializeImageDemo();
+                console.log('All demos initialized successfully');
+            } catch (error) {
+                console.error('Error initializing demos:', error);
+            }
             
             // Add event listeners for sliders
-            document.getElementById('loanApplicants').addEventListener('input', updateLoanDemo);
-            document.getElementById('loanBias').addEventListener('input', updateLoanDemo);
-            document.getElementById('hiringCandidates').addEventListener('input', updateHiringDemo);
-            document.getElementById('hiringBias').addEventListener('input', updateHiringDemo);
-            document.getElementById('ceoDataPoints').addEventListener('input', updateCeoDemo);
-            document.getElementById('ceoStereotype').addEventListener('input', updateCeoDemo);
-            document.getElementById('imageAccuracy').addEventListener('input', updateImageDemo);
-            document.getElementById('imageBias').addEventListener('input', updateImageDemo);
+            const sliders = [
+                { id: 'loanApplicants', handler: updateLoanDemo },
+                { id: 'loanBias', handler: updateLoanDemo },
+                { id: 'hiringCandidates', handler: updateHiringDemo },
+                { id: 'hiringBias', handler: updateHiringDemo },
+                { id: 'ceoDataPoints', handler: updateCeoDemo },
+                { id: 'ceoStereotype', handler: updateCeoDemo },
+                { id: 'imageAccuracy', handler: updateImageDemo },
+                { id: 'imageBias', handler: updateImageDemo }
+            ];
+            
+            sliders.forEach(slider => {
+                const element = document.getElementById(slider.id);
+                if (element) {
+                    element.addEventListener('input', slider.handler);
+                    console.log(`Added event listener for ${slider.id}`);
+                } else {
+                    console.error(`Element not found: ${slider.id}`);
+                }
+            });
         });
 
         function updateSliderValue(sliderId, displayId, suffix = '') {
@@ -596,89 +614,103 @@
         }
 
         function setLoanScenario(scenario) {
+            console.log('Setting loan scenario to:', scenario);
             loanScenario = scenario;
-            document.querySelectorAll('.harm-section.allocative .scenario-selector .scenario-button').forEach(btn => {
+            // Update active button
+            const buttons = document.querySelectorAll('.harm-section.allocative .demo-panel:first-child .scenario-selector .scenario-button');
+            buttons.forEach(btn => {
                 btn.classList.remove('active');
+                if ((scenario === 'fair' && btn.textContent === 'Fair System') || 
+                    (scenario === 'biased' && btn.textContent === 'Biased System')) {
+                    btn.classList.add('active');
+                }
             });
-            event.target.classList.add('active');
             updateLoanDemo();
         }
 
         function updateLoanDemo() {
-            updateSliderValue('loanApplicants', 'loanApplicantsValue');
-            updateSliderValue('loanBias', 'loanBiasValue');
-            
-            const applicants = parseInt(document.getElementById('loanApplicants').value);
-            const bias = parseFloat(document.getElementById('loanBias').value);
-            
-            // Simulate loan approvals
-            const baseApprovalRate = 0.65;
-            let groupAApprovals, groupBApprovals;
-            
-            if (loanScenario === 'fair') {
-                groupAApprovals = Math.round(applicants * baseApprovalRate);
-                groupBApprovals = Math.round(applicants * baseApprovalRate);
-            } else {
-                groupAApprovals = Math.round(applicants * baseApprovalRate);
-                groupBApprovals = Math.round(applicants * (baseApprovalRate - bias));
-            }
-            
-            // Update chart
-            if (loanChart) {
-                loanChart.destroy();
-            }
-            
-            const ctx = document.getElementById('loanChart').getContext('2d');
-            loanChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Majority Group', 'Minority Group'],
-                    datasets: [{
-                        label: 'Approved',
-                        data: [groupAApprovals, groupBApprovals],
-                        backgroundColor: ['#27ae60', '#e74c3c']
-                    }, {
-                        label: 'Denied',
-                        data: [applicants - groupAApprovals, applicants - groupBApprovals],
-                        backgroundColor: ['#bdc3c7', '#bdc3c7']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { stacked: true },
-                        y: { stacked: true }
+            console.log('Updating loan demo...');
+            try {
+                updateSliderValue('loanApplicants', 'loanApplicantsValue');
+                updateSliderValue('loanBias', 'loanBiasValue');
+                
+                const applicants = parseInt(document.getElementById('loanApplicants').value);
+                const bias = parseFloat(document.getElementById('loanBias').value);
+                
+                console.log('Loan demo params:', { applicants, bias, scenario: loanScenario });
+                
+                // Simulate loan approvals
+                const baseApprovalRate = 0.65;
+                let groupAApprovals, groupBApprovals;
+                
+                if (loanScenario === 'fair') {
+                    groupAApprovals = Math.round(applicants * baseApprovalRate);
+                    groupBApprovals = Math.round(applicants * baseApprovalRate);
+                } else {
+                    groupAApprovals = Math.round(applicants * baseApprovalRate);
+                    groupBApprovals = Math.round(applicants * (baseApprovalRate - bias));
+                }
+                
+                // Update chart
+                if (loanChart) {
+                    loanChart.destroy();
+                }
+                
+                const ctx = document.getElementById('loanChart').getContext('2d');
+                loanChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Majority Group', 'Minority Group'],
+                        datasets: [{
+                            label: 'Approved',
+                            data: [groupAApprovals, groupBApprovals],
+                            backgroundColor: ['#27ae60', '#e74c3c']
+                        }, {
+                            label: 'Denied',
+                            data: [applicants - groupAApprovals, applicants - groupBApprovals],
+                            backgroundColor: ['#bdc3c7', '#bdc3c7']
+                        }]
                     },
-                    plugins: {
-                        legend: {
-                            position: 'top'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true },
+                            y: { stacked: true }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
                         }
                     }
-                }
-            });
-            
-            // Update results
-            const approvalRateA = (groupAApprovals / applicants * 100).toFixed(1);
-            const approvalRateB = (groupBApprovals / applicants * 100).toFixed(1);
-            const disparity = Math.abs(approvalRateA - approvalRateB).toFixed(1);
-            
-            const resultsHtml = `
-                <div class="metric">
-                    <span class="metric-label">Majority Group Approval Rate:</span>
-                    <span class="metric-value ${approvalRateA > 60 ? 'good' : 'warning'}">${approvalRateA}%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Minority Group Approval Rate:</span>
-                    <span class="metric-value ${approvalRateB > 60 ? 'good' : 'danger'}">${approvalRateB}%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Rate Disparity:</span>
-                    <span class="metric-value ${disparity < 5 ? 'good' : disparity < 15 ? 'warning' : 'danger'}">${disparity}%</span>
-                </div>
-            `;
-            
-            document.getElementById('loanResults').innerHTML = resultsHtml;
+                });
+                
+                // Update results
+                const approvalRateA = (groupAApprovals / applicants * 100).toFixed(1);
+                const approvalRateB = (groupBApprovals / applicants * 100).toFixed(1);
+                const disparity = Math.abs(approvalRateA - approvalRateB).toFixed(1);
+                
+                const resultsHtml = `
+                    <div class="metric">
+                        <span class="metric-label">Majority Group Approval Rate:</span>
+                        <span class="metric-value ${approvalRateA > 60 ? 'good' : 'warning'}">${approvalRateA}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Minority Group Approval Rate:</span>
+                        <span class="metric-value ${approvalRateB > 60 ? 'good' : 'danger'}">${approvalRateB}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Rate Disparity:</span>
+                        <span class="metric-value ${disparity < 5 ? 'good' : disparity < 15 ? 'warning' : 'danger'}">${disparity}%</span>
+                    </div>
+                `;
+                
+                document.getElementById('loanResults').innerHTML = resultsHtml;
+                console.log('Loan demo updated successfully');
+            } catch (error) {
+                console.error('Error updating loan demo:', error);
+            }
         }
 
         // Hiring Demo Functions
@@ -689,11 +721,17 @@
         }
 
         function setHiringScenario(scenario) {
+            console.log('Setting hiring scenario to:', scenario);
             hiringScenario = scenario;
-            document.querySelectorAll('.harm-section.allocative .demo-panel:nth-child(2) .scenario-selector .scenario-button').forEach(btn => {
+            // Update active button
+            const buttons = document.querySelectorAll('.harm-section.allocative .demo-panel:nth-child(2) .scenario-selector .scenario-button');
+            buttons.forEach(btn => {
                 btn.classList.remove('active');
+                if ((scenario === 'fair' && btn.textContent === 'Fair System') || 
+                    (scenario === 'biased' && btn.textContent === 'Biased System')) {
+                    btn.classList.add('active');
+                }
             });
-            event.target.classList.add('active');
             updateHiringDemo();
         }
 
@@ -773,11 +811,17 @@
         }
 
         function setCeoScenario(scenario) {
+            console.log('Setting CEO scenario to:', scenario);
             ceoScenario = scenario;
-            document.querySelectorAll('.harm-section.representational .scenario-selector .scenario-button').forEach(btn => {
+            // Update active button
+            const buttons = document.querySelectorAll('.harm-section.representational .demo-panel:first-child .scenario-selector .scenario-button');
+            buttons.forEach(btn => {
                 btn.classList.remove('active');
+                if ((scenario === 'current' && btn.textContent === 'Current Reality') || 
+                    (scenario === 'biased' && btn.textContent === 'Amplified Bias')) {
+                    btn.classList.add('active');
+                }
             });
-            event.target.classList.add('active');
             updateCeoDemo();
         }
 
@@ -868,11 +912,17 @@
         }
 
         function setImageScenario(scenario) {
+            console.log('Setting image scenario to:', scenario);
             imageScenario = scenario;
-            document.querySelectorAll('.harm-section.representational .demo-panel:nth-child(2) .scenario-selector .scenario-button').forEach(btn => {
+            // Update active button
+            const buttons = document.querySelectorAll('.harm-section.representational .demo-panel:nth-child(2) .scenario-selector .scenario-button');
+            buttons.forEach(btn => {
                 btn.classList.remove('active');
+                if ((scenario === 'balanced' && btn.textContent === 'Balanced Training') || 
+                    (scenario === 'skewed' && btn.textContent === 'Skewed Training')) {
+                    btn.classList.add('active');
+                }
             });
-            event.target.classList.add('active');
             updateImageDemo();
         }
 
