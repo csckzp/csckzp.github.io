@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept Drift & Model Retraining Sandbox</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .dashboard {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 25px;
+        }
+
+        .control-panel {
+            grid-column: 1 / -1;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-panel h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid #3498db;
+        }
+
+        .metric-title {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            height: 400px;
+        }
+
+        .chart-title {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #21618c);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #229954, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-good { background: #27ae60; }
+        .status-warning { background: #f39c12; }
+        .status-critical { background: #e74c3c; }
+
+        .info-panel {
+            background: #ecf0f1;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 25px;
+            border-left: 4px solid #9b59b6;
+        }
+
+        .info-panel h4 {
+            color: #8e44ad;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .data-stream {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #95a5a6;
+        }
+
+        .log-drift {
+            color: #e74c3c;
+        }
+
+        .log-retrain {
+            color: #27ae60;
+        }
+
+        select, input[type="range"] {
+            padding: 8px 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        input[type="range"] {
+            width: 150px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-right: 8px;
+        }
+
+        .slider-value {
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 15px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Concept Drift & Model Retraining Sandbox</h1>
+            <p>Experience how machine learning models degrade over time due to concept drift and learn the importance of continuous monitoring and strategic retraining in dynamic real-world environments.</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3>🎛️ Simulation Controls</h3>
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-primary">Start Simulation</button>
+                    <button id="pauseBtn" class="btn btn-warning" disabled>Pause</button>
+                    <button id="resetBtn" class="btn btn-warning">Reset</button>
+                    <button id="retrainBtn" class="btn btn-success" disabled>Retrain Model</button>
+                    
+                    <label for="driftIntensity">Drift Intensity:</label>
+                    <input type="range" id="driftIntensity" min="0.1" max="2.0" step="0.1" value="1.0">
+                    <span class="slider-value" id="driftValue">1.0</span>
+                    
+                    <label for="retrainData">Retrain Data (months):</label>
+                    <select id="retrainData">
+                        <option value="3">3 months</option>
+                        <option value="6" selected>6 months</option>
+                        <option value="12">12 months</option>
+                        <option value="24">24 months</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="metric-card">
+                <div class="metric-title">Current Month</div>
+                <div class="metric-value" id="currentMonth">0</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Model Accuracy</div>
+                <div class="metric-value" id="currentAccuracy">95.2%</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Model Status</div>
+                <div class="metric-value">
+                    <span class="status-indicator status-good" id="statusIndicator"></span>
+                    <span id="statusText">Healthy</span>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Retraining Events</div>
+                <div class="metric-value" id="retrainCount">0</div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="chart-container">
+                <div class="chart-title">📈 Model Performance Over Time</div>
+                <canvas id="performanceChart"></canvas>
+            </div>
+
+            <!-- Feature Drift Chart -->
+            <div class="chart-container">
+                <div class="chart-title">📊 Feature Distribution Drift</div>
+                <canvas id="driftChart"></canvas>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h4>🧠 What's Happening?</h4>
+            <p id="explanation">Welcome to the Concept Drift Sandbox! Click "Start Simulation" to begin observing how a deployed house price prediction model performs over time as the underlying data distribution changes.</p>
+            
+            <div class="data-stream" id="logStream">
+                <div class="log-entry">
+                    <span class="log-timestamp">[00:00]</span> Model deployed successfully. Initial accuracy: 95.2%
+                </div>
+                <div class="log-entry">
+                    <span class="log-timestamp">[00:00]</span> Monitoring data streams and model performance...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ConceptDriftSimulator {
+            constructor() {
+                this.currentMonth = 0;
+                this.isRunning = false;
+                this.baseAccuracy = 0.952;
+                this.currentAccuracy = this.baseAccuracy;
+                this.driftStartMonth = 6;
+                this.driftIntensity = 1.0;
+                this.retrainCount = 0;
+                this.lastRetrainMonth = 0;
+                
+                this.performanceData = [this.baseAccuracy];
+                this.monthLabels = ['0'];
+                this.featureDriftData = [0];
+                this.retrainEvents = [];
+                
+                this.initializeCharts();
+                this.bindEventListeners();
+                this.updateUI();
+            }
+
+            initializeCharts() {
+                // Performance Chart
+                const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+                this.performanceChart = new Chart(performanceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: this.monthLabels,
+                        datasets: [
+                            {
+                                label: 'Model Accuracy',
+                                data: this.performanceData,
+                                borderColor: '#3498db',
+                                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Retrain Events',
+                                data: this.retrainEvents,
+                                borderColor: '#27ae60',
+                                backgroundColor: '#27ae60',
+                                borderWidth: 0,
+                                pointRadius: 8,
+                                pointHoverRadius: 10,
+                                showLine: false,
+                                type: 'scatter'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: 0.6,
+                                max: 1.0,
+                                ticks: {
+                                    callback: function(value) {
+                                        return (value * 100).toFixed(1) + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.label === 'Model Accuracy') {
+                                            return `Accuracy: ${(context.parsed.y * 100).toFixed(1)}%`;
+                                        } else {
+                                            return 'Model Retrained';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Feature Drift Chart
+                const driftCtx = document.getElementById('driftChart').getContext('2d');
+                this.driftChart = new Chart(driftCtx, {
+                    type: 'line',
+                    data: {
+                        labels: this.monthLabels,
+                        datasets: [
+                            {
+                                label: 'Feature Drift Magnitude',
+                                data: this.featureDriftData,
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Drift Magnitude'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+            }
+
+            bindEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('retrainBtn').addEventListener('click', () => this.retrain());
+                
+                const driftSlider = document.getElementById('driftIntensity');
+                driftSlider.addEventListener('input', (e) => {
+                    this.driftIntensity = parseFloat(e.target.value);
+                    document.getElementById('driftValue').textContent = this.driftIntensity.toFixed(1);
+                });
+            }
+
+            start() {
+                this.isRunning = true;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('retrainBtn').disabled = false;
+                
+                this.addLogEntry('Simulation started. Monitoring model performance...');
+                this.simulationInterval = setInterval(() => this.step(), 1000);
+            }
+
+            pause() {
+                this.isRunning = false;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                
+                clearInterval(this.simulationInterval);
+                this.addLogEntry('Simulation paused.');
+            }
+
+            reset() {
+                this.isRunning = false;
+                clearInterval(this.simulationInterval);
+                
+                this.currentMonth = 0;
+                this.currentAccuracy = this.baseAccuracy;
+                this.retrainCount = 0;
+                this.lastRetrainMonth = 0;
+                
+                this.performanceData = [this.baseAccuracy];
+                this.monthLabels = ['0'];
+                this.featureDriftData = [0];
+                this.retrainEvents = [];
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('retrainBtn').disabled = true;
+                
+                this.updateCharts();
+                this.updateUI();
+                this.clearLog();
+                this.addLogEntry('System reset. Ready to start new simulation.');
+            }
+
+            step() {
+                this.currentMonth++;
+                
+                // Calculate concept drift
+                let driftMagnitude = 0;
+                if (this.currentMonth >= this.driftStartMonth) {
+                    const monthsSinceDrift = this.currentMonth - this.driftStartMonth;
+                    const monthsSinceRetrain = this.currentMonth - this.lastRetrainMonth;
+                    
+                    // Exponential drift with some randomness
+                    driftMagnitude = this.driftIntensity * (1 - Math.exp(-monthsSinceRetrain * 0.15)) * 
+                                   (0.8 + 0.4 * Math.random());
+                }
+                
+                // Update accuracy based on drift
+                const accuracyLoss = driftMagnitude * 0.15; // Max 15% accuracy loss per unit drift
+                this.currentAccuracy = Math.max(0.6, this.baseAccuracy - accuracyLoss);
+                
+                // Add some noise to make it realistic
+                this.currentAccuracy += (Math.random() - 0.5) * 0.02;
+                this.currentAccuracy = Math.max(0.6, Math.min(1.0, this.currentAccuracy));
+                
+                // Update data arrays
+                this.performanceData.push(this.currentAccuracy);
+                this.monthLabels.push(this.currentMonth.toString());
+                this.featureDriftData.push(driftMagnitude);
+                
+                // Log events
+                if (this.currentMonth === this.driftStartMonth) {
+                    this.addLogEntry('Concept drift detected! Input feature distributions are changing.', 'drift');
+                }
+                
+                if (this.currentAccuracy < 0.85 && this.currentMonth > this.lastRetrainMonth + 3) {
+                    this.addLogEntry(`Warning: Model accuracy dropped to ${(this.currentAccuracy * 100).toFixed(1)}%`, 'drift');
+                }
+                
+                this.updateCharts();
+                this.updateUI();
+                this.updateExplanation();
+            }
+
+            retrain() {
+                const retrainDataMonths = parseInt(document.getElementById('retrainData').value);
+                
+                // Simulate retraining effect
+                this.baseAccuracy = 0.95 + Math.random() * 0.03; // Slight variation in retrained model
+                this.currentAccuracy = this.baseAccuracy;
+                this.lastRetrainMonth = this.currentMonth;
+                this.retrainCount++;
+                
+                // Add retrain event to chart
+                this.retrainEvents.push({
+                    x: this.currentMonth,
+                    y: this.currentAccuracy
+                });
+                
+                this.addLogEntry(`Model retrained using ${retrainDataMonths} months of recent data. New accuracy: ${(this.currentAccuracy * 100).toFixed(1)}%`, 'retrain');
+                
+                this.updateCharts();
+                this.updateUI();
+            }
+
+            updateCharts() {
+                // Update performance chart
+                this.performanceChart.data.labels = this.monthLabels;
+                this.performanceChart.data.datasets[0].data = this.performanceData;
+                this.performanceChart.data.datasets[1].data = this.retrainEvents;
+                this.performanceChart.update('none');
+                
+                // Update drift chart
+                this.driftChart.data.labels = this.monthLabels;
+                this.driftChart.data.datasets[0].data = this.featureDriftData;
+                this.driftChart.update('none');
+            }
+
+            updateUI() {
+                document.getElementById('currentMonth').textContent = this.currentMonth;
+                document.getElementById('currentAccuracy').textContent = `${(this.currentAccuracy * 100).toFixed(1)}%`;
+                document.getElementById('retrainCount').textContent = this.retrainCount;
+                
+                // Update status
+                const statusIndicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                
+                if (this.currentAccuracy >= 0.9) {
+                    statusIndicator.className = 'status-indicator status-good';
+                    statusText.textContent = 'Healthy';
+                } else if (this.currentAccuracy >= 0.8) {
+                    statusIndicator.className = 'status-indicator status-warning';
+                    statusText.textContent = 'Degraded';
+                } else {
+                    statusIndicator.className = 'status-indicator status-critical';
+                    statusText.textContent = 'Critical';
+                }
+            }
+
+            updateExplanation() {
+                const explanationElement = document.getElementById('explanation');
+                let text = '';
+                
+                if (this.currentMonth < this.driftStartMonth) {
+                    text = 'The model is performing well with stable data. No concept drift has occurred yet.';
+                } else if (this.currentMonth === this.driftStartMonth) {
+                    text = 'Concept drift has begun! The underlying data distribution is starting to change, which will gradually degrade model performance.';
+                } else if (this.currentAccuracy > 0.9) {
+                    text = 'Some drift is occurring, but the model is still performing well. Continue monitoring.';
+                } else if (this.currentAccuracy > 0.8) {
+                    text = 'Model performance is degrading due to concept drift. Consider retraining soon to maintain accuracy.';
+                } else {
+                    text = 'Model performance has significantly degraded! Immediate retraining is recommended to restore predictive capability.';
+                }
+                
+                explanationElement.textContent = text;
+            }
+
+            addLogEntry(message, type = 'info') {
+                const logStream = document.getElementById('logStream');
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                
+                const timestamp = `[${String(Math.floor(this.currentMonth / 12)).padStart(2, '0')}:${String(this.currentMonth % 12).padStart(2, '0')}]`;
+                const timestampSpan = document.createElement('span');
+                timestampSpan.className = 'log-timestamp';
+                timestampSpan.textContent = timestamp;
+                
+                entry.appendChild(timestampSpan);
+                entry.appendChild(document.createTextNode(' ' + message));
+                
+                if (type === 'drift') {
+                    entry.classList.add('log-drift');
+                } else if (type === 'retrain') {
+                    entry.classList.add('log-retrain');
+                }
+                
+                logStream.appendChild(entry);
+                logStream.scrollTop = logStream.scrollHeight;
+            }
+
+            clearLog() {
+                const logStream = document.getElementById('logStream');
+                logStream.innerHTML = `
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00]</span> Model deployed successfully. Initial accuracy: 95.2%
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00]</span> Monitoring data streams and model performance...
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize the simulator when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ConceptDriftSimulator();
+        });
+    </script>
+</body>
+</html>

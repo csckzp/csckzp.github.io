@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Leakage Detective Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .scenario-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .scenario-card {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .scenario-card:hover {
+            transform: scale(1.05);
+            border-color: #fdcb6e;
+        }
+
+        .scenario-card.selected {
+            border-color: #e17055;
+            background: linear-gradient(135deg, #e17055, #d63031);
+        }
+
+        .phase {
+            display: none;
+        }
+
+        .phase.active {
+            display: block;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .suspicious {
+            background: linear-gradient(135deg, #e17055, #d63031) !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #e17055, #d63031);
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+        }
+
+        .alert {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .alert-warning {
+            background: #ffeaa7;
+            color: #e17055;
+            border-left: 5px solid #fdcb6e;
+        }
+
+        .alert-success {
+            background: #d5f2e8;
+            color: #00b894;
+            border-left: 5px solid #00cec9;
+        }
+
+        .alert-danger {
+            background: #fab1a0;
+            color: #d63031;
+            border-left: 5px solid #e17055;
+        }
+
+        .chart-container {
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            border-color: #74b9ff;
+        }
+
+        .feature-item.leaked {
+            background: #fab1a0;
+            border-color: #d63031;
+        }
+
+        .feature-item.selected {
+            border-color: #e17055;
+            background: #ffeaa7;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #74b9ff, #0984e3);
+            transition: width 0.5s ease;
+        }
+
+        .score {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="score">
+        <div>Detective Score: <span id="score">0</span></div>
+        <div>Cases Solved: <span id="cases">0</span></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🕵️ Feature Leakage Detective</h1>
+            <p>Can you spot the sneaky features that are sabotaging model reliability?</p>
+        </div>
+
+        <!-- Phase 1: Scenario Selection -->
+        <div id="phase1" class="phase active">
+            <div class="game-card">
+                <h2>Choose Your Case</h2>
+                <p>Select a machine learning scenario to investigate:</p>
+                
+                <div class="scenario-selector">
+                    <div class="scenario-card" data-scenario="churn">
+                        <h3>📱 Customer Churn Prediction</h3>
+                        <p>Help TechCorp predict which customers will cancel their subscription service next month.</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="fraud">
+                        <h3>🔒 Credit Card Fraud Detection</h3>
+                        <p>Assist SecureBank in identifying fraudulent transactions in real-time.</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="purchase">
+                        <h3>🛒 Purchase Prediction</h3>
+                        <p>Help RetailMart predict which website visitors will make a purchase.</p>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="startInvestigation()">Start Investigation</button>
+            </div>
+        </div>
+
+        <!-- Phase 2: Initial Model Results -->
+        <div id="phase2" class="phase">
+            <div class="game-card">
+                <h2>🎯 Initial Model Results</h2>
+                <div id="scenario-description"></div>
+                
+                <div class="alert alert-success">
+                    <strong>Amazing Results!</strong> Your model is performing exceptionally well!
+                </div>
+
+                <div class="metrics-grid" id="metrics-grid">
+                    <!-- Metrics will be populated here -->
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 25%"></div>
+                </div>
+
+                <button class="btn" onclick="investigateFeatures()">🔍 Something seems too good to be true... Investigate!</button>
+            </div>
+        </div>
+
+        <!-- Phase 3: Feature Investigation -->
+        <div id="phase3" class="phase">
+            <div class="game-card">
+                <h2>🔬 Feature Importance Analysis</h2>
+                <p>Examine the feature importances. Look for any suspicious outliers that might indicate leakage:</p>
+
+                <div class="chart-container">
+                    <div id="feature-importance-chart"></div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <strong>Detective Tip:</strong> Look for features with unusually high importance scores. Ask yourself: "Would this information really be available at prediction time?"
+                </div>
+
+                <button class="btn" onclick="selectSuspiciousFeature()">🎯 Identify Suspicious Features</button>
+            </div>
+        </div>
+
+        <!-- Phase 4: Feature Selection -->
+        <div id="phase4" class="phase">
+            <div class="game-card">
+                <h2>🎯 Identify the Leaked Features</h2>
+                <p>Click on the features you suspect are causing leakage:</p>
+
+                <div class="feature-list" id="feature-list">
+                    <!-- Features will be populated here -->
+                </div>
+
+                <button class="btn danger" onclick="removeFeatures()">🗑️ Remove Selected Features</button>
+                <button class="btn" onclick="backToChart()">📊 Back to Chart</button>
+            </div>
+        </div>
+
+        <!-- Phase 5: Results After Cleanup -->
+        <div id="phase5" class="phase">
+            <div class="game-card">
+                <h2>📈 Model Performance After Cleanup</h2>
+                <div id="cleanup-results"></div>
+
+                <div class="metrics-grid" id="clean-metrics-grid">
+                    <!-- Clean metrics will be populated here -->
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%"></div>
+                </div>
+
+                <button class="btn success" onclick="nextCase()">🎉 Solve Another Case</button>
+                <button class="btn" onclick="reset()">🔄 Reset Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            selectedScenario: null,
+            selectedFeatures: [],
+            score: 0,
+            casesSolved: 0,
+            currentCase: null
+        };
+
+        const scenarios = {
+            churn: {
+                title: "Customer Churn Prediction",
+                description: "You're tasked with predicting which customers will cancel their subscription next month for TechCorp's streaming service.",
+                features: [
+                    { name: "monthly_charges", importance: 0.15, leaked: false, description: "Monthly subscription fee" },
+                    { name: "tenure_months", importance: 0.12, leaked: false, description: "How long customer has been subscribed" },
+                    { name: "support_tickets", importance: 0.08, leaked: false, description: "Number of support tickets filed" },
+                    { name: "cancellation_date", importance: 0.89, leaked: true, description: "Date when customer cancelled (LEAKED!)" },
+                    { name: "usage_hours", importance: 0.11, leaked: false, description: "Average weekly usage hours" },
+                    { name: "payment_method", importance: 0.06, leaked: false, description: "Credit card, PayPal, etc." }
+                ],
+                metrics: { accuracy: 0.97, auc: 0.94, precision: 0.95, recall: 0.93 },
+                cleanMetrics: { accuracy: 0.76, auc: 0.72, precision: 0.74, recall: 0.69 }
+            },
+            fraud: {
+                title: "Credit Card Fraud Detection",
+                description: "You're helping SecureBank detect fraudulent credit card transactions in real-time.",
+                features: [
+                    { name: "transaction_amount", importance: 0.18, leaked: false, description: "Dollar amount of transaction" },
+                    { name: "merchant_category", importance: 0.14, leaked: false, description: "Type of merchant (gas, retail, etc.)" },
+                    { name: "time_of_day", importance: 0.09, leaked: false, description: "Hour of day transaction occurred" },
+                    { name: "chargeback_filed", importance: 0.91, leaked: true, description: "Whether customer filed chargeback (LEAKED!)" },
+                    { name: "location_risk", importance: 0.13, leaked: false, description: "Risk score for transaction location" },
+                    { name: "card_present", importance: 0.07, leaked: false, description: "Whether card was physically present" }
+                ],
+                metrics: { accuracy: 0.98, auc: 0.96, precision: 0.97, recall: 0.94 },
+                cleanMetrics: { accuracy: 0.79, auc: 0.75, precision: 0.73, recall: 0.71 }
+            },
+            purchase: {
+                title: "Purchase Prediction",
+                description: "You're helping RetailMart predict which website visitors will make a purchase during their session.",
+                features: [
+                    { name: "pages_viewed", importance: 0.16, leaked: false, description: "Number of pages viewed in session" },
+                    { name: "session_duration", importance: 0.13, leaked: false, description: "Time spent on website (minutes)" },
+                    { name: "referral_source", importance: 0.10, leaked: false, description: "How user arrived (search, social, etc.)" },
+                    { name: "order_confirmation_page", importance: 0.88, leaked: true, description: "Visited order confirmation page (LEAKED!)" },
+                    { name: "cart_additions", importance: 0.12, leaked: false, description: "Number of items added to cart" },
+                    { name: "device_type", importance: 0.08, leaked: false, description: "Mobile, desktop, or tablet" }
+                ],
+                metrics: { accuracy: 0.95, auc: 0.92, precision: 0.94, recall: 0.91 },
+                cleanMetrics: { accuracy: 0.73, auc: 0.69, precision: 0.71, recall: 0.68 }
+            }
+        };
+
+        function updateScore(points) {
+            gameState.score += points;
+            document.getElementById('score').textContent = gameState.score;
+        }
+
+        function updateCases() {
+            gameState.casesSolved++;
+            document.getElementById('cases').textContent = gameState.casesSolved;
+        }
+
+        document.querySelectorAll('.scenario-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                gameState.selectedScenario = this.dataset.scenario;
+            });
+        });
+
+        function startInvestigation() {
+            if (!gameState.selectedScenario) {
+                alert('Please select a scenario first!');
+                return;
+            }
+
+            gameState.currentCase = scenarios[gameState.selectedScenario];
+            
+            document.getElementById('phase1').classList.remove('active');
+            document.getElementById('phase2').classList.add('active');
+
+            // Populate scenario description
+            document.getElementById('scenario-description').innerHTML = `
+                <h3>${gameState.currentCase.title}</h3>
+                <p>${gameState.currentCase.description}</p>
+            `;
+
+            // Populate metrics
+            const metricsGrid = document.getElementById('metrics-grid');
+            const metrics = gameState.currentCase.metrics;
+            metricsGrid.innerHTML = `
+                <div class="metric-card suspicious">
+                    <div class="metric-value">${(metrics.accuracy * 100).toFixed(1)}%</div>
+                    <div>Accuracy</div>
+                </div>
+                <div class="metric-card suspicious">
+                    <div class="metric-value">${(metrics.auc * 100).toFixed(1)}%</div>
+                    <div>AUC Score</div>
+                </div>
+                <div class="metric-card suspicious">
+                    <div class="metric-value">${(metrics.precision * 100).toFixed(1)}%</div>
+                    <div>Precision</div>
+                </div>
+                <div class="metric-card suspicious">
+                    <div class="metric-value">${(metrics.recall * 100).toFixed(1)}%</div>
+                    <div>Recall</div>
+                </div>
+            `;
+        }
+
+        function investigateFeatures() {
+            document.getElementById('phase2').classList.remove('active');
+            document.getElementById('phase3').classList.add('active');
+
+            // Create feature importance chart
+            const features = gameState.currentCase.features;
+            const x_values = features.map(f => f.name);
+            const y_values = features.map(f => f.importance);
+            const colors = features.map(f => f.leaked ? '#d63031' : '#74b9ff');
+
+            const trace = {
+                x: x_values,
+                y: y_values,
+                type: 'bar',
+                marker: { color: colors },
+                text: y_values.map(v => v.toFixed(3)),
+                textposition: 'outside'
+            };
+
+            const layout = {
+                title: 'Feature Importance Scores',
+                xaxis: { title: 'Features', tickangle: 45 },
+                yaxis: { title: 'Importance Score' },
+                margin: { b: 150 }
+            };
+
+            Plotly.newPlot('feature-importance-chart', [trace], layout);
+
+            updateScore(10);
+        }
+
+        function selectSuspiciousFeature() {
+            document.getElementById('phase3').classList.remove('active');
+            document.getElementById('phase4').classList.add('active');
+
+            // Populate feature list
+            const featureList = document.getElementById('feature-list');
+            const features = gameState.currentCase.features;
+            
+            featureList.innerHTML = features.map(feature => `
+                <div class="feature-item" data-feature="${feature.name}">
+                    <h4>${feature.name}</h4>
+                    <p>${feature.description}</p>
+                    <p><strong>Importance:</strong> ${(feature.importance * 100).toFixed(1)}%</p>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.feature-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const featureName = this.dataset.feature;
+                    if (gameState.selectedFeatures.includes(featureName)) {
+                        gameState.selectedFeatures = gameState.selectedFeatures.filter(f => f !== featureName);
+                        this.classList.remove('selected');
+                    } else {
+                        gameState.selectedFeatures.push(featureName);
+                        this.classList.add('selected');
+                    }
+                });
+            });
+        }
+
+        function backToChart() {
+            document.getElementById('phase4').classList.remove('active');
+            document.getElementById('phase3').classList.add('active');
+        }
+
+        function removeFeatures() {
+            if (gameState.selectedFeatures.length === 0) {
+                alert('Please select at least one feature to remove!');
+                return;
+            }
+
+            document.getElementById('phase4').classList.remove('active');
+            document.getElementById('phase5').classList.add('active');
+
+            // Check if correct features were identified
+            const leakedFeatures = gameState.currentCase.features.filter(f => f.leaked).map(f => f.name);
+            const correctlyIdentified = gameState.selectedFeatures.filter(f => leakedFeatures.includes(f));
+            const incorrectlyIdentified = gameState.selectedFeatures.filter(f => !leakedFeatures.includes(f));
+
+            let resultText = '';
+            let scoreBonus = 0;
+
+            if (correctlyIdentified.length === leakedFeatures.length && incorrectlyIdentified.length === 0) {
+                resultText = `<div class="alert alert-success">
+                    <strong>🎉 Perfect Detection!</strong> You correctly identified all leaked features: ${correctlyIdentified.join(', ')}
+                </div>`;
+                scoreBonus = 50;
+            } else if (correctlyIdentified.length > 0) {
+                resultText = `<div class="alert alert-warning">
+                    <strong>⚠️ Partial Success!</strong> You found ${correctlyIdentified.length} out of ${leakedFeatures.length} leaked features.
+                    <br>Correct: ${correctlyIdentified.join(', ')}
+                    ${incorrectlyIdentified.length > 0 ? `<br>Incorrectly flagged: ${incorrectlyIdentified.join(', ')}` : ''}
+                </div>`;
+                scoreBonus = 25;
+            } else {
+                resultText = `<div class="alert alert-danger">
+                    <strong>❌ Missed the Leakage!</strong> The leaked features were: ${leakedFeatures.join(', ')}
+                    <br>These features contain information from the future that wouldn't be available at prediction time.
+                </div>`;
+                scoreBonus = 5;
+            }
+
+            document.getElementById('cleanup-results').innerHTML = resultText;
+
+            // Show clean metrics
+            const cleanMetrics = gameState.currentCase.cleanMetrics;
+            const cleanMetricsGrid = document.getElementById('clean-metrics-grid');
+            cleanMetricsGrid.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-value">${(cleanMetrics.accuracy * 100).toFixed(1)}%</div>
+                    <div>Accuracy</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(cleanMetrics.auc * 100).toFixed(1)}%</div>
+                    <div>AUC Score</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(cleanMetrics.precision * 100).toFixed(1)}%</div>
+                    <div>Precision</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(cleanMetrics.recall * 100).toFixed(1)}%</div>
+                    <div>Recall</div>
+                </div>
+            `;
+
+            updateScore(scoreBonus);
+            updateCases();
+        }
+
+        function nextCase() {
+            // Reset for next case
+            gameState.selectedFeatures = [];
+            gameState.selectedScenario = null;
+            
+            document.getElementById('phase5').classList.remove('active');
+            document.getElementById('phase1').classList.add('active');
+            
+            document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+        }
+
+        function reset() {
+            gameState = {
+                selectedScenario: null,
+                selectedFeatures: [],
+                score: 0,
+                casesSolved: 0,
+                currentCase: null
+            };
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('cases').textContent = '0';
+            
+            document.querySelectorAll('.phase').forEach(phase => phase.classList.remove('active'));
+            document.getElementById('phase1').classList.add('active');
+            document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+        }
+    </script>
+</body>
+</html>

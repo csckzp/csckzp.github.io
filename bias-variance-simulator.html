@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bias-Variance Tradeoff & Learning Curves Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+        
+        .control-group select, .control-group input {
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .slider-value {
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .visualizations {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .viz-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .viz-panel h3 {
+            margin-bottom: 15px;
+            color: #4a5568;
+            font-size: 1.2rem;
+        }
+        
+        .metrics-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .metric-card h4 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .explanation {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .explanation h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+        
+        .explanation p {
+            line-height: 1.6;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .visualizations {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Bias-Variance Tradeoff & Learning Curves</h1>
+            <p>Explore how model complexity and training data size affect bias, variance, and performance</p>
+        </div>
+        
+        <div class="controls-panel">
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="datasetSelect">True Function:</label>
+                    <select id="datasetSelect">
+                        <option value="quadratic">Quadratic (y = x²)</option>
+                        <option value="cubic">Cubic (y = x³ - x)</option>
+                        <option value="sine">Sine Wave (y = sin(2πx))</option>
+                        <option value="step">Step Function</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="modelSelect">Model Complexity:</label>
+                    <select id="modelSelect">
+                        <option value="linear">Linear (High Bias, Low Variance)</option>
+                        <option value="quadratic">Quadratic (Medium Bias/Variance)</option>
+                        <option value="cubic">Cubic (Lower Bias, Higher Variance)</option>
+                        <option value="high">High Polynomial (Low Bias, High Variance)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="trainSize">Training Data Size:</label>
+                    <div class="slider-container">
+                        <input type="range" id="trainSize" min="10" max="200" value="100" step="10">
+                        <div class="slider-value" id="trainSizeValue">100 samples</div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="noiseLevel">Noise Level:</label>
+                    <div class="slider-container">
+                        <input type="range" id="noiseLevel" min="0" max="0.5" value="0.1" step="0.05">
+                        <div class="slider-value" id="noiseLevelValue">0.10</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="visualizations">
+            <div class="viz-panel">
+                <h3>🎲 Model Fits (Multiple Samples)</h3>
+                <div id="biasVariancePlot" style="width: 100%; height: 400px;"></div>
+            </div>
+            
+            <div class="viz-panel">
+                <h3>📈 Learning Curves</h3>
+                <div id="learningCurvePlot" style="width: 100%; height: 400px;"></div>
+            </div>
+        </div>
+        
+        <div class="metrics-panel">
+            <h3>📊 Bias-Variance Decomposition</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h4>Bias²</h4>
+                    <div class="metric-value" id="biasMetric">0.00</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Variance</h4>
+                    <div class="metric-value" id="varianceMetric">0.00</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Noise</h4>
+                    <div class="metric-value" id="noiseMetric">0.00</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Total Error</h4>
+                    <div class="metric-value" id="totalErrorMetric">0.00</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="explanation">
+            <h3>🧠 Understanding the Tradeoff</h3>
+            <p><strong>Bias</strong> measures how far off the average prediction is from the true value. High bias leads to underfitting.</p>
+            <p><strong>Variance</strong> measures how much predictions vary across different training sets. High variance leads to overfitting.</p>
+            <p><strong>Learning Curves</strong> show how performance changes with training data size. They help identify if more data would improve performance or if the model has plateaued.</p>
+            <p>The key insight: <strong>Total Error = Bias² + Variance + Irreducible Noise</strong></p>
+        </div>
+    </div>
+
+    <script>
+        // Generate true functions
+        function generateTrueFunction(x, type) {
+            switch(type) {
+                case 'quadratic':
+                    return x.map(val => val * val);
+                case 'cubic':
+                    return x.map(val => val * val * val - val);
+                case 'sine':
+                    return x.map(val => Math.sin(2 * Math.PI * val));
+                case 'step':
+                    return x.map(val => val > 0 ? 1 : -1);
+                default:
+                    return x.map(val => val * val);
+            }
+        }
+        
+        // Generate polynomial features
+        function generateFeatures(x, degree) {
+            return x.map(val => {
+                let features = [1]; // intercept
+                for(let i = 1; i <= degree; i++) {
+                    features.push(Math.pow(val, i));
+                }
+                return features;
+            });
+        }
+        
+        // Fit polynomial regression
+        function fitPolynomial(x, y, degree) {
+            const X = generateFeatures(x, degree);
+            const n = X.length;
+            const m = X[0].length;
+            
+            // Create X'X matrix
+            let XTX = Array(m).fill().map(() => Array(m).fill(0));
+            let XTy = Array(m).fill(0);
+            
+            for(let i = 0; i < n; i++) {
+                for(let j = 0; j < m; j++) {
+                    XTy[j] += X[i][j] * y[i];
+                    for(let k = 0; k < m; k++) {
+                        XTX[j][k] += X[i][j] * X[i][k];
+                    }
+                }
+            }
+            
+            // Solve using Gaussian elimination (simplified)
+            let coeffs = solveLinearSystem(XTX, XTy);
+            return coeffs;
+        }
+        
+        // Simple linear system solver
+        function solveLinearSystem(A, b) {
+            const n = A.length;
+            let augmented = A.map((row, i) => [...row, b[i]]);
+            
+            // Forward elimination
+            for(let i = 0; i < n; i++) {
+                // Find pivot
+                let maxRow = i;
+                for(let k = i + 1; k < n; k++) {
+                    if(Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                        maxRow = k;
+                    }
+                }
+                [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+                
+                // Make all rows below this one 0 in current column
+                for(let k = i + 1; k < n; k++) {
+                    const factor = augmented[k][i] / (augmented[i][i] + 1e-10);
+                    for(let j = i; j <= n; j++) {
+                        augmented[k][j] -= factor * augmented[i][j];
+                    }
+                }
+            }
+            
+            // Back substitution
+            let x = Array(n).fill(0);
+            for(let i = n - 1; i >= 0; i--) {
+                x[i] = augmented[i][n];
+                for(let j = i + 1; j < n; j++) {
+                    x[i] -= augmented[i][j] * x[j];
+                }
+                x[i] /= (augmented[i][i] + 1e-10);
+            }
+            
+            return x;
+        }
+        
+        // Predict using polynomial coefficients
+        function predict(x, coeffs) {
+            const degree = coeffs.length - 1;
+            return x.map(val => {
+                let pred = 0;
+                for(let i = 0; i <= degree; i++) {
+                    pred += coeffs[i] * Math.pow(val, i);
+                }
+                return pred;
+            });
+        }
+        
+        // Generate random sample
+        function generateSample(xRange, trueFunction, noiseLevel, size) {
+            let x = [];
+            for(let i = 0; i < size; i++) {
+                x.push(xRange[0] + Math.random() * (xRange[1] - xRange[0]));
+            }
+            x.sort((a, b) => a - b);
+            
+            let yTrue = generateTrueFunction(x, trueFunction);
+            let y = yTrue.map(val => val + (Math.random() - 0.5) * 2 * noiseLevel);
+            
+            return {x, y, yTrue};
+        }
+        
+        // Calculate bias and variance
+        function calculateBiasVariance(predictions, trueValues) {
+            const n = predictions.length;
+            const m = predictions[0].length;
+            
+            // Calculate mean prediction for each point
+            let meanPred = Array(m).fill(0);
+            for(let i = 0; i < n; i++) {
+                for(let j = 0; j < m; j++) {
+                    meanPred[j] += predictions[i][j];
+                }
+            }
+            meanPred = meanPred.map(val => val / n);
+            
+            // Calculate bias squared
+            let biasSquared = 0;
+            for(let j = 0; j < m; j++) {
+                biasSquared += Math.pow(meanPred[j] - trueValues[j], 2);
+            }
+            biasSquared /= m;
+            
+            // Calculate variance
+            let variance = 0;
+            for(let i = 0; i < n; i++) {
+                for(let j = 0; j < m; j++) {
+                    variance += Math.pow(predictions[i][j] - meanPred[j], 2);
+                }
+            }
+            variance /= (n * m);
+            
+            return {bias: Math.sqrt(biasSquared), variance, meanPred};
+        }
+        
+        // Update visualization
+        function updateVisualization() {
+            const dataset = document.getElementById('datasetSelect').value;
+            const modelType = document.getElementById('modelSelect').value;
+            const trainSize = parseInt(document.getElementById('trainSize').value);
+            const noiseLevel = parseFloat(document.getElementById('noiseLevel').value);
+            
+            // Update slider displays
+            document.getElementById('trainSizeValue').textContent = `${trainSize} samples`;
+            document.getElementById('noiseLevelValue').textContent = noiseLevel.toFixed(2);
+            
+            // Model complexity mapping
+            const complexityMap = {
+                'linear': 1,
+                'quadratic': 2,
+                'cubic': 3,
+                'high': 8
+            };
+            const degree = complexityMap[modelType];
+            
+            // Generate test points for visualization
+            const xTest = [];
+            for(let i = -1; i <= 1; i += 0.02) {
+                xTest.push(i);
+            }
+            const yTrueTest = generateTrueFunction(xTest, dataset);
+            
+            // Generate multiple training samples and fit models
+            const numSamples = 20;
+            let allPredictions = [];
+            let trainErrors = [];
+            let testErrors = [];
+            
+            for(let i = 0; i < numSamples; i++) {
+                const sample = generateSample([-1, 1], dataset, noiseLevel, trainSize);
+                const coeffs = fitPolynomial(sample.x, sample.y, degree);
+                const predictions = predict(xTest, coeffs);
+                allPredictions.push(predictions);
+                
+                // Calculate errors
+                const trainPred = predict(sample.x, coeffs);
+                const trainError = sample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.y.length;
+                const testError = yTrueTest.reduce((sum, val, idx) => sum + Math.pow(val - predictions[idx], 2), 0) / yTrueTest.length;
+                trainErrors.push(trainError);
+                testErrors.push(testError);
+            }
+            
+            // Calculate bias and variance
+            const {bias, variance, meanPred} = calculateBiasVariance(allPredictions, yTrueTest);
+            const totalError = bias * bias + variance + noiseLevel * noiseLevel;
+            
+            // Update metrics
+            document.getElementById('biasMetric').textContent = (bias * bias).toFixed(3);
+            document.getElementById('varianceMetric').textContent = variance.toFixed(3);
+            document.getElementById('noiseMetric').textContent = (noiseLevel * noiseLevel).toFixed(3);
+            document.getElementById('totalErrorMetric').textContent = totalError.toFixed(3);
+            
+            // Create bias-variance plot
+            const traces = [];
+            
+            // True function
+            traces.push({
+                x: xTest,
+                y: yTrueTest,
+                mode: 'lines',
+                name: 'True Function',
+                line: {color: '#000000', width: 3}
+            });
+            
+            // Individual model fits (sample of them)
+            for(let i = 0; i < Math.min(10, numSamples); i++) {
+                traces.push({
+                    x: xTest,
+                    y: allPredictions[i],
+                    mode: 'lines',
+                    name: i === 0 ? 'Individual Models' : '',
+                    showlegend: i === 0,
+                    line: {color: 'rgba(102, 126, 234, 0.3)', width: 1}
+                });
+            }
+            
+            // Mean prediction
+            traces.push({
+                x: xTest,
+                y: meanPred,
+                mode: 'lines',
+                name: 'Average Prediction',
+                line: {color: '#e53e3e', width: 3, dash: 'dash'}
+            });
+            
+            Plotly.newPlot('biasVariancePlot', traces, {
+                title: 'Model Variance Visualization',
+                xaxis: {title: 'x'},
+                yaxis: {title: 'y'},
+                margin: {t: 40, b: 40, l: 40, r: 40}
+            });
+            
+            // Generate learning curves
+            const sampleSizes = [];
+            for(let size = 10; size <= 200; size += 10) {
+                sampleSizes.push(size);
+            }
+            
+            let trainCurve = [];
+            let testCurve = [];
+            
+            for(let size of sampleSizes) {
+                let trainErrs = [];
+                let testErrs = [];
+                
+                for(let i = 0; i < 10; i++) {
+                    const sample = generateSample([-1, 1], dataset, noiseLevel, size);
+                    const coeffs = fitPolynomial(sample.x, sample.y, degree);
+                    
+                    const trainPred = predict(sample.x, coeffs);
+                    const testPred = predict(xTest, coeffs);
+                    
+                    const trainErr = sample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.y.length;
+                    const testErr = yTrueTest.reduce((sum, val, idx) => sum + Math.pow(val - testPred[idx], 2), 0) / yTrueTest.length;
+                    
+                    trainErrs.push(trainErr);
+                    testErrs.push(testErr);
+                }
+                
+                trainCurve.push(trainErrs.reduce((a, b) => a + b) / trainErrs.length);
+                testCurve.push(testErrs.reduce((a, b) => a + b) / testErrs.length);
+            }
+            
+            const learningTraces = [
+                {
+                    x: sampleSizes,
+                    y: trainCurve,
+                    mode: 'lines+markers',
+                    name: 'Training Error',
+                    line: {color: '#38a169'}
+                },
+                {
+                    x: sampleSizes,
+                    y: testCurve,
+                    mode: 'lines+markers',
+                    name: 'Test Error',
+                    line: {color: '#e53e3e'}
+                }
+            ];
+            
+            Plotly.newPlot('learningCurvePlot', learningTraces, {
+                title: 'Learning Curves',
+                xaxis: {title: 'Training Set Size'},
+                yaxis: {title: 'Mean Squared Error'},
+                margin: {t: 40, b: 40, l: 40, r: 40}
+            });
+        }
+        
+        // Event listeners
+        document.getElementById('datasetSelect').addEventListener('change', updateVisualization);
+        document.getElementById('modelSelect').addEventListener('change', updateVisualization);
+        document.getElementById('trainSize').addEventListener('input', updateVisualization);
+        document.getElementById('noiseLevel').addEventListener('input', updateVisualization);
+        
+        // Initial visualization
+        updateVisualization();
+    </script>
+</body>
+</html>

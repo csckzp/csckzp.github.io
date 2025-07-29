@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithmic Fairness Spectrum Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .results-section {
+            background: #ffffff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .metric-selector {
+            margin-bottom: 25px;
+        }
+        
+        .metric-selector label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+        
+        .metric-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        .metric-selector select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .data-preview {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .high-risk {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        .low-risk {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        
+        .fairness-scores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .score-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .group-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .fairness-score {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin: 15px 0;
+        }
+        
+        .fair {
+            color: #27ae60;
+        }
+        
+        .unfair {
+            color: #e74c3c;
+        }
+        
+        .metric-explanation {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-explanation h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .harm-analysis {
+            background: #fff5f5;
+            border-left: 4px solid #e74c3c;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .harm-analysis h3 {
+            color: #c53030;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .comparison-chart {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .chart-bars {
+            display: flex;
+            justify-content: space-around;
+            align-items: end;
+            height: 200px;
+            margin: 20px 0;
+        }
+        
+        .bar-group {
+            text-align: center;
+            flex: 1;
+            margin: 0 10px;
+        }
+        
+        .bar {
+            width: 40px;
+            margin: 0 auto 10px;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s ease;
+        }
+        
+        .bar-group-a {
+            background: linear-gradient(to top, #3498db, #5dade2);
+        }
+        
+        .bar-group-b {
+            background: linear-gradient(to top, #e74c3c, #ec7063);
+        }
+        
+        .bar-label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .fairness-scores {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #2980b9, #1f618d);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Algorithmic Fairness Spectrum Explorer</h1>
+            <p>Explore how different fairness metrics can lead to conflicting conclusions about algorithmic bias in criminal risk assessment systems</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="controls-section">
+                <h2 class="section-title">📊 Fairness Metric Selection</h2>
+                
+                <div class="metric-selector">
+                    <label for="fairness-metric">Choose a Fairness Metric:</label>
+                    <select id="fairness-metric">
+                        <option value="overall-accuracy">Overall Accuracy Parity</option>
+                        <option value="fpr-parity">False Positive Rate Parity</option>
+                        <option value="fnr-parity">False Negative Rate Parity</option>
+                        <option value="equal-opportunity">Equal Opportunity</option>
+                        <option value="calibration">Calibration</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="generateNewDataset()">🔄 Generate New Dataset</button>
+                
+                <div class="data-preview">
+                    <h3>Sample Dataset (Criminal Risk Assessment)</h3>
+                    <p>Based on historical data with demographic information, criminal history, and actual recidivism outcomes.</p>
+                    <table class="data-table" id="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Group</th>
+                                <th>Age</th>
+                                <th>Prior Offenses</th>
+                                <th>AI Prediction</th>
+                                <th>Actual Outcome</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <h2 class="section-title">📈 Fairness Analysis Results</h2>
+                
+                <div class="metric-explanation" id="metric-explanation">
+                    <h3>Overall Accuracy Parity</h3>
+                    <p>This metric requires that the overall accuracy (correct predictions) be equal across demographic groups. A system is considered fair if it makes correct predictions at the same rate for all groups.</p>
+                </div>
+                
+                <div class="fairness-scores">
+                    <div class="score-card">
+                        <div class="group-name">Group A (Majority)</div>
+                        <div class="fairness-score fair" id="score-a">0.85</div>
+                        <div>Fairness Score</div>
+                    </div>
+                    <div class="score-card">
+                        <div class="group-name">Group B (Minority)</div>
+                        <div class="fairness-score unfair" id="score-b">0.72</div>
+                        <div>Fairness Score</div>
+                    </div>
+                </div>
+                
+                <div class="comparison-chart">
+                    <h3>Visual Comparison</h3>
+                    <div class="chart-bars">
+                        <div class="bar-group">
+                            <div class="bar bar-group-a" id="bar-a" style="height: 170px;"></div>
+                            <div class="bar-label">Group A</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar bar-group-b" id="bar-b" style="height: 144px;"></div>
+                            <div class="bar-label">Group B</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="harm-analysis" id="harm-analysis">
+                    <h3>⚠️ Potential Allocative Harm</h3>
+                    <p id="harm-description">
+                        Under this metric, Group B faces higher rates of false positives (13% vs 8%), meaning more individuals from this group are incorrectly labeled as "high risk" and may face harsher sentencing, higher bail, or increased surveillance without justification.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated dataset
+        let dataset = [];
+        const sampleSize = 100;
+        
+        // Metric definitions and calculations
+        const metrics = {
+            'overall-accuracy': {
+                name: 'Overall Accuracy Parity',
+                description: 'This metric requires that the overall accuracy (correct predictions) be equal across demographic groups. A system is considered fair if it makes correct predictions at the same rate for all groups.',
+                calculate: (data) => {
+                    const groupA = data.filter(d => d.group === 'A');
+                    const groupB = data.filter(d => d.group === 'B');
+                    
+                    const accuracyA = groupA.filter(d => d.prediction === d.actual).length / groupA.length;
+                    const accuracyB = groupB.filter(d => d.prediction === d.actual).length / groupB.length;
+                    
+                    return { scoreA: accuracyA, scoreB: accuracyB };
+                },
+                harmAnalysis: (scoreA, scoreB) => {
+                    if (scoreA > scoreB) {
+                        return `Group B experiences lower overall accuracy (${(scoreB * 100).toFixed(1)}% vs ${(scoreA * 100).toFixed(1)}%), meaning they face more incorrect predictions overall, potentially leading to both wrongful harsh treatment and missed opportunities for intervention.`;
+                    } else if (scoreB > scoreA) {
+                        return `Group A experiences lower overall accuracy (${(scoreA * 100).toFixed(1)}% vs ${(scoreB * 100).toFixed(1)}%), meaning they face more incorrect predictions overall, potentially leading to both wrongful harsh treatment and missed opportunities for intervention.`;
+                    } else {
+                        return 'Both groups have equal overall accuracy, suggesting no systematic bias in total prediction quality.';
+                    }
+                }
+            },
+            'fpr-parity': {
+                name: 'False Positive Rate Parity',
+                description: 'This metric requires equal false positive rates across groups. It ensures that individuals who will NOT reoffend are incorrectly labeled as "high risk" at the same rate regardless of their demographic group.',
+                calculate: (data) => {
+                    const groupA = data.filter(d => d.group === 'A' && d.actual === 'Low Risk');
+                    const groupB = data.filter(d => d.group === 'B' && d.actual === 'Low Risk');
+                    
+                    const fprA = groupA.filter(d => d.prediction === 'High Risk').length / groupA.length;
+                    const fprB = groupB.filter(d => d.prediction === 'High Risk').length / groupB.length;
+                    
+                    return { scoreA: 1 - fprA, scoreB: 1 - fprB };
+                },
+                harmAnalysis: (scoreA, scoreB) => {
+                    const fprA = 1 - scoreA;
+                    const fprB = 1 - scoreB;
+                    if (fprA > fprB) {
+                        return `Group A faces higher false positive rates (${(fprA * 100).toFixed(1)}% vs ${(fprB * 100).toFixed(1)}%), meaning more innocent individuals from this group are wrongly labeled as "high risk" and may face harsher treatment.`;
+                    } else if (fprB > fprA) {
+                        return `Group B faces higher false positive rates (${(fprB * 100).toFixed(1)}% vs ${(fprA * 100).toFixed(1)}%), meaning more innocent individuals from this group are wrongly labeled as "high risk" and may face harsher treatment.`;
+                    } else {
+                        return 'Both groups have equal false positive rates, ensuring equal protection from wrongful "high risk" classifications.';
+                    }
+                }
+            },
+            'fnr-parity': {
+                name: 'False Negative Rate Parity',
+                description: 'This metric requires equal false negative rates across groups. It ensures that individuals who WILL reoffend are missed by the system at the same rate regardless of their demographic group.',
+                calculate: (data) => {
+                    const groupA = data.filter(d => d.group === 'A' && d.actual === 'High Risk');
+                    const groupB = data.filter(d => d.group === 'B' && d.actual === 'High Risk');
+                    
+                    const fnrA = groupA.filter(d => d.prediction === 'Low Risk').length / groupA.length;
+                    const fnrB = groupB.filter(d => d.prediction === 'Low Risk').length / groupB.length;
+                    
+                    return { scoreA: 1 - fnrA, scoreB: 1 - fnrB };
+                },
+                harmAnalysis: (scoreA, scoreB) => {
+                    const fnrA = 1 - scoreA;
+                    const fnrB = 1 - scoreB;
+                    if (fnrA > fnrB) {
+                        return `Group A has higher false negative rates (${(fnrA * 100).toFixed(1)}% vs ${(fnrB * 100).toFixed(1)}%), meaning more truly high-risk individuals from this group are incorrectly classified as low-risk, potentially missing opportunities for intervention and public safety measures.`;
+                    } else if (fnrB > fnrA) {
+                        return `Group B has higher false negative rates (${(fnrB * 100).toFixed(1)}% vs ${(fnrA * 100).toFixed(1)}%), meaning more truly high-risk individuals from this group are incorrectly classified as low-risk, potentially missing opportunities for intervention and public safety measures.`;
+                    } else {
+                        return 'Both groups have equal false negative rates, ensuring equal detection of truly high-risk individuals.';
+                    }
+                }
+            },
+            'equal-opportunity': {
+                name: 'Equal Opportunity (True Positive Rate Parity)',
+                description: 'This metric requires that among individuals who will actually reoffend, the algorithm identifies them as "high risk" at equal rates across demographic groups. It focuses on equal treatment of truly high-risk individuals.',
+                calculate: (data) => {
+                    const groupA = data.filter(d => d.group === 'A' && d.actual === 'High Risk');
+                    const groupB = data.filter(d => d.group === 'B' && d.actual === 'High Risk');
+                    
+                    const tprA = groupA.filter(d => d.prediction === 'High Risk').length / groupA.length;
+                    const tprB = groupB.filter(d => d.prediction === 'High Risk').length / groupB.length;
+                    
+                    return { scoreA: tprA, scoreB: tprB };
+                },
+                harmAnalysis: (scoreA, scoreB) => {
+                    if (scoreA > scoreB) {
+                        return `The system better identifies truly high-risk individuals in Group A (${(scoreA * 100).toFixed(1)}% vs ${(scoreB * 100).toFixed(1)}%). This means Group B may receive inadequate interventions and supervision for those who actually need it, potentially leading to higher recidivism rates.`;
+                    } else if (scoreB > scoreA) {
+                        return `The system better identifies truly high-risk individuals in Group B (${(scoreB * 100).toFixed(1)}% vs ${(scoreA * 100).toFixed(1)}%). This means Group A may receive inadequate interventions and supervision for those who actually need it, potentially leading to higher recidivism rates.`;
+                    } else {
+                        return 'Both groups have equal true positive rates, ensuring equal identification of individuals who truly need intervention.';
+                    }
+                }
+            },
+            'calibration': {
+                name: 'Calibration',
+                description: 'This metric requires that when the algorithm assigns a risk score, that score should mean the same thing across groups. For example, if someone receives a "70% risk score," they should have a 70% chance of reoffending regardless of their demographic group.',
+                calculate: (data) => {
+                    // Simplified calibration - looking at positive predictive value
+                    const groupA = data.filter(d => d.group === 'A' && d.prediction === 'High Risk');
+                    const groupB = data.filter(d => d.group === 'B' && d.prediction === 'High Risk');
+                    
+                    const ppvA = groupA.filter(d => d.actual === 'High Risk').length / groupA.length;
+                    const ppvB = groupB.filter(d => d.actual === 'High Risk').length / groupB.length;
+                    
+                    return { scoreA: ppvA, scoreB: ppvB };
+                },
+                harmAnalysis: (scoreA, scoreB) => {
+                    if (scoreA > scoreB) {
+                        return `When individuals from Group A are labeled "high risk," they are more likely to actually reoffend (${(scoreA * 100).toFixed(1)}% vs ${(scoreB * 100).toFixed(1)}%). This means Group B faces more false accusations and potentially unjustified harsh treatment when labeled as high risk.`;
+                    } else if (scoreB > scoreA) {
+                        return `When individuals from Group B are labeled "high risk," they are more likely to actually reoffend (${(scoreB * 100).toFixed(1)}% vs ${(scoreA * 100).toFixed(1)}%). This means Group A faces more false accusations and potentially unjustified harsh treatment when labeled as high risk.`;
+                    } else {
+                        return 'The "high risk" label means the same thing for both groups, ensuring equal treatment when risk scores are applied.';
+                    }
+                }
+            }
+        };
+        
+        function generateDataset() {
+            dataset = [];
+            
+            // Generate realistic but biased data reflecting real-world disparities
+            for (let i = 0; i < sampleSize; i++) {
+                const group = i < sampleSize * 0.7 ? 'A' : 'B'; // 70% group A, 30% group B
+                const age = Math.floor(Math.random() * 40) + 18;
+                const priorOffenses = Math.floor(Math.random() * 5);
+                
+                // Introduce realistic biases
+                let actualRisk, prediction;
+                
+                if (group === 'A') {
+                    // Group A has lower base rates but algorithm is more accurate
+                    actualRisk = Math.random() < 0.3 ? 'High Risk' : 'Low Risk';
+                    if (actualRisk === 'High Risk') {
+                        prediction = Math.random() < 0.85 ? 'High Risk' : 'Low Risk';
+                    } else {
+                        prediction = Math.random() < 0.15 ? 'High Risk' : 'Low Risk';
+                    }
+                } else {
+                    // Group B has higher base rates but algorithm is less accurate/more biased
+                    actualRisk = Math.random() < 0.45 ? 'High Risk' : 'Low Risk';
+                    if (actualRisk === 'High Risk') {
+                        prediction = Math.random() < 0.75 ? 'High Risk' : 'Low Risk';
+                    } else {
+                        prediction = Math.random() < 0.25 ? 'High Risk' : 'Low Risk';
+                    }
+                }
+                
+                dataset.push({
+                    id: i + 1,
+                    group: group,
+                    age: age,
+                    priorOffenses: priorOffenses,
+                    prediction: prediction,
+                    actual: actualRisk
+                });
+            }
+        }
+        
+        function updateDataTable() {
+            const tbody = document.getElementById('data-tbody');
+            tbody.innerHTML = '';
+            
+            // Show first 10 entries
+            for (let i = 0; i < Math.min(10, dataset.length); i++) {
+                const row = dataset[i];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td>Group ${row.group}</td>
+                    <td>${row.age}</td>
+                    <td>${row.priorOffenses}</td>
+                    <td class="${row.prediction === 'High Risk' ? 'high-risk' : 'low-risk'}">${row.prediction}</td>
+                    <td class="${row.actual === 'High Risk' ? 'high-risk' : 'low-risk'}">${row.actual}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+        
+        function updateFairnessAnalysis() {
+            const selectedMetric = document.getElementById('fairness-metric').value;
+            const metric = metrics[selectedMetric];
+            
+            // Update explanation
+            document.getElementById('metric-explanation').innerHTML = `
+                <h3>${metric.name}</h3>
+                <p>${metric.description}</p>
+            `;
+            
+            // Calculate scores
+            const scores = metric.calculate(dataset);
+            
+            // Update score displays
+            document.getElementById('score-a').textContent = scores.scoreA.toFixed(3);
+            document.getElementById('score-b').textContent = scores.scoreB.toFixed(3);
+            
+            // Update colors based on fairness
+            const scoreAElement = document.getElementById('score-a');
+            const scoreBElement = document.getElementById('score-b');
+            const diff = Math.abs(scores.scoreA - scores.scoreB);
+            
+            if (diff < 0.05) {
+                scoreAElement.className = 'fairness-score fair';
+                scoreBElement.className = 'fairness-score fair';
+            } else {
+                if (scores.scoreA > scores.scoreB) {
+                    scoreAElement.className = 'fairness-score fair';
+                    scoreBElement.className = 'fairness-score unfair';
+                } else {
+                    scoreAElement.className = 'fairness-score unfair';
+                    scoreBElement.className = 'fairness-score fair';
+                }
+            }
+            
+            // Update chart
+            const maxScore = Math.max(scores.scoreA, scores.scoreB);
+            const barA = document.getElementById('bar-a');
+            const barB = document.getElementById('bar-b');
+            
+            barA.style.height = `${(scores.scoreA / maxScore) * 180}px`;
+            barB.style.height = `${(scores.scoreB / maxScore) * 180}px`;
+            
+            // Update harm analysis
+            document.getElementById('harm-description').textContent = metric.harmAnalysis(scores.scoreA, scores.scoreB);
+        }
+        
+        function generateNewDataset() {
+            generateDataset();
+            updateDataTable();
+            updateFairnessAnalysis();
+        }
+        
+        // Event listeners
+        document.getElementById('fairness-metric').addEventListener('change', updateFairnessAnalysis);
+        
+        // Initialize
+        generateDataset();
+        updateDataTable();
+        updateFairnessAnalysis();
+    </script>
+</body>
+</html>
