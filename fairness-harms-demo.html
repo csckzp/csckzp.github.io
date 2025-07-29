@@ -4,7 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Algorithmic Fairness: Understanding Allocative and Representational Harm</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Primary Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+    <script>
+        // Enhanced loading verification
+        let chartJsLoadAttempts = 0;
+        function verifyChartJsLoaded() {
+            chartJsLoadAttempts++;
+            console.log(`Chart.js load attempt ${chartJsLoadAttempts}, Chart type:`, typeof Chart);
+            
+            if (typeof Chart === 'undefined' && chartJsLoadAttempts < 5) {
+                console.log('Chart.js not yet available, retrying...');
+                setTimeout(verifyChartJsLoaded, 300);
+                return false;
+            }
+            
+            if (typeof Chart !== 'undefined') {
+                console.log('Chart.js successfully loaded!');
+                return true;
+            } else {
+                console.error('Chart.js failed to load after multiple attempts');
+                return false;
+            }
+        }
+        
+        // Start verification on window load
+        window.addEventListener('load', verifyChartJsLoaded);
+    </script>
     <style>
         * {
             margin: 0;
@@ -566,39 +592,58 @@
 
         // Initialize all demos when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing demos...');
+            console.log('DOM Content Loaded');
+            
+            // Wait for Chart.js to be fully available
+            function waitForChart() {
+                if (typeof Chart !== 'undefined') {
+                    console.log('Chart.js is ready, initializing demos...');
+                    initializeAllDemos();
+                } else {
+                    console.log('Waiting for Chart.js to load...');
+                    setTimeout(waitForChart, 100);
+                }
+            }
+            
+            waitForChart();
+        });
+
+        function initializeAllDemos() {
             try {
                 initializeLoanDemo();
                 initializeHiringDemo();
                 initializeCeoDemo();
                 initializeImageDemo();
                 console.log('All demos initialized successfully');
+                
+                // Add event listeners for sliders
+                const sliders = [
+                    { id: 'loanApplicants', handler: updateLoanDemo },
+                    { id: 'loanBias', handler: updateLoanDemo },
+                    { id: 'hiringCandidates', handler: updateHiringDemo },
+                    { id: 'hiringBias', handler: updateHiringDemo },
+                    { id: 'ceoDataPoints', handler: updateCeoDemo },
+                    { id: 'ceoStereotype', handler: updateCeoDemo },
+                    { id: 'imageAccuracy', handler: updateImageDemo },
+                    { id: 'imageBias', handler: updateImageDemo }
+                ];
+                
+                sliders.forEach(slider => {
+                    const element = document.getElementById(slider.id);
+                    if (element) {
+                        element.addEventListener('input', slider.handler);
+                        console.log(`Added event listener for ${slider.id}`);
+                    } else {
+                        console.error(`Element not found: ${slider.id}`);
+                    }
+                });
             } catch (error) {
                 console.error('Error initializing demos:', error);
             }
-            
-            // Add event listeners for sliders
-            const sliders = [
-                { id: 'loanApplicants', handler: updateLoanDemo },
-                { id: 'loanBias', handler: updateLoanDemo },
-                { id: 'hiringCandidates', handler: updateHiringDemo },
-                { id: 'hiringBias', handler: updateHiringDemo },
-                { id: 'ceoDataPoints', handler: updateCeoDemo },
-                { id: 'ceoStereotype', handler: updateCeoDemo },
-                { id: 'imageAccuracy', handler: updateImageDemo },
-                { id: 'imageBias', handler: updateImageDemo }
-            ];
-            
-            sliders.forEach(slider => {
-                const element = document.getElementById(slider.id);
-                if (element) {
-                    element.addEventListener('input', slider.handler);
-                    console.log(`Added event listener for ${slider.id}`);
-                } else {
-                    console.error(`Element not found: ${slider.id}`);
-                }
-            });
-        });
+        }
+        
+        // Make function globally accessible for fallback loading
+        window.initializeAllDemos = initializeAllDemos;
 
         function updateSliderValue(sliderId, displayId, suffix = '') {
             const slider = document.getElementById(sliderId);
@@ -630,6 +675,13 @@
 
         function updateLoanDemo() {
             console.log('Updating loan demo...');
+            
+            // Check if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not available in updateLoanDemo');
+                return;
+            }
+            
             try {
                 updateSliderValue('loanApplicants', 'loanApplicantsValue');
                 updateSliderValue('loanBias', 'loanBiasValue');
@@ -653,40 +705,52 @@
                 
                 // Update chart
                 if (loanChart) {
-                    loanChart.destroy();
+                    try {
+                        loanChart.destroy();
+                    } catch (e) {
+                        console.error('Error destroying loan chart:', e);
+                    }
                 }
                 
-                const ctx = document.getElementById('loanChart').getContext('2d');
-                loanChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Majority Group', 'Minority Group'],
-                        datasets: [{
-                            label: 'Approved',
-                            data: [groupAApprovals, groupBApprovals],
-                            backgroundColor: ['#27ae60', '#e74c3c']
-                        }, {
-                            label: 'Denied',
-                            data: [applicants - groupAApprovals, applicants - groupBApprovals],
-                            backgroundColor: ['#bdc3c7', '#bdc3c7']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { stacked: true },
-                            y: { stacked: true }
+                const ctx = document.getElementById('loanChart');
+                if (!ctx) {
+                    console.error('loanChart canvas element not found');
+                    return;
+                }
+                
+                try {
+                    loanChart = new Chart(ctx.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: ['Majority Group', 'Minority Group'],
+                            datasets: [{
+                                label: 'Approved',
+                                data: [groupAApprovals, groupBApprovals],
+                                backgroundColor: ['#27ae60', '#e74c3c']
+                            }, {
+                                label: 'Denied',
+                                data: [applicants - groupAApprovals, applicants - groupBApprovals],
+                                backgroundColor: ['#bdc3c7', '#bdc3c7']
+                            }]
                         },
-                        plugins: {
-                            legend: {
-                                position: 'top'
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { stacked: true },
+                                y: { stacked: true }
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'top'
+                                }
                             }
                         }
-                    }
-                });
-                
-                // Update results
+                    });
+                } catch (chartError) {
+                    console.error('Error creating loan chart:', chartError);
+                    return;
+                }                // Update results
                 const approvalRateA = (groupAApprovals / applicants * 100).toFixed(1);
                 const approvalRateB = (groupBApprovals / applicants * 100).toFixed(1);
                 const disparity = Math.abs(approvalRateA - approvalRateB).toFixed(1);
@@ -736,6 +800,12 @@
         }
 
         function updateHiringDemo() {
+            // Check if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not available in updateHiringDemo');
+                return;
+            }
+            
             updateSliderValue('hiringCandidates', 'hiringCandidatesValue');
             updateSliderValue('hiringBias', 'hiringBiasValue');
             
@@ -826,6 +896,12 @@
         }
 
         function updateCeoDemo() {
+            // Check if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not available in updateCeoDemo');
+                return;
+            }
+            
             updateSliderValue('ceoDataPoints', 'ceoDataPointsValue');
             updateSliderValue('ceoStereotype', 'ceoStereotypeValue', 'x');
             
@@ -927,6 +1003,12 @@
         }
 
         function updateImageDemo() {
+            // Check if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not available in updateImageDemo');
+                return;
+            }
+            
             const accuracy = parseFloat(document.getElementById('imageAccuracy').value);
             const bias = parseFloat(document.getElementById('imageBias').value);
             
