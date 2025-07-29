@@ -68,12 +68,18 @@
                     </tr>
                 </tbody>
             </table>
-        </section>
-
-        <section class="info-panel" id="infoPanel">
-            <h3>Risk Information</h3>
-            <div id="riskContent">
-                <p>Select a cell in the risk matrix to learn more about specific risk factors and their implications.</p>
+            
+            <!-- Risk Information Overlay Panel -->
+            <div class="info-panel-overlay" id="infoPanel" style="display: none;">
+                <div class="info-panel-content">
+                    <div class="info-panel-header">
+                        <h3>Risk Information</h3>
+                        <button class="close-btn" id="closePanelBtn">&times;</button>
+                    </div>
+                    <div id="riskContent">
+                        <p>Select a cell in the risk matrix to learn more about specific risk factors and their implications.</p>
+                    </div>
+                </div>
             </div>
         </section>
 

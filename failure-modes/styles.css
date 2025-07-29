@@ -63,11 +63,95 @@ h4 {
     margin-bottom: 0.5rem;
 }
 
-/* Risk Matrix */
+/* Risk Matrix Container */
 .risk-matrix-container {
+    position: relative;
     overflow-x: auto;
 }
 
+/* Info Panel Overlay */
+.info-panel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.info-panel-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.info-panel-content {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(0.7);
+    transition: transform 0.3s ease;
+    position: relative;
+    margin: 20px;
+}
+
+.info-panel-overlay.show .info-panel-content {
+    transform: scale(1);
+}
+
+.info-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.info-panel-header h3 {
+    color: white;
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Remove old info-panel styles */
+.info-panel {
+    display: none;
+}
+
+/* Risk Matrix Table */
 .risk-matrix {
     width: 100%;
     border-collapse: collapse;
@@ -134,19 +218,6 @@ h4 {
 .risk-cell.selected {
     outline: 3px solid #007bff;
     outline-offset: 2px;
-}
-
-/* Info Panel */
-.info-panel {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    color: white;
-    min-height: 200px;
-    transition: all 0.3s ease;
-}
-
-.info-panel h3 {
-    color: white;
-    margin-bottom: 1rem;
 }
 
 #riskContent {

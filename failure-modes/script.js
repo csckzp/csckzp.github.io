@@ -354,7 +354,65 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeRiskMatrix();
     initializeConceptCards();
     initializeQuiz();
+    initializeOverlayControls();
 });
+
+// Initialize overlay controls
+function initializeOverlayControls() {
+    const closeBtn = document.getElementById('closePanelBtn');
+    const overlay = document.getElementById('infoPanel');
+    
+    if (!closeBtn || !overlay) {
+        console.error('Overlay elements not found');
+        return;
+    }
+    
+    // Close button functionality
+    closeBtn.addEventListener('click', function() {
+        hideInfoPanel();
+    });
+    
+    // Close on overlay background click
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            hideInfoPanel();
+        }
+    });
+    
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.classList.contains('show')) {
+            hideInfoPanel();
+        }
+    });
+}
+
+// Show the info panel overlay
+function showInfoPanel() {
+    const overlay = document.getElementById('infoPanel');
+    overlay.style.display = 'flex';
+    // Use timeout to ensure display change takes effect before adding show class
+    setTimeout(() => {
+        overlay.classList.add('show');
+    }, 10);
+}
+
+// Hide the info panel overlay
+function hideInfoPanel() {
+    const overlay = document.getElementById('infoPanel');
+    overlay.classList.remove('show');
+    
+    // Clear selected cell
+    if (selectedCell) {
+        selectedCell.classList.remove('selected');
+        selectedCell = null;
+    }
+    
+    // Hide overlay after animation completes
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 300);
+}
 
 // Initialize risk matrix interactions
 function initializeRiskMatrix() {
@@ -420,6 +478,9 @@ function updateInfoPanel(decision, category, riskLevel) {
             <p class="mitigation-text">${data.mitigation}</p>
         </div>
     `;
+    
+    // Show the overlay panel
+    showInfoPanel();
 }
 
 // Initialize concept cards
@@ -454,6 +515,9 @@ function showConceptDetails(concept) {
             </div>
         </div>
     `;
+    
+    // Show the overlay panel
+    showInfoPanel();
 }
 
 // Initialize quiz functionality
