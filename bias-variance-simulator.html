@@ -304,6 +304,7 @@
             <p><strong>Bias</strong> measures how far off the average prediction is from the true value. High bias leads to underfitting.</p>
             <p><strong>Variance</strong> measures how much predictions vary across different training sets. High variance leads to overfitting.</p>
             <p><strong>Learning Curves</strong> show how performance changes with training data size. They help identify if more data would improve performance or if the model has plateaued.</p>
+            <p><strong>Important Note:</strong> Training and test errors are measured against the true function (without noise) to show how well the model learns the underlying pattern. This is why training error can decrease as training set size increases - more data helps the model better estimate the true function despite the noise in individual samples.</p>
             <p>The key insight: <strong>Total Error = Bias² + Variance + Irreducible Noise</strong></p>
         </div>
     </div>
@@ -523,9 +524,9 @@
                     const predictions = predict(xTest, coeffs);
                     allPredictions.push(predictions);
                     
-                    // Calculate errors
+                    // Calculate errors - use true function for both train and test to measure learning ability
                     const trainPred = predict(sample.x, coeffs);
-                    const trainError = sample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.y.length;
+                    const trainError = sample.yTrue.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / sample.yTrue.length;
                     const testError = yTrueTest.reduce((sum, val, idx) => sum + Math.pow(val - predictions[idx], 2), 0) / yTrueTest.length;
                     trainErrors.push(trainError);
                     testErrors.push(testError);
@@ -612,8 +613,11 @@
                         const trainPred = predict(trainSample.x, coeffs);
                         const testPred = predict(testSet.x, coeffs);
                         
-                        // Use true values for test error (without noise from this specific test sample)
-                        const trainErr = trainSample.y.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / trainSample.y.length;
+                        // For training error, measure against true function (without noise)
+                        // This shows how well the model learns the underlying pattern
+                        const trainErr = trainSample.yTrue.reduce((sum, val, idx) => sum + Math.pow(val - trainPred[idx], 2), 0) / trainSample.yTrue.length;
+                        
+                        // For test error, also use true values for consistent comparison
                         const testErr = testSet.yTrue.reduce((sum, val, idx) => sum + Math.pow(val - testPred[idx], 2), 0) / testSet.yTrue.length;
                         
                         trainErrs.push(trainErr);
