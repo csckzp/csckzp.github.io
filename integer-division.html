@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integer Division by Powers of 2</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .demo-section {
+            margin: 30px 0;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        input, select {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            backdrop-filter: blur(5px);
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .bit-display {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .bit-group {
+            display: inline-block;
+            margin: 0 5px;
+        }
+        
+        .shifted-bits {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        .new-bits {
+            color: #4ecdc4;
+            font-style: italic;
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .result-table th,
+        .result-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .result-table th {
+            background: rgba(0, 255, 136, 0.2);
+            font-weight: bold;
+        }
+        
+        .highlight {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .formula {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            border-left: 3px solid #00ff88;
+        }
+        
+        .warning {
+            background: rgba(255, 107, 107, 0.2);
+            border-left: 3px solid #ff6b6b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #00ff88, #00d4aa);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            margin-right: 2px;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: rgba(0, 255, 136, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Integer Division by Powers of 2</h1>
+    <p class="subtitle">Interactive demonstration of bit-level division operations</p>
+    
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('unsigned')">Unsigned Division</button>
+            <button class="tab" onclick="switchTab('signed')">Two's-Complement Division</button>
+            <button class="tab" onclick="switchTab('practice')">Practice Problems</button>
+        </div>
+        
+        <div id="unsigned" class="tab-content active">
+            <div class="demo-section">
+                <h2>Unsigned Division by Powers of 2</h2>
+                <p>Logical right shift always rounds toward zero for unsigned numbers.</p>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="unsignedValue">Value (0-65535):</label>
+                        <input type="number" id="unsignedValue" value="12340" min="0" max="65535" oninput="updateUnsignedDemo()">
+                    </div>
+                    <div class="control-group">
+                        <label for="unsignedShift">Shift amount k:</label>
+                        <select id="unsignedShift" onchange="updateUnsignedDemo()">
+                            <option value="0">0 (÷1)</option>
+                            <option value="1">1 (÷2)</option>
+                            <option value="2">2 (÷4)</option>
+                            <option value="3">3 (÷8)</option>
+                            <option value="4" selected>4 (÷16)</option>
+                            <option value="5">5 (÷32)</option>
+                            <option value="6">6 (÷64)</option>
+                            <option value="7">7 (÷128)</option>
+                            <option value="8">8 (÷256)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="formula">
+                    Principle: x >> k yields ⌊x/2^k⌋ for unsigned x
+                </div>
+                
+                <div id="unsignedResult"></div>
+            </div>
+        </div>
+        
+        <div id="signed" class="tab-content">
+            <div class="demo-section">
+                <h2>Two's-Complement Division</h2>
+                <p>Arithmetic right shift rounds down (toward negative infinity), but we want to round toward zero.</p>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="signedValue">Value (-32768 to 32767):</label>
+                        <input type="number" id="signedValue" value="-12340" min="-32768" max="32767" oninput="updateSignedDemo()">
+                    </div>
+                    <div class="control-group">
+                        <label for="signedShift">Shift amount k:</label>
+                        <select id="signedShift" onchange="updateSignedDemo()">
+                            <option value="0">0 (÷1)</option>
+                            <option value="1">1 (÷2)</option>
+                            <option value="2">2 (÷4)</option>
+                            <option value="3">3 (÷8)</option>
+                            <option value="4" selected>4 (÷16)</option>
+                            <option value="5">5 (÷32)</option>
+                            <option value="6">6 (÷64)</option>
+                            <option value="7">7 (÷128)</option>
+                            <option value="8">8 (÷256)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="formula">
+                    Without bias: x >> k yields ⌊x/2^k⌋ (rounds down)<br>
+                    With bias: (x + 2^k - 1) >> k yields ⌈x/2^k⌉ (rounds toward zero)
+                </div>
+                
+                <div id="signedResult"></div>
+                
+                <div class="warning">
+                    <strong>Note:</strong> For negative numbers, arithmetic right shift rounds down (more negative), 
+                    but integer division should round toward zero. The bias correction fixes this.
+                </div>
+            </div>
+        </div>
+        
+        <div id="practice" class="tab-content">
+            <div class="demo-section">
+                <h2>Practice Problem 2.42: Divide by 16</h2>
+                <p>Implement x/16 without division, modulus, multiplication, conditionals, comparisons, or loops.</p>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="practiceValue">Test Value:</label>
+                        <input type="number" id="practiceValue" value="-123" min="-2147483648" max="2147483647" oninput="updatePractice()">
+                    </div>
+                </div>
+                
+                <div class="formula">
+                    Solution: (x + (x >> 31 & 15)) >> 4<br>
+                    <small>This adds bias (15) only when x is negative, using the sign bit mask.</small>
+                </div>
+                
+                <div id="practiceResult"></div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>Practice Problem 2.43: Reverse Engineering</h2>
+                <p>From the optimized code, determine the mystery constants M and N.</p>
+                
+                <div class="formula">
+                    Original: result = x*M + y/N<br>
+                    Optimized:<br>
+                    &nbsp;&nbsp;t = x;<br>
+                    &nbsp;&nbsp;x <<= 5;&nbsp;&nbsp;// x = x * 32<br>
+                    &nbsp;&nbsp;x -= t;&nbsp;&nbsp;// x = x * 32 - x = x * 31<br>
+                    &nbsp;&nbsp;if (y < 0) y += 7;<br>
+                    &nbsp;&nbsp;y >>= 3;&nbsp;&nbsp;// y = y / 8 (with bias for negatives)<br>
+                    &nbsp;&nbsp;return x + y;
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="mysteryX">Test x:</label>
+                        <input type="number" id="mysteryX" value="10" oninput="updateMystery()">
+                    </div>
+                    <div class="control-group">
+                        <label for="mysteryY">Test y:</label>
+                        <input type="number" id="mysteryY" value="-25" oninput="updateMystery()">
+                    </div>
+                </div>
+                
+                <div id="mysteryResult"></div>
+                
+                <p><strong>Answer:</strong> M = 31, N = 8</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toBinary(num, bits = 16) {
+            if (num >= 0) {
+                return num.toString(2).padStart(bits, '0');
+            } else {
+                // Two's complement for negative numbers
+                return ((1 << bits) + num).toString(2).padStart(bits, '0');
+            }
+        }
+        
+        function formatBinary(binary, shiftAmount = 0) {
+            let result = '';
+            for (let i = 0; i < binary.length; i += 4) {
+                if (i > 0) result += ' ';
+                let group = binary.substr(i, 4);
+                if (shiftAmount > 0 && i < shiftAmount) {
+                    // Highlight shifted-in bits
+                    result += `<span class="new-bits">${group}</span>`;
+                } else if (shiftAmount > 0 && i >= binary.length - shiftAmount) {
+                    // Highlight shifted-out bits
+                    result += `<span class="shifted-bits">${group}</span>`;
+                } else {
+                    result += group;
+                }
+            }
+            return result;
+        }
+        
+        function updateUnsignedDemo() {
+            const value = parseInt(document.getElementById('unsignedValue').value) || 0;
+            const k = parseInt(document.getElementById('unsignedShift').value);
+            const divisor = 1 << k;
+            
+            const originalBinary = toBinary(value, 16);
+            const shiftedValue = value >> k;
+            const shiftedBinary = toBinary(shiftedValue, 16);
+            
+            const actualDivision = value / divisor;
+            const integerResult = Math.floor(actualDivision);
+            
+            let html = `
+                <table class="result-table">
+                    <tr><th>Operation</th><th>Binary</th><th>Decimal</th><th>Actual Division</th></tr>
+                    <tr>
+                        <td>Original value</td>
+                        <td class="bit-display">${formatBinary(originalBinary)}</td>
+                        <td>${value}</td>
+                        <td>${actualDivision.toFixed(6)}</td>
+                    </tr>
+                    <tr>
+                        <td>After >> ${k}</td>
+                        <td class="bit-display">${formatBinary(shiftedBinary, k)}</td>
+                        <td><span class="highlight">${shiftedValue}</span></td>
+                        <td>⌊${actualDivision.toFixed(6)}⌋ = ${integerResult}</td>
+                    </tr>
+                </table>
+                
+                <p><strong>Verification:</strong> ${value} >> ${k} = ${shiftedValue}, which equals ⌊${value}/${divisor}⌋ = ${integerResult} ✓</p>
+            `;
+            
+            document.getElementById('unsignedResult').innerHTML = html;
+        }
+        
+        function updateSignedDemo() {
+            const value = parseInt(document.getElementById('signedValue').value) || 0;
+            const k = parseInt(document.getElementById('signedShift').value);
+            const divisor = 1 << k;
+            const bias = divisor - 1;
+            
+            const originalBinary = toBinary(value, 16);
+            
+            // Arithmetic right shift (JavaScript >> is arithmetic for signed numbers)
+            const arithmeticShifted = value >> k;
+            const arithmeticBinary = toBinary(arithmeticShifted, 16);
+            
+            // With bias correction
+            const biasedValue = value + bias;
+            const biasedShifted = biasedValue >> k;
+            const biasedBinary = toBinary(biasedShifted, 16);
+            
+            const actualDivision = value / divisor;
+            const floorResult = Math.floor(actualDivision);
+            const ceilResult = Math.ceil(actualDivision);
+            const towardZeroResult = value >= 0 ? floorResult : ceilResult;
+            
+            let html = `
+                <table class="result-table">
+                    <tr><th>Operation</th><th>Binary</th><th>Decimal</th><th>Actual Division</th></tr>
+                    <tr>
+                        <td>Original value</td>
+                        <td class="bit-display">${formatBinary(originalBinary)}</td>
+                        <td>${value}</td>
+                        <td>${actualDivision.toFixed(6)}</td>
+                    </tr>
+                    <tr>
+                        <td>Arithmetic >> ${k}</td>
+                        <td class="bit-display">${formatBinary(arithmeticBinary, k)}</td>
+                        <td>${arithmeticShifted}</td>
+                        <td>⌊${actualDivision.toFixed(6)}⌋ = ${floorResult}</td>
+                    </tr>
+                    <tr>
+                        <td>With bias (+${bias})</td>
+                        <td class="bit-display">${formatBinary(toBinary(biasedValue, 16))}</td>
+                        <td>${biasedValue}</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>Biased >> ${k}</td>
+                        <td class="bit-display">${formatBinary(biasedBinary, k)}</td>
+                        <td><span class="highlight">${biasedShifted}</span></td>
+                        <td>Toward zero: ${towardZeroResult}</td>
+                    </tr>
+                </table>
+                
+                <p><strong>Result:</strong></p>
+                <ul>
+                    <li>Simple shift: ${value} >> ${k} = ${arithmeticShifted} (rounds ${value < 0 ? 'down' : 'toward zero'})</li>
+                    <li>With bias: (${value} + ${bias}) >> ${k} = ${biasedShifted} (rounds toward zero) ${biasedShifted === towardZeroResult ? '✓' : '✗'}</li>
+                </ul>
+            `;
+            
+            document.getElementById('signedResult').innerHTML = html;
+        }
+        
+        function updatePractice() {
+            const x = parseInt(document.getElementById('practiceValue').value) || 0;
+            
+            // The solution: (x + (x >> 31 & 15)) >> 4
+            const signBit = x >> 31;  // -1 if negative, 0 if positive
+            const bias = signBit & 15;  // 15 if negative, 0 if positive
+            const biased = x + bias;
+            const result = biased >> 4;
+            
+            // Standard division for comparison
+            const standardDiv = Math.trunc(x / 16);  // Truncate toward zero
+            
+            let html = `
+                <table class="result-table">
+                    <tr><th>Step</th><th>Expression</th><th>Value</th><th>Binary (32-bit)</th></tr>
+                    <tr>
+                        <td>Original</td>
+                        <td>x</td>
+                        <td>${x}</td>
+                        <td class="bit-display">${toBinary(x, 32)}</td>
+                    </tr>
+                    <tr>
+                        <td>Sign extend</td>
+                        <td>x >> 31</td>
+                        <td>${signBit}</td>
+                        <td class="bit-display">${toBinary(signBit, 32)}</td>
+                    </tr>
+                    <tr>
+                        <td>Mask with 15</td>
+                        <td>(x >> 31) & 15</td>
+                        <td>${bias}</td>
+                        <td class="bit-display">${toBinary(bias, 32)}</td>
+                    </tr>
+                    <tr>
+                        <td>Add bias</td>
+                        <td>x + bias</td>
+                        <td>${biased}</td>
+                        <td class="bit-display">${toBinary(biased, 32)}</td>
+                    </tr>
+                    <tr>
+                        <td>Right shift 4</td>
+                        <td>(x + bias) >> 4</td>
+                        <td><span class="highlight">${result}</span></td>
+                        <td class="bit-display">${formatBinary(toBinary(result, 32), 4)}</td>
+                    </tr>
+                </table>
+                
+                <p><strong>Verification:</strong></p>
+                <ul>
+                    <li>Our result: ${result}</li>
+                    <li>Standard x/16: ${standardDiv}</li>
+                    <li>Match: ${result === standardDiv ? '✓' : '✗'}</li>
+                </ul>
+                
+                <p><strong>Explanation:</strong> When x is negative, x >> 31 produces all 1s (-1), 
+                and (-1) & 15 = 15, adding the needed bias. When x is positive, x >> 31 produces 0, 
+                so no bias is added.</p>
+            `;
+            
+            document.getElementById('practiceResult').innerHTML = html;
+        }
+        
+        function updateMystery() {
+            const x = parseInt(document.getElementById('mysteryX').value) || 0;
+            const y = parseInt(document.getElementById('mysteryY').value) || 0;
+            
+            // Original equation: x * M + y / N
+            const M = 31, N = 8;
+            const original = x * M + Math.trunc(y / N);
+            
+            // Optimized version
+            let t = x;
+            let optX = x << 5;  // x * 32
+            optX -= t;          // x * 32 - x = x * 31
+            let optY = y;
+            if (optY < 0) optY += 7;  // Add bias for negative
+            optY >>= 3;         // Divide by 8
+            const optimized = optX + optY;
+            
+            let html = `
+                <table class="result-table">
+                    <tr><th>Version</th><th>Calculation</th><th>Result</th></tr>
+                    <tr>
+                        <td>Original</td>
+                        <td>${x} * ${M} + ${y} / ${N}</td>
+                        <td>${original}</td>
+                    </tr>
+                    <tr>
+                        <td>Optimized</td>
+                        <td>
+                            t = ${x}<br>
+                            x = ${x} << 5 = ${x << 5}<br>
+                            x = ${x << 5} - ${t} = ${(x << 5) - t}<br>
+                            y = ${y}${y < 0 ? ' + 7 = ' + (y + 7) : ''}<br>
+                            y = ${y < 0 ? y + 7 : y} >> 3 = ${y < 0 ? (y + 7) >> 3 : y >> 3}<br>
+                            result = ${(x << 5) - t} + ${y < 0 ? (y + 7) >> 3 : y >> 3}
+                        </td>
+                        <td><span class="highlight">${optimized}</span></td>
+                    </tr>
+                </table>
+                
+                <p><strong>Analysis:</strong></p>
+                <ul>
+                    <li>x << 5 - x = x * 32 - x = x * 31, so M = 31</li>
+                    <li>Adding 7 before right shift by 3 is the bias technique for division by 8, so N = 8</li>
+                    <li>Results match: ${original === optimized ? '✓' : '✗'}</li>
+                </ul>
+            `;
+            
+            document.getElementById('mysteryResult').innerHTML = html;
+        }
+        
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+        
+        // Initialize demos
+        updateUnsignedDemo();
+        updateSignedDemo();
+        updatePractice();
+        updateMystery();
+    </script>
+</body>
+</html>
