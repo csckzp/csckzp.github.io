@@ -144,7 +144,7 @@
               	}
               }
           }
-          out = JSON.stringify(sort_object(d));
+          out1 = JSON.stringify(sort_object(d));
           d = {};
           l = suggest1(words, mfq);
           //l = words
@@ -165,7 +165,7 @@
               	}
               }
           }
-          out += "<br>" + JSON.stringify(sort_object(d));
+          out = "<br>" + JSON.stringify(sort_object(d)) + "<br>" + out1;
           return out;
         }
 
@@ -250,8 +250,11 @@
                     output.textContent = 'No words match the given feedback. Please check your inputs.';
                 } else {
                 	mfq = mostFreq(words, guesses, true)
-                    output.innerHTML = `Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
-                	output.innerHTML += `<br>Suggested: ${suggest(words, mfq)}`
+                    //output.innerHTML = `Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
+                	//output.innerHTML += `<br>Suggested: ${suggest(words, mfq)}`
+                    output.innerHTML = `<br>Suggested: ${suggest(words, mfq)}`
+                    output.innerHTML += `<br>Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
+                	
                 }
 				
 				document.getElementById('guess-input').value = '';
