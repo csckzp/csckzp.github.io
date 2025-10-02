@@ -177,8 +177,9 @@
             const output = document.getElementById('output');
             //output.innerHTML = `Possible words: ${words.join(', ')}<br>Most frequent letter: ${mostFreq(words, guesses, true)}`;
             mfq = mostFreq(words, "", true)
-            output.innerHTML = `Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
-            output.innerHTML += `<br>Suggested: ${suggest(words, mfq)}`
+            output.innerHTML = `<br>Suggested: ${suggest(words, mfq)}`
+            output.innerHTML += `<br>Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
+            
 
 			document.getElementById('clear-btn').addEventListener('click', () => {document.getElementById('guess-input').value = '';
                 document.getElementById('feedback-input').value = '';});
@@ -203,8 +204,9 @@
                     output.textContent = 'No words match the given feedback. Please check your inputs.';
                 } else {
                 	mfq = mostFreq(words, guesses, true)
-                    output.innerHTML = `Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
-                	output.innerHTML += `<br>Suggested: ${suggest(words, mfq)}`
+                    output.innerHTML = `<br>Suggested: ${suggest(words, mfq)}`
+                    output.innerHTML += `<br>Previous guesses: ${guesses}<br>Possible words: ${words.join(', ')}<br>Most frequent letter: ${mfq}`;
+                	
                 }
 				
 				document.getElementById('guess-input').value = '';
