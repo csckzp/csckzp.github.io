@@ -165,8 +165,12 @@
               	}
               }
           }
-          out = "<br>" + JSON.stringify(sort_object(d)) + "<br>" + out1;
-          return out;
+          out = JSON.stringify(sort_object(d));
+          const output = document.getElementById('best_suggest');
+          const output1 = document.getElementById('all_suggest');
+          output.innerHTML = `Best suggestions: ${out}`;
+          output1.innerHTML = `All suggestions: ${out1}`;
+          return "";
         }
 
         function startGame() {
@@ -283,6 +287,8 @@
         <button id="guess-btn">Submit Guess</button>
         <button id="restart-btn">Restart</button>
 		<button id="clear-btn">Clear</button>
+        <div class="output" id="best_suggest"></div>
+        <div class="output" id="all_suggest"></div>
         <div class="output" id="output"></div>
     </div>
 </body>
