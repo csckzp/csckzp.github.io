@@ -226,6 +226,7 @@
                 document.getElementById('output').textContent = '';
                 document.getElementById('guess-input').value = '';
                 document.getElementById('feedback-input').value = '';
+                suggest(words, mfq);
                 output.innerHTML = `Possible words: ${words.join(', ')}<br>Most frequent letter: ${mostFreq(words, guesses)}`;
             });
             
