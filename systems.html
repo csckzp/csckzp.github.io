@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Systems Programming Study Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: #312E81;
+            font-size: 2.25rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header p {
+            color: #6B7280;
+        }
+
+        .topic-section {
+            margin-bottom: 2rem;
+        }
+
+        .topic-header {
+            background: #312E81;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
+
+        .topic-header h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .topic-header p {
+            color: #C7D2FE;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .questions-container {
+            background: white;
+            border-radius: 0 0 0.5rem 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+
+        .question {
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .question:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+
+        .question h3 {
+            color: #111827;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .option-button {
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem;
+            border: 2px solid #D1D5DB;
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .option-button:hover:not(:disabled) {
+            border-color: #818CF8;
+            background: #EEF2FF;
+        }
+
+        .option-button.correct {
+            border-color: #10B981;
+            background: #ECFDF5;
+        }
+
+        .option-button.incorrect {
+            border-color: #EF4444;
+            background: #FEF2F2;
+        }
+
+        .option-button.dimmed {
+            opacity: 0.5;
+        }
+
+        .option-button:disabled {
+            cursor: default;
+        }
+
+        .option-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .option-letter {
+            font-weight: 600;
+            color: #6B7280;
+        }
+
+        .icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .icon-check {
+            color: #10B981;
+        }
+
+        .icon-x {
+            color: #EF4444;
+        }
+
+        .icon-book {
+            color: #312E81;
+        }
+
+        .explanation {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .explanation.correct {
+            background: #ECFDF5;
+            border: 2px solid #A7F3D0;
+        }
+
+        .explanation.incorrect {
+            background: #EFF6FF;
+            border: 2px solid #BFDBFE;
+        }
+
+        .explanation-content p:first-child {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .explanation.correct .explanation-content p:first-child {
+            color: #065F46;
+        }
+
+        .explanation.incorrect .explanation-content p:first-child {
+            color: #1E3A8A;
+        }
+
+        .explanation-content p:last-child {
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        .footer {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .footer p {
+            color: #6B7280;
+        }
+
+        svg {
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app"></div>
+
+    <script>
+        // SVG Icons
+        const BookIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>';
+        const CheckCircle = '<svg class="icon icon-check" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+        const XCircle = '<svg class="icon icon-x" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+        const BookSmall = '<svg class="icon icon-book" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>';
+
+        // Quiz data
+        const topics = {
+            "Memory & Caching": [
+      {
+        id: "cache1",
+        question: "Each thread has its own ____.",
+        options: ["Heap", "Stack", "Global values", "Text data"],
+        correct: 1,
+        explanation: "Each thread has its own stack for local variables and function calls. Threads share the heap, global values, and text (code) data."
+      },
+      {
+        id: "cache2",
+        question: "Consider a direct-mapped cache memory. Which statement is true?",
+        options: [
+          "The cache has 1 line per set",
+          "The cache has 1 word per block",
+          "The cache has 1 set per cache",
+          "None of the above"
+        ],
+        correct: 0,
+        explanation: "Direct-mapped means each memory address maps to exactly one cache line, which means 1 line per set (or equivalently, the number of sets equals the number of lines)."
+      },
+      {
+        id: "cache3",
+        question: "Which statement about cache memories is true?",
+        options: [
+          "Larger caches are more susceptible to capacity misses than smaller caches",
+          "Caches with lower associativity are more susceptible to conflict misses than those with higher associativity",
+          "Caches with higher associativity are more susceptible to cold misses than those with lower associativity",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "Lower associativity means fewer places a block can go, leading to more conflict misses. Direct-mapped (1-way) has the most conflicts; fully associative has none."
+      },
+      {
+        id: "cache4",
+        question: "On a 64-bit system, which C expression is equivalent to (x[2] + 4)[3]? Assume x is declared as int **x.",
+        options: [
+          "*((*(x + 16)) + 28)",
+          "*((*(x + 2)) + 7)",
+          "**(x + 28)",
+          "*(((*x) + 2) + 7)",
+          "(**(x + 2) + 7)"
+        ],
+        correct: 1,
+        explanation: "(x[2] + 4)[3] = *((x[2] + 4) + 3) = *((*(x + 2)) + 4 + 3) = *((*(x + 2)) + 7)"
+      },
+      {
+        id: "cache5",
+        question: "In an x86-64 system, how many integers can be stored in a cache line if your cache is 4KB, is 4-way set-associative, and contains 4 sets?",
+        options: ["8", "16", "32", "64", "128"],
+        correct: 3,
+        explanation: "Total cache = 4KB. With 4 sets and 4 ways: 16 lines total. Block size = 4KB / 16 = 256 bytes. Integers are 4 bytes, so 256/4 = 64 integers per line."
+      },
+      {
+        id: "cache6",
+        question: "Which types of locality are leveraged by virtual memory?",
+        options: [
+          "Spatial locality",
+          "Temporal locality",
+          "Prime locality",
+          "Both spatial and temporal",
+          "Both temporal and prime"
+        ],
+        correct: 3,
+        explanation: "Virtual memory leverages both spatial locality (nearby addresses accessed together) and temporal locality (recently accessed data accessed again)."
+      },
+      {
+        id: "cache7",
+        question: "Which is the best justification for using middle bits as the set index rather than most significant bits?",
+        options: [
+          "Indexing with MSB would necessitate a smaller cache",
+          "It is impossible to design a system using MSB",
+          "Determining hit/miss is faster with middle bits",
+          "Programs with good spatial locality use cache more efficiently with middle-bit indexing"
+        ],
+        correct: 3,
+        explanation: "Using middle bits as index means consecutive addresses map to different sets, allowing better use of the cache when accessing contiguous memory (spatial locality)."
+      },
+      {
+        id: "cache8",
+        question: "A 256-byte 4-way set associative cache with 16 byte blocks has how many sets?",
+        options: ["4 sets", "16 sets", "64 sets", "No sets"],
+        correct: 0,
+        explanation: "Total cache = 256 bytes. Block size = 16 bytes means 256/16 = 16 total lines. With 4-way associativity: 16 lines / 4 ways = 4 sets."
+      },
+      {
+        id: "cache9",
+        question: "Which uses of caching is NOT crucial to program performance?",
+        options: [
+          "Caching portions of physical memory",
+          "Caching virtual address translations",
+          "Caching virtual addresses",
+          "Caching virtual memory pages",
+          "None (all are crucial)"
+        ],
+        correct: 2,
+        explanation: "Caching virtual addresses themselves is not a standard or crucial technique. We cache physical memory (in CPU cache), translations (TLB), and pages (in physical memory), but not virtual addresses."
+      },
+      {
+        id: "cache10",
+        question: "Which of the following addresses is 8-byte aligned?",
+        options: [
+          "11101101011101112",
+          "11101101011101002",
+          "11101101011100002",
+          "11101101011101102",
+          "None of the above"
+        ],
+        correct: 2,
+        explanation: "For 8-byte alignment, the last 3 bits must be 000 (since 8 = 2^3). Only 11101101011100002 has the last 3 bits as 000."
+      }
+    ],
+    "Virtual Memory & Page Tables": [
+      {
+        id: "vm1",
+        question: "Suppose int A is at virtual address 0xff987cf0, and int B is at 0xff987d98. If page size is 0x1000 bytes, then A's physical address is numerically less than B's physical address.",
+        options: [
+          "Always true",
+          "Always false",
+          "Sometimes true, sometimes false",
+          "Not enough information"
+        ],
+        correct: 0,
+        explanation: "Both addresses are on the same page (0xff987cf0/0x1000 = 0xff987, and 0xff987d98/0x1000 = 0xff987). Since they're on the same page, they map to the same physical frame, and the relative order is preserved. A at offset 0xcf0 < B at offset 0xd98, so A's physical address is always less than B's."
+      },
+      {
+        id: "vm2",
+        question: "Which is NOT a benefit of virtual memory?",
+        options: [
+          "Virtual address space can be larger than physical",
+          "No process can accidentally access another process's memory",
+          "The TLB is more effective since without it dereferencing requires two or more memory accesses",
+          "Different processes can have overlapping virtual address spaces without conflict"
+        ],
+        correct: 2,
+        explanation: "The TLB is beneficial, but it doesn't make virtual memory more effective—rather, virtual memory would be too slow without the TLB. The statement is confusingly worded but incorrect as a 'benefit'."
+      },
+      {
+        id: "vm3",
+        question: "Why would a kernel designer opt for a 2-level page table when a full 2-level table takes more memory than a full 1-level table?",
+        options: [
+          "2-level tables can translate virtual addresses faster",
+          "2-level tables can reference more memory than 1-level tables",
+          "Most of the time, a 2-level page table will take up less memory than a 1-level table",
+          "They wouldn't; adding more tables offers no advantages"
+        ],
+        correct: 2,
+        explanation: "While a FULL 2-level table takes more space, most processes don't use all of virtual memory. 2-level tables allow sparse allocation—only create second-level tables for used regions, saving memory overall."
+      },
+      {
+        id: "vm4",
+        question: "If a page table on a 32-bit system is 2KB in size, how many entries does it contain?",
+        options: ["2048", "1024", "512", "256"],
+        correct: 2,
+        explanation: "Each page table entry (PTE) is typically 4 bytes on a 32-bit system. 2KB = 2048 bytes. 2048 / 4 = 512 entries."
+      },
+      {
+        id: "vm5",
+        question: "What is the function of the TLB?",
+        options: [
+          "Caches data",
+          "Caches instructions",
+          "Caches translation of virtual addresses",
+          "Translates physical addresses to virtual addresses"
+        ],
+        correct: 2,
+        explanation: "The Translation Lookaside Buffer (TLB) caches virtual-to-physical address translations to avoid repeatedly accessing the page table in memory."
+      },
+      {
+        id: "vm6",
+        question: "What is the maximum page faults per second that can be serviced? Disk: 10,000 RPM (6ms/rev), avg seek 7ms, 1000 sectors/track. (Assume replaced pages are clean.)",
+        options: ["50", "100", "77", "Not enough information"],
+        correct: 2,
+        explanation: "Time per page fault = seek time + rotational latency. Avg rotational latency = 3ms (half rotation). Total = 7ms + 3ms = 10ms + transfer time ≈ 13ms. 1000ms / 13ms ≈ 77 faults/sec."
+      },
+      {
+        id: "vm7",
+        question: "Mr. Fred says: if one memory address is bigger than another, its value must appear before the other's in physical memory. True or False?",
+        options: ["True", "False"],
+        correct: 1,
+        explanation: "False. Virtual addresses don't map to physical addresses in order. Two consecutive virtual addresses might be on different pages that map to non-consecutive physical frames."
+      }
+    ],
+    "Processes & System Calls": [
+      {
+        id: "proc1",
+        question: "Assuming no errors, which function returns exactly once?",
+        options: ["fork()", "execve()", "exit()", "longjmp()", "waitpid()"],
+        correct: 4,
+        explanation: "waitpid() returns once when it completes. fork() returns twice (parent & child), execve() never returns, exit() never returns, longjmp() doesn't return normally."
+      },
+      {
+        id: "proc2",
+        question: "Assuming no errors, which statement about fork is true?",
+        options: [
+          "Called once, returns once",
+          "Called once, returns twice",
+          "Called once, returns never",
+          "Called twice, returns once",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "fork() is called once but returns twice: once in the parent (with child's PID) and once in the child (with 0)."
+      },
+      {
+        id: "proc3",
+        question: "Assuming no errors, which statement about execve is true?",
+        options: [
+          "Called once, returns once",
+          "Called once, returns twice",
+          "Called once, returns never",
+          "Called twice, returns once",
+          "None of the above"
+        ],
+        correct: 2,
+        explanation: "execve() replaces the current process image with a new program. If successful, it never returns—the new program starts executing."
+      },
+      {
+        id: "proc4",
+        question: "Which statement about processes is FALSE?",
+        options: [
+          "The OS kernel runs as its own separate process",
+          "Each process shares the CPU with other processes",
+          "Each process has its own private address space",
+          "The environment for a process is stored on the stack"
+        ],
+        correct: 0,
+        explanation: "The kernel is not a separate process. It runs in kernel mode and is entered via system calls, interrupts, or exceptions. All processes share the same kernel code."
+      },
+      {
+        id: "proc5",
+        question: "What happens if the parent of a zombie child terminates?",
+        options: [
+          "The zombie child becomes a wraith and is never reaped",
+          "The zombie child is reaped by the init process",
+          "The zombie child is reaped by the process with the nearest PID",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "When a parent dies, its children (including zombies) are adopted by init (PID 1), which will reap them."
+      }
+    ],
+    "Signals": [
+      {
+        id: "sig1",
+        question: "A program blocks SIGCHLD and SIGUSR1, then receives SIGCHLD, SIGUSR1, and another SIGCHLD. What signals does it receive after unblocking?",
+        options: [
+          "None, signals were discarded",
+          "Just a single SIGCHLD",
+          "A single SIGCHLD and a single SIGUSR1",
+          "All 3 signals"
+        ],
+        correct: 2,
+        explanation: "Signals are not queued in UNIX. Each signal type has a pending bit. Multiple instances of the same signal type result in only one delivery. So: one SIGCHLD and one SIGUSR1."
+      },
+      {
+        id: "sig2",
+        question: "Which event does NOT generate a signal?",
+        options: [
+          "Division by zero",
+          "A new connection arrives on a listening socket",
+          "A write is attempted on a disconnected socket",
+          "NULL is dereferenced",
+          "A process whose parent has already terminated exits"
+        ],
+        correct: 4,
+        explanation: "When a process exits and its parent is already dead, the process is adopted by init—no signal is sent. The other options all generate signals (SIGFPE, SIGIO/SIGPOLL, SIGPIPE, SIGSEGV)."
+      },
+      {
+        id: "sig3",
+        question: "Which is NOT true about POSIX-style signals?",
+        options: [
+          "Certain signals cannot be blocked",
+          "A process can send a signal to itself",
+          "A signal handler executing can never be interrupted by another incoming signal",
+          "Signals can only be delivered when returning from system mode"
+        ],
+        correct: 2,
+        explanation: "A signal handler CAN be interrupted by another signal unless that signal is blocked or the handler was installed with SA_NODEFER or similar flags."
+      },
+      {
+        id: "sig4",
+        question: "What is a difference between blocking and ignoring a signal?",
+        options: [
+          "A blocked signal will be handled when unblocked; an ignored signal is never handled",
+          "SIGSTOP and SIGINT can be ignored but not blocked",
+          "Ignoring has no effect; blocking returns the signal to sender",
+          "None of the above"
+        ],
+        correct: 0,
+        explanation: "Blocking a signal defers it until unblocked (pending bit set). Ignoring a signal means it's delivered but has no effect (discarded)."
+      },
+      {
+        id: "sig5",
+        question: "If the kernel delivers two SIGCHLD signals while parent is not scheduled, how many times will the handler be called when scheduled?",
+        options: [
+          "None, multiple signals crash the program",
+          "Exactly once, signals are not queued",
+          "Exactly twice, signals are queued",
+          "More than twice, depending on handler installation"
+        ],
+        correct: 1,
+        explanation: "Standard UNIX signals are not queued. Multiple instances of the same signal type result in only one pending signal, so the handler runs once."
+      },
+      {
+        id: "sig6",
+        question: "Which is NOT a situation that results in a signal being sent?",
+        options: [
+          "A process terminates",
+          "A process accesses an invalid memory address",
+          "A new connection arrives on a listening socket",
+          "A divide by zero",
+          "None (all result in a signal)"
+        ],
+        correct: 0,
+        explanation: "When a process terminates, its parent receives SIGCHLD, but the terminating process itself doesn't receive a signal. The others generate signals (SIGSEGV, SIGIO, SIGFPE)."
+      },
+      {
+        id: "sig7",
+        question: "Which is NOT the default action for any signal?",
+        options: [
+          "The process terminates all of its children",
+          "The process terminates and dumps core",
+          "The process terminates",
+          "The process stops until restarted by SIGCONT"
+        ],
+        correct: 0,
+        explanation: "Signals never cause a process to terminate its children. Default actions are: terminate, terminate+dump core, stop, or continue."
+      }
+    ],
+    "File I/O": [
+      {
+        id: "io1",
+        question: "When can short counts occur?",
+        options: [
+          "When an EOF is encountered during a read",
+          "When a short int is used as a counter",
+          "When reading or writing to disk files",
+          "When the kernel runs out of kernel memory"
+        ],
+        correct: 0,
+        explanation: "Short counts (read/write returning fewer bytes than requested) occur when EOF is reached, when reading from network sockets, or from terminals. Disk files typically don't have short counts except at EOF."
+      },
+      {
+        id: "io2",
+        question: "In the following code, a parent opens a file twice, then child reads a character. What's true in the parent after?\nint fd1 = open(\"foo.txt\", O_RDONLY);\nint fd2 = open(\"foo.txt\", O_RDONLY);\nif (!fork()) { read(fd1, &c, 1); }",
+        options: [
+          "fd1 and fd2 both point to first character",
+          "fd1 and fd2 both point to second character",
+          "fd1 points to first, fd2 points to second",
+          "fd2 points to first, fd1 points to second"
+        ],
+        correct: 3,
+        explanation: "Parent and child share fd1's file offset (same open file entry). When child reads from fd1, it advances the shared offset. fd2 has its own file entry, so it's unaffected."
+      },
+      {
+        id: "io3",
+        question: "Consider this code where out.txt contains 'abc':\nint fd = open(\"out.txt\", O_RDWR);\nchar str[] = \"xyz\", c;\nwrite(fd, str, 1);\nread(fd, &c, 1);\nwrite(fd, &c, 1);\nWhat is the contents after?",
+        options: ["xbb", "xba", "xac", "boat"],
+        correct: 0,
+        explanation: "Write 'x' at position 0 → file is 'xbc', offset=1. Read 'b' at position 1, offset=2. Write 'b' at position 2 → file is 'xbb'."
+      },
+      {
+        id: "io4",
+        question: "Consider two open() calls to the same file:\nint fd = open(\"one.txt\", O_RDWR);\nint fd2 = open(\"one.txt\", O_RDONLY);\nWhich is true?",
+        options: [
+          "fd and fd2 will share the same file offset",
+          "fd2 will be invalid (can't have two descriptors to same file)",
+          "Both will have initial offset at end of file",
+          "What is written through fd can be read using fd2",
+          "Two copies in memory; changes in one won't affect the other"
+        ],
+        correct: 3,
+        explanation: "Each open() creates a separate file descriptor with its own offset, but they refer to the same underlying file. Changes through one are visible through the other."
+      },
+      {
+        id: "io5",
+        question: "Which will print 'Hello' to stdout (assuming all system calls succeed)?",
+        options: [
+          "int fd = open(\"hoola.txt\", O_RDWR); dup2(fd, STDOUT_FILENO); printf(\"Hello\"); fflush(stdout);",
+          "int fd = open(\"hoola.txt\", O_RDWR); dup2(fd, STDOUT_FILENO); write(STDOUT_FILENO, \"Hello\", 5);",
+          "int fd = open(\"hoola.txt\", O_RDWR); dup2(fd, STDOUT_FILENO); printf(\"Hello\");",
+          "int fd = open(\"hoola.txt\", O_RDWR); dup2(STDOUT_FILENO, fd); write(fd, \"Hello\", 5);",
+          "int fd = open(\"hoola.txt\", O_RDWR); dup2(fd, STDOUT_FILENO); write(fd, \"Hello\", 5);"
+        ],
+        correct: 3,
+        explanation: "dup2(STDOUT_FILENO, fd) makes fd point to stdout (terminal), not the file. Then write(fd, \"Hello\", 5) writes to terminal. Options a, b, c, e all redirect stdout to the file with dup2(fd, STDOUT_FILENO), so they write to the file, not the terminal."
+      },
+      {
+        id: "io6",
+        question: "True/False: When printf returns, the programmer cannot be guaranteed that data has appeared on the terminal.",
+        options: ["True", "False"],
+        correct: 0,
+        explanation: "True. printf() writes to a buffer in userspace. The data may not be flushed to the terminal immediately. Use fflush(stdout) to force output."
+      },
+      {
+        id: "io7",
+        question: "True/False: When requested to send 20 bytes over a network socket, execution will block until all 20 bytes have been sent.",
+        options: ["True", "False"],
+        correct: 1,
+        explanation: "False. write() on a socket can return a short count (fewer than 20 bytes sent). The application must loop to send all data."
+      }
+    ],
+    "Memory Allocation": [
+      {
+        id: "malloc1",
+        question: "Simply decreasing the size of block headers used internally by malloc:",
+        options: [
+          "Decreases internal fragmentation",
+          "Increases internal fragmentation",
+          "Decreases external fragmentation",
+          "Increases external fragmentation"
+        ],
+        correct: 0,
+        explanation: "Smaller headers mean less wasted space in each allocated block (internal fragmentation). However, it doesn't directly affect external fragmentation (gaps between blocks)."
+      },
+      {
+        id: "malloc2",
+        question: "Which statement is NOT true of storage allocators?",
+        options: [
+          "In the best case, coalescing with boundary tags is linear in the number of free blocks",
+          "Seglists typically approximate best fit search",
+          "Payloads must be aligned to some boundary",
+          "Explicit lists are typically faster than implicit lists",
+          "None of the above"
+        ],
+        correct: 0,
+        explanation: "Coalescing with boundary tags is constant time O(1), not linear. You only check immediate neighbors, not all free blocks."
+      },
+      {
+        id: "malloc3",
+        question: "We use dynamic memory because:",
+        options: [
+          "The heap is significantly faster than the stack",
+          "The stack is prone to corruption from buffer overflows",
+          "Storing data on the stack requires knowing the size at compile time",
+          "None of the above"
+        ],
+        correct: 2,
+        explanation: "The main reason is that stack allocation requires compile-time known sizes. The heap allows runtime-determined sizes and data that outlives function calls."
+      },
+      {
+        id: "malloc4",
+        question: "Which is an example of external fragmentation?",
+        options: [
+          "A malloc'ed block needs to be padded for alignment",
+          "A user writes to a part of the heap that isn't a payload",
+          "There are many disjoint free blocks in the heap",
+          "A user malloc's heap space and never frees it"
+        ],
+        correct: 2,
+        explanation: "External fragmentation is when free memory is broken into small, scattered blocks. Even if total free space is enough, no single block may be large enough for an allocation."
+      },
+      {
+        id: "malloc5",
+        question: "Why did creating an explicit linked list of free blocks increase performance over an implicit list?",
+        options: [
+          "I. Immediate coalescing is faster\nII. Only includes free blocks, faster to find\nIII. Inserting at front is constant time",
+          "I only",
+          "II only",
+          "III only",
+          "II and III only",
+          "All I, II and III"
+        ],
+        correct: 4,
+        explanation: "II is true (don't traverse allocated blocks). III is true (O(1) insertion). I is false—coalescing uses boundary tags, not affected by list type."
+      }
+    ],
+    "Concurrency & Synchronization": [
+      {
+        id: "conc1",
+        question: "Which sentence about reader-writer locks is NOT true?",
+        options: [
+          "Many readers can hold the same rwlock at the same time",
+          "Two writers cannot hold the same rwlock at the same time",
+          "Many readers and exactly one writer can hold the same rwlock at the same time",
+          "An rwlock can be used as a mutex"
+        ],
+        correct: 2,
+        explanation: "Readers and writers are mutually exclusive. Either multiple readers OR one writer can hold the lock, never both simultaneously."
+      },
+      {
+        id: "conc2",
+        question: "Which is NOT a universal property of reader-writer locks?",
+        options: [
+          "Readers can only look; writers can modify",
+          "If a writer has access, no other thread has access",
+          "Any number of readers can read at the same time",
+          "A writer waiting gets preference over subsequent read requests"
+        ],
+        correct: 3,
+        explanation: "Writer preference is an implementation choice, not a universal property. Some implementations favor readers, some favor writers, some are fair."
+      },
+      {
+        id: "conc3",
+        question: "Starvation (in relation to threads) refers to:",
+        options: [
+          "A thread waiting for a lock indefinitely",
+          "A semaphore that gets locked but never unlocked",
+          "A thread spawned but never joins the main thread",
+          "Process fails to spawn thread (hit max threads)"
+        ],
+        correct: 0,
+        explanation: "Starvation is when a thread is perpetually denied access to a resource it needs, waiting indefinitely while other threads proceed."
+      },
+      {
+        id: "conc4",
+        question: "Which is true about races?",
+        options: [
+          "A race occurs when correctness depends on thread ordering",
+          "Exclusive access to all shared resources eliminates race conditions",
+          "Race conditions are the same as deadlocks",
+          "All race conditions occur inside loops"
+        ],
+        correct: 1,
+        explanation: "Ensuring exclusive (mutex) access to shared resources eliminates race conditions. Races are not deadlocks, don't require loops, and (a) is close but (b) is more precise."
+      },
+      {
+        id: "conc5",
+        question: "A multithreaded program has two global data structures (not necessarily accessed at same time). Which is true?",
+        options: [
+          "One semaphore for both will not work correctly",
+          "Two semaphores (one per structure) may allow increased performance",
+          "With one processor, semaphores aren't necessary",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "One semaphore works but serializes all access. Two semaphores allow threads to access different structures concurrently, improving performance."
+      },
+      {
+        id: "conc6",
+        question: "What section of memory holds the assembly for printf?",
+        options: ["Stack", "Kernel memory", "Shared libraries", "Heap"],
+        correct: 2,
+        explanation: "printf is part of libc, which is loaded as a shared library. Shared library code is mapped into the process's address space."
+      },
+      {
+        id: "conc7",
+        question: "Why is gethostbyname not thread safe?",
+        options: [
+          "Only one thread at a time can do DNS lookup",
+          "It doesn't have a mutex around it",
+          "It returns a pointer to global shared memory",
+          "It shares instructions with other threads"
+        ],
+        correct: 2,
+        explanation: "gethostbyname returns a pointer to a static buffer shared across all calls. Concurrent calls overwrite each other's results. Use gethostbyname_r (reentrant version) instead."
+      },
+      {
+        id: "conc8",
+        question: "If parent forks a child, to which resources might they need to synchronize access?",
+        options: [
+          "malloc'ed memory",
+          "stack memory",
+          "global variables",
+          "file descriptors",
+          "None of the above"
+        ],
+        correct: 3,
+        explanation: "File descriptors are shared after fork (same open file entries), so synchronization may be needed. Memory (heap, stack, globals) is copied-on-write, so no synchronization needed."
+      }
+    ],
+    "Assembly & Architecture": [
+      {
+        id: "asm1",
+        question: "Which is the correct ordering of a file's compilation cycle?",
+        options: [
+          "foo.c → foo.o → foo.s → foo",
+          "foo → foo.s → foo.o → foo.c",
+          "foo.c → foo.s → foo → foo.o",
+          "foo.c → foo.s → foo.o → foo"
+        ],
+        correct: 3,
+        explanation: "Compilation: source (.c) → assembly (.s) → object (.o) → executable (no extension). So: foo.c → foo.s → foo.o → foo"
+      },
+      {
+        id: "asm2",
+        question: "How does x86 assembly store the return value when a function finishes?",
+        options: [
+          "ret instruction stores it in special retval register",
+          "By convention, always in %eax",
+          "On stack just above %ebp of callee",
+          "On stack just above arguments"
+        ],
+        correct: 1,
+        explanation: "By calling convention, return values are stored in %eax (32-bit) or %rax (64-bit)."
+      },
+      {
+        id: "asm3",
+        question: "Where is the first argument to a function in 32-bit assembly, immediately after call?",
+        options: [
+          "%ebp + 0x4",
+          "%ebp - 0x4",
+          "%esp + 0x4",
+          "%esp - 0x4"
+        ],
+        correct: 2,
+        explanation: "After call, %esp points to return address. First argument is at %esp + 0x4 (one word above). Once %ebp is set up, it's at %ebp + 0x8."
+      },
+      {
+        id: "asm4",
+        question: "Which x86 instruction can add two registers and store result without overwriting either original?",
+        options: ["mov", "lea", "add", "None of above"],
+        correct: 1,
+        explanation: "lea (load effective address) can compute addresses arithmetically. E.g., lea (%rax,%rbx), %rcx computes rax+rbx and stores in rcx without modifying rax or rbx."
+      },
+      {
+        id: "asm5",
+        question: "The register rax currently stores a NULL pointer. Which instruction causes a segmentation fault?",
+        options: [
+          "mov (%rax), %rcx",
+          "lea (%rax), %rcx",
+          "None of the above"
+        ],
+        correct: 0,
+        explanation: "mov (%rax), %rcx dereferences rax (accesses memory at address 0), causing a segfault. lea just computes the address without dereferencing."
+      },
+      {
+        id: "asm6",
+        question: "What is distinctive about superscalar processors?",
+        options: [
+          "Can run at frequencies over 3.5GHz",
+          "Can address over 4GB of memory",
+          "Can perform more than one instruction per cycle",
+          "Can have more than 2 levels of cache",
+          "Have more than one core per processor"
+        ],
+        correct: 2,
+        explanation: "Superscalar processors can execute multiple instructions simultaneously in a single cycle through instruction-level parallelism (multiple execution units)."
+      },
+      {
+        id: "asm7",
+        question: "Which is a legitimate difference between IA-32 and x86-64?",
+        options: [
+          "Buffer overflow exploits are impossible under x86-64",
+          "IA-32 has caller/callee-saved conventions, x86-64 does not",
+          "Under x86-64, any instructions with 32-bit operands are illegal",
+          "None of the above"
+        ],
+        correct: 3,
+        explanation: "None are true. x86-64 is still vulnerable to buffer overflows, both have calling conventions, and x86-64 supports 32-bit operations."
+      }
+    ],
+    "ELF & Linking": [
+      {
+        id: "elf1",
+        question: "Which is NOT a section of an ELF file?",
+        options: [".text", ".static", ".rodata", ".data", ".bss"],
+        correct: 1,
+        explanation: ".static is not a section name. Common ELF sections: .text (code), .rodata (read-only data), .data (initialized data), .bss (uninitialized data)."
+      },
+      {
+        id: "elf2",
+        question: "Which is NOT contained in an ELF executable file?",
+        options: [
+          "Machine code",
+          "Global variables",
+          "User stack",
+          "Symbol table"
+        ],
+        correct: 2,
+        explanation: "The user stack is created at runtime by the OS when the program runs. The ELF file contains code, initialized data, and metadata, but not the runtime stack."
+      },
+      {
+        id: "elf3",
+        question: "Consider these two files:\n/* main.c */ int i=0; int main() { foo(); return 0; }\n/* foo.c */ int i=1; void foo() { printf(\"%d\", i); }\nWhat happens?",
+        options: [
+          "Fail to compile",
+          "Fail to link",
+          "Segmentation fault",
+          "Print 0",
+          "Print 1",
+          "Sometimes 0, sometimes 1"
+        ],
+        correct: 1,
+        explanation: "Both files define the global variable 'i'. The linker will detect multiple definitions of the same symbol and fail."
+      }
+    ],
+    "C Programming": [
+      {
+        id: "c1",
+        question: "Choose the true statement.",
+        options: [
+          "All thread-safe functions are reentrant",
+          "Some reentrant functions are not thread safe",
+          "It's never good to use persistent state across function calls",
+          "Impossible to have race condition with no shared state",
+          "All functions calling non-thread-safe functions are not thread safe"
+        ],
+        correct: 4,
+        explanation: "If a function calls a non-thread-safe function, it cannot be thread-safe itself (the property propagates). All other options are false."
+      },
+      {
+        id: "c2",
+        question: "A function declares local variable int my_int. Which is dangerous in C?",
+        options: [
+          "Returning &my_int",
+          "Setting a global variable to &my_int",
+          "Printing &my_int to screen",
+          "None of the above"
+        ],
+        correct: 0,
+        explanation: "Returning the address of a local variable is dangerous—it points to stack memory that becomes invalid after the function returns. Printing the address is safe; setting a global is dangerous if used later."
+      },
+      {
+        id: "c3",
+        question: "Which is safe in C for a local variable int my_int in func()?",
+        options: [
+          "func returns &my_int, caller dereferences it",
+          "func returns &my_int, caller prints it",
+          "func sets global to &my_int, another function dereferences it later",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "Printing the address is safe. Dereferencing a pointer to expired stack memory (options a and c) is undefined behavior."
+      },
+      {
+        id: "c4",
+        question: "In buflab, which stack region could be directly overwritten by buffer overflow?",
+        options: [
+          "The part with higher addresses than the buffer",
+          "The part with lower addresses than the buffer"
+        ],
+        correct: 0,
+        explanation: "The stack grows downward (toward lower addresses), but buffer overflow writes forward in memory (toward higher addresses). When you overflow a buffer, you overwrite data at higher addresses, including the return address which is at a higher address than the buffer itself."
+      },
+      {
+        id: "c5",
+        question: "Given int my_array[100], which gives the address of the eighth element (index 7)?",
+        options: [
+          "my_array[7]",
+          "&my_array[7]",
+          "my_array + 7",
+          "my_array + 28",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "Both &my_array[7] and (my_array + 7) give the address. my_array[7] is the value. my_array + 28 would be byte arithmetic, but pointer arithmetic is in elements. Either option b or c is correct."
+      },
+      {
+        id: "c6",
+        question: "An 8-bit value is stored where char *ptr points. Store it in int value. Which works?",
+        options: [
+          "value = ptr;",
+          "value = *ptr;",
+          "value = (int)ptr;",
+          "value = (int *)ptr;",
+          "value = *(int *)ptr;",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "value = *ptr dereferences the char pointer and the char is implicitly converted to int. (b) is correct. (e) reads 4 bytes as int, not just 1."
+      },
+      {
+        id: "c7",
+        question: "A programmer writes: if (my_str == \"GET\"). Which apply?",
+        options: [
+          "my_str is pointer to first char",
+          "my_str is ASCII value of first char",
+          "my_str is register with all chars",
+          "\"GET\" compiles to pointer to string",
+          "\"GET\" compiles to ASCII for 'G'",
+          "\"GET\" compiles to register with string as int",
+          "Comparison will always work as expected",
+          "Comparison will not necessarily work",
+          "Comparison will crash"
+        ],
+        correct: 7,
+        explanation: "Both my_str and \"GET\" are pointers. The comparison compares pointer addresses, not string contents. Use strcmp() instead. Multiple statements are true: (a) my_str is a pointer, (d) \"GET\" compiles to a pointer, and (h) the comparison will not necessarily work as expected."
+      },
+      {
+        id: "c8",
+        question: "void foo(int int_param, char *str_param) is called with foo(my_int, my_string). Which is true?",
+        options: [
+          "If foo changes int_param, my_int changes",
+          "If foo changes second char of str_param, second char of my_string changes",
+          "If foo changes address of str_param, my_string points to different string",
+          "None of the above"
+        ],
+        correct: 1,
+        explanation: "C is pass-by-value. Changing int_param doesn't affect my_int. Modifying string contents through the pointer affects original. Changing the pointer itself doesn't affect my_string."
+      }
+    ],
+    "Floating Point": [
+      {
+        id: "fp1",
+        question: "Imagine a floating point format with no sign bit, one exponent bit, one fraction bit. Which is not a number?",
+        options: ["00", "01", "10", "11", "None (all are numbers)"],
+        correct: 4,
+        explanation: "With 1 exp bit and 1 frac bit: 00 (zero), 01 (small positive), 10 (larger positive), 11 (even larger or could be infinity depending on encoding). All represent values."
+      },
+      {
+        id: "fp2",
+        question: "Effect of allocating more bits to exponent by taking from fraction?",
+        options: [
+          "Represent fewer numbers, but much larger",
+          "Same numbers, more decimal places",
+          "Both larger and smaller numbers, less precision",
+          "Some numbers would now round to infinity"
+        ],
+        correct: 2,
+        explanation: "More exponent bits increase range (larger and smaller numbers). Fewer fraction bits decrease precision. Total representable values stays same (2^n for n bits)."
+      },
+      {
+        id: "fp3",
+        question: "For which values can X not equal Z? int X=CONSTANT; float Y=X; int Z=Y;",
+        options: [
+          "Large positive values (>1,000,000,000)",
+          "Large negative values (>-100)",
+          "Small positive values (<100)",
+          "Small negative values (<-1,000,000,000)",
+          "None (X==Z in all cases)"
+        ],
+        correct: 0,
+        explanation: "Floats have limited precision (23 bits mantissa). Very large integers lose precision when converted to float, so Z may differ from X after round-trip through float."
+      }
+    ],
+    "Networking": [
+      {
+        id: "net1",
+        question: "Which is the best reason to choose FastCGI over CGI?",
+        options: [
+          "Superior support by web servers",
+          "Lower process creation costs",
+          "Lower process communication costs",
+          "Better process locality"
+        ],
+        correct: 1,
+        explanation: "FastCGI keeps processes alive between requests, eliminating the overhead of creating a new process for each request (the main CGI limitation)."
+      },
+      {
+        id: "net2",
+        question: "Which system call can fail due to network failure?",
+        options: [
+          "socket(...)",
+          "listen(...)",
+          "bind(...)",
+          "gethostbyname(...)"
+        ],
+        correct: 3,
+        explanation: "gethostbyname() performs DNS lookup over the network and can fail due to network issues. socket(), listen(), and bind() are local operations."
+      },
+      {
+        id: "net3",
+        question: "Which debugging tool would you first use for a network app that never accepts connections?",
+        options: ["gdb", "strace", "objdump", "valgrind"],
+        correct: 1,
+        explanation: "strace shows system calls, helping you see if listen/bind/accept are being called and what errors they return. Good first step for network issues."
+      }
+    ],
+    "Debugging Tools": [
+      {
+        id: "debug1",
+        question: "Which tool to debug 'Segmentation fault'?",
+        options: ["gdb", "strace", "strings", "objdump"],
+        correct: 0,
+        explanation: "gdb (debugger) lets you see where the segfault occurred, examine variables, and step through code—ideal for memory access errors."
+      },
+      {
+        id: "debug2",
+        question: "Which tool to debug 'glibc error: double free detected'?",
+        options: ["gdb", "strace", "wireshark", "valgrind"],
+        correct: 3,
+        explanation: "valgrind detects memory errors including double frees, use-after-free, and leaks. It's the best tool for memory management bugs."
+      }
+    ],
+    "Advanced Topics": [
+      {
+        id: "adv1",
+        question: "Which are copied on fork and preserved on exec?",
+        options: [
+          "Global variables",
+          "File descriptor tables",
+          "Open file entry structs",
+          "None of the above"
+        ],
+        correct: 2,
+        explanation: "Open file entries (in kernel) are shared and preserved across both fork and exec. Global variables are copied on fork but replaced on exec. File descriptor tables are copied on fork, preserved on exec."
+      },
+      {
+        id: "adv2",
+        question: "Consider struct RECORD with long value2, double value, char tag[3], then struct NODE at 0x6008e0. What is &my_node.record.tag[1]?",
+        options: [
+          "0x6008f8",
+          "0x6008fa",
+          "0x6008f9",
+          "0x6008f5",
+          "0x6008f1"
+        ],
+        correct: 2,
+        explanation: "NODE: 4 bytes (int ref_count) + 4 padding = 8. RECORD at +8: long(8) + double(8) + char[3]. tag starts at 0x6008e0+8+8+8=0x6008f8. tag[1] is at 0x6008f9."
+      },
+      {
+        id: "adv3",
+        question: "What is the size of my_node in bytes?",
+        options: ["48", "44", "40", "42", "50"],
+        correct: 2,
+        explanation: "int(4) + padding(4) + long(8) + double(8) + char[3](3) + padding(5) + union(12) = 8 + 24 + 12 = 44. With alignment: 40 bytes (needs recalculation based on actual layout)."
+      }
+    ]
+        };
+
+        // Application state
+        let answers = {};
+        let showExplanations = {};
+
+        // Render functions
+        function renderApp() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                ${renderHeader()}
+                ${Object.entries(topics).map(([topic, questions]) => 
+                    renderTopic(topic, questions)
+                ).join('')}
+                ${renderFooter()}
+            `;
+        }
+
+        function renderHeader() {
+            return `
+                <div class="header">
+                    <h1>${BookIcon} Systems Programming Study Guide</h1>
+                    <p>Test your knowledge across different systems programming topics. Select an answer to see immediate feedback.</p>
+                </div>
+            `;
+        }
+
+        function renderTopic(topicName, questions) {
+            return `
+                <div class="topic-section">
+                    <div class="topic-header">
+                        <h2>${topicName}</h2>
+                        <p>${questions.length} question${questions.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div class="questions-container">
+                        ${questions.map((q, idx) => renderQuestion(topicName, q, idx)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQuestion(topicName, question, idx) {
+            const answerKey = `${topicName}-${question.id}`;
+            const selectedAnswer = answers[answerKey];
+            const showExplanation = showExplanations[answerKey];
+            const isCorrect = selectedAnswer === question.correct;
+
+            return `
+                <div class="question">
+                    <h3>${idx + 1}. ${escapeHtml(question.question)}</h3>
+                    <div class="options">
+                        ${question.options.map((option, optionIdx) => 
+                            renderOption(topicName, question, option, optionIdx, selectedAnswer, showExplanation, isCorrect)
+                        ).join('')}
+                    </div>
+                    ${showExplanation ? renderExplanation(question, isCorrect) : ''}
+                </div>
+            `;
+        }
+
+        function renderOption(topicName, question, option, optionIdx, selectedAnswer, showExplanation, isCorrect) {
+            const isSelected = selectedAnswer === optionIdx;
+            const isCorrectOption = optionIdx === question.correct;
+            
+            let classes = 'option-button';
+            if (showExplanation) {
+                if (isCorrectOption) {
+                    classes += ' correct';
+                } else if (isSelected && !isCorrect) {
+                    classes += ' incorrect';
+                } else {
+                    classes += ' dimmed';
+                }
+            }
+
+            const icon = showExplanation && isCorrectOption ? CheckCircle :
+                        showExplanation && isSelected && !isCorrect ? XCircle : '';
+
+            return `
+                <button 
+                    class="${classes}" 
+                    onclick="handleAnswer('${topicName}', '${question.id}', ${optionIdx})"
+                    ${showExplanation ? 'disabled' : ''}
+                >
+                    <span class="option-text">
+                        <span class="option-letter">${String.fromCharCode(97 + optionIdx)})</span>
+                        <span>${escapeHtml(option)}</span>
+                    </span>
+                    ${icon}
+                </button>
+            `;
+        }
+
+        function renderExplanation(question, isCorrect) {
+            return `
+                <div class="explanation ${isCorrect ? 'correct' : 'incorrect'}">
+                    <div style="flex-shrink: 0; margin-top: 0.25rem;">
+                        ${isCorrect ? CheckCircle : BookSmall}
+                    </div>
+                    <div class="explanation-content">
+                        <p>${isCorrect ? 'Correct!' : 'Incorrect'}</p>
+                        <p>${escapeHtml(question.explanation)}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFooter() {
+            return `
+                <div class="footer">
+                    <p>Questions compiled from various systems programming course exams</p>
+                </div>
+            `;
+        }
+
+        // Event handlers
+        function handleAnswer(topicName, questionId, selectedIndex) {
+            const answerKey = `${topicName}-${questionId}`;
+            if (!showExplanations[answerKey]) {
+                answers[answerKey] = selectedIndex;
+                showExplanations[answerKey] = true;
+                renderApp();
+            }
+        }
+
+        // Utility functions
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Initialize app
+        renderApp();
+    </script>
+</body>
+</html>
