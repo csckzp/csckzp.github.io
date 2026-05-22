@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STIX & MITRE ATT&CK Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e2a;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.14);
+    --accent: #7c6af5;
+    --accent-dim: rgba(124,106,245,0.15);
+    --accent-glow: rgba(124,106,245,0.4);
+    --correct: #2dd4a0;
+    --correct-bg: rgba(45,212,160,0.1);
+    --correct-border: rgba(45,212,160,0.35);
+    --wrong: #f26b6b;
+    --wrong-bg: rgba(242,107,107,0.1);
+    --wrong-border: rgba(242,107,107,0.35);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --tag-bg: rgba(124,106,245,0.12);
+    --tag-color: #a89cf7;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(124,106,245,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 50% at 80% 80%, rgba(45,212,160,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 680px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 2.5rem;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.6rem;
+  }
+
+  .header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  .header h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .header-sub {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Progress */
+  .progress-wrap {
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .progress-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .progress-frac {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .progress-track {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--correct));
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+
+  /* Score dots */
+  .score-dots {
+    display: flex;
+    gap: 4px;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--border-hover);
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  .dot.correct { background: var(--correct); border-color: var(--correct); }
+  .dot.wrong { background: var(--wrong); border-color: var(--wrong); }
+
+  /* Question card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--tag-bg);
+    color: var(--tag-color);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(124,106,245,0.2);
+    margin-bottom: 1.25rem;
+  }
+
+  .question {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+  }
+
+  /* Options */
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    text-align: left;
+    width: 100%;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  .option:hover:not(:disabled) {
+    border-color: var(--border-hover);
+    background: rgba(255,255,255,0.04);
+    transform: translateX(2px);
+  }
+
+  .option:disabled { cursor: default; }
+
+  .option-letter {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--border-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    margin-top: 1px;
+  }
+
+  .option.selected .option-letter {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .option.correct {
+    background: var(--correct-bg);
+    border-color: var(--correct-border);
+  }
+
+  .option.correct .option-letter {
+    background: var(--correct);
+    border-color: var(--correct);
+    color: #0d0f14;
+  }
+
+  .option.wrong {
+    background: var(--wrong-bg);
+    border-color: var(--wrong-border);
+  }
+
+  .option.wrong .option-letter {
+    background: var(--wrong);
+    border-color: var(--wrong);
+    color: #fff;
+  }
+
+  .option.reveal {
+    background: var(--correct-bg);
+    border-color: var(--correct-border);
+  }
+
+  .option.reveal .option-letter {
+    background: var(--correct);
+    border-color: var(--correct);
+    color: #0d0f14;
+  }
+
+  /* Feedback */
+  .feedback {
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.65;
+    margin-bottom: 1.25rem;
+    display: none;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .feedback.show { display: block; }
+
+  .feedback.correct {
+    background: var(--correct-bg);
+    border: 1px solid var(--correct-border);
+    color: #8bf0d4;
+  }
+
+  .feedback.wrong {
+    background: var(--wrong-bg);
+    border: 1px solid var(--wrong-border);
+    color: #f5a0a0;
+  }
+
+  .feedback strong {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .feedback.correct strong { color: var(--correct); }
+  .feedback.wrong strong { color: var(--wrong); }
+
+  /* Next button */
+  .next-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(124,106,245,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    display: none;
+  }
+
+  .next-btn.show { display: inline-flex; }
+  .next-btn:hover { background: rgba(124,106,245,0.25); border-color: rgba(124,106,245,0.5); transform: translateY(-1px); }
+  .next-btn:active { transform: translateY(0); }
+
+  /* Results */
+  .results {
+    display: none;
+    text-align: center;
+    padding: 1rem 0;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .results.show { display: block; }
+
+  .results-score {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(3.5rem, 10vw, 5.5rem);
+    font-weight: 400;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+
+  .results-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .results-msg {
+    font-size: 17px;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .results-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+
+  .results-breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .breakdown-item { text-align: center; }
+
+  .breakdown-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .breakdown-num.c { color: var(--correct); }
+  .breakdown-num.w { color: var(--wrong); }
+
+  .breakdown-lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .restart-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 28px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 0 24px var(--accent-glow);
+  }
+
+  .restart-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .restart-btn:active { transform: translateY(0); }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Arrow SVG inline */
+  .arrow { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <p class="header-eyebrow">Knowledge check</p>
+    <h1>STIX &amp; <em>MITRE ATT&amp;CK</em></h1>
+    <p class="header-sub">15 questions covering STIX fundamentals, the object model, ATT&CK integration, and the mitreattack-python library.</p>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span class="progress-label" id="prog-label">Question 1 of 15</span>
+      <span class="progress-frac" id="prog-score">Score: 0</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="prog-fill"></div>
+    </div>
+    <div class="score-dots" id="dots"></div>
+  </div>
+
+  <div class="card" id="q-card">
+    <div class="tag" id="q-tag"></div>
+    <p class="question" id="q-text"></p>
+    <div class="options" id="opts"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="advance()">
+      <span id="next-label">Next question</span>
+      <svg class="arrow" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="results-score" id="res-score"></div>
+    <div class="results-label">out of 15 questions</div>
+    <div class="results-breakdown">
+      <div class="breakdown-item">
+        <div class="breakdown-num c" id="res-correct"></div>
+        <div class="breakdown-lbl">Correct</div>
+      </div>
+      <div class="breakdown-item">
+        <div class="breakdown-num w" id="res-wrong"></div>
+        <div class="breakdown-lbl">Incorrect</div>
+      </div>
+    </div>
+    <p class="results-msg" id="res-msg"></p>
+    <p class="results-sub" id="res-sub"></p>
+    <button class="restart-btn" onclick="restart()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 8a6 6 0 1 1 1.5 4M2 12V8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Try again
+    </button>
+  </div>
+
+</div>
+
+<script>
+const questions = [
+  {
+    tag: "STIX basics",
+    q: "What does the acronym STIX stand for?",
+    options: [
+      "Structured Threat Information eXpression",
+      "Security Threat Intelligence eXchange",
+      "Standardized Threat Indexing eXtension",
+      "System Threat Identification eXpression"
+    ],
+    answer: 0,
+    explanation: "STIX stands for Structured Threat Information eXpression. It is a language and serialization format for representing and exchanging cyber threat intelligence (CTI) in a consistent, machine-readable way."
+  },
+  {
+    tag: "STIX history",
+    q: "Who originally developed STIX, and who later took over its governance as a standards body?",
+    options: [
+      "NIST developed it; ISO standardized it",
+      "MITRE developed it; OASIS became its standards body",
+      "DHS developed it; MITRE became its standards body",
+      "NSA developed it; NIST became its standards body"
+    ],
+    answer: 1,
+    explanation: "STIX was originally developed by MITRE (with DHS funding starting in 2012). In 2015, governance was transitioned to OASIS — an international standards consortium — making STIX a true international standard."
+  },
+  {
+    tag: "STIX format",
+    q: "What serialization format does STIX 2.x use to represent and exchange threat intelligence?",
+    options: ["XML", "YAML", "JSON", "CSV"],
+    answer: 2,
+    explanation: "STIX 2.x uses JSON as its serialization format. It defines a structured schema on top of standard JSON, so the data is both human-readable and easily processed by machines and security tools."
+  },
+  {
+    tag: "STIX objects",
+    q: "Which best describes STIX Domain Objects (SDOs)?",
+    options: [
+      "Low-level network observables like IP addresses and file hashes",
+      "Link objects that connect two STIX objects together",
+      "High-level intelligence entities like threat actors, malware, and indicators",
+      "Container objects that wrap a collection of other STIX objects"
+    ],
+    answer: 2,
+    explanation: "SDOs are the high-level intelligence entities — things like threat-actor, malware, indicator, attack-pattern, campaign, and course-of-action. They capture the core concepts that threat analysts work with."
+  },
+  {
+    tag: "STIX objects",
+    q: "Which STIX object type is used to connect two other STIX objects, expressing how they relate?",
+    options: [
+      "STIX Domain Object (SDO)",
+      "STIX Cyber-observable Object (SCO)",
+      "STIX Relationship Object (SRO)",
+      "STIX Bundle"
+    ],
+    answer: 2,
+    explanation: "STIX Relationship Objects (SROs) are the edges in the STIX graph model. They link SDOs to each other using a relationship_type field (e.g. 'uses', 'indicates', 'mitigates'). There is also a special SRO called a Sighting, recorded when an entity observes an SDO in the wild."
+  },
+  {
+    tag: "STIX objects",
+    q: "Which of the following is an example of a STIX Cyber-observable Object (SCO)?",
+    options: [
+      "A threat actor group like APT28",
+      "A malware family like WannaCry",
+      "An IP address observed in network traffic",
+      "A mitigation strategy for a vulnerability"
+    ],
+    answer: 2,
+    explanation: "SCOs represent observed, low-level facts about a network or host — things like IP addresses, domain names, file hashes, URLs, and email messages. They differ from SDOs, which represent higher-level intelligence concepts like threat actors or malware families."
+  },
+  {
+    tag: "STIX objects",
+    q: "What is a STIX Bundle, and what is its purpose?",
+    options: [
+      "A compressed archive of multiple STIX JSON files",
+      "A single container object that packages multiple STIX objects for sharing",
+      "A relationship between two or more threat actor groups",
+      "A special type of indicator with multiple detection patterns"
+    ],
+    answer: 1,
+    explanation: "A STIX Bundle is a wrapper object (type: 'bundle') that aggregates any number of SDOs, SCOs, and SROs into a single JSON structure ready for sharing. It's the standard unit of CTI exchange — you package your intelligence into a bundle and distribute it."
+  },
+  {
+    tag: "STIX model",
+    q: "STIX 2.0 introduced a 'graph-based model.' What does this mean in practice?",
+    options: [
+      "STIX data is rendered as bar and line graphs for visualization",
+      "STIX Domain Objects are connected to each other via Relationship Objects, forming a knowledge graph",
+      "STIX uses a graph database (like Neo4j) instead of JSON for storage",
+      "STIX objects are arranged in a strict hierarchical tree structure"
+    ],
+    answer: 1,
+    explanation: "The graph-based model means SDOs act as nodes and SROs act as edges, together forming a knowledge graph. This lets you express rich, interconnected intelligence — e.g. a threat actor 'uses' malware that 'targets' a specific industry sector."
+  },
+  {
+    tag: "STIX & ATT&CK",
+    q: "In the STIX data published by MITRE for ATT&CK, which SDO type represents an ATT&CK technique?",
+    options: [
+      "intrusion-set",
+      "course-of-action",
+      "attack-pattern",
+      "indicator"
+    ],
+    answer: 2,
+    explanation: "ATT&CK techniques are represented as attack-pattern SDOs in STIX. Threat groups map to intrusion-set SDOs, software maps to malware or tool SDOs, and mitigations map to course-of-action SDOs. All are linked together with SROs."
+  },
+  {
+    tag: "STIX & ATT&CK",
+    q: "MITRE publishes ATT&CK data as STIX 2.1 bundles. Which of the following is NOT one of the three ATT&CK domain files?",
+    options: [
+      "enterprise-attack.json",
+      "mobile-attack.json",
+      "cloud-attack.json",
+      "ics-attack.json"
+    ],
+    answer: 2,
+    explanation: "The three ATT&CK domain files are enterprise-attack.json (Windows, Linux, macOS, Cloud, etc.), mobile-attack.json (Android, iOS), and ics-attack.json (Industrial Control Systems). There is no separate cloud-attack.json — cloud techniques are included within the Enterprise domain."
+  },
+  {
+    tag: "STIX & TAXII",
+    q: "What is the relationship between STIX and TAXII in cyber threat intelligence sharing?",
+    options: [
+      "They are two names for the same standard",
+      "TAXII is a newer version of STIX that replaced it",
+      "STIX defines what to share; TAXII is the transport protocol defining how to share it",
+      "STIX is for human-readable reports; TAXII converts them to machine-readable data"
+    ],
+    answer: 2,
+    explanation: "STIX and TAXII are complementary, not competing. STIX is the language/format that defines what cyber threat intelligence looks like. TAXII (Trusted Automated eXchange of Intelligence Information) is an HTTP-based transport protocol defining how STIX content is distributed between organizations and tools."
+  },
+  {
+    tag: "mitreattack-python",
+    q: "What Python library provides the MitreAttackData class for querying ATT&CK STIX data?",
+    options: [
+      "stix2",
+      "pyattack",
+      "mitreattack-python",
+      "attacklib"
+    ],
+    answer: 2,
+    explanation: "MitreAttackData comes from the mitreattack-python library (pip install mitreattack-python). The stix2 library is a separate, lower-level library for working with STIX objects in Python — mitreattack-python builds on top of it to provide ATT&CK-specific query methods."
+  },
+  {
+    tag: "mitreattack-python",
+    q: "When MitreAttackData(\"enterprise-attack.json\") is called, what happens internally?",
+    options: [
+      "It makes a live API call to the MITRE ATT&CK website to fetch fresh data",
+      "It reads the JSON file, loads it into an in-memory MemoryStore, and wraps it with query methods",
+      "It compiles the JSON into a binary index file on disk for faster future lookups",
+      "It only validates the JSON against the STIX schema without loading the objects into memory"
+    ],
+    answer: 1,
+    explanation: "MitreAttackData reads and parses the local JSON file, loads all STIX objects into a STIX2 MemoryStore (an in-memory indexed datastore), and wraps that store with high-level convenience methods — giving you a rich Python API without needing to write raw STIX filter queries."
+  },
+  {
+    tag: "mitreattack-python",
+    q: "Which of the following is a valid method you can call on a MitreAttackData instance?",
+    options: [
+      "mitre_data.fetch_live_threats()",
+      "mitre_data.get_techniques()",
+      "mitre_data.compile_report()",
+      "mitre_data.download_updates()"
+    ],
+    answer: 1,
+    explanation: "get_techniques() is a real MitreAttackData method. Other genuine methods include get_object_by_attack_id(), get_groups_using_technique(), get_software_used_by_group(), and get_mitigations_mitigating_technique(). The other three options are fabricated."
+  },
+  {
+    tag: "STIX basics",
+    q: "Every STIX object has required common properties. Which pair is required on every STIX object?",
+    options: [
+      "name and description",
+      "type and id",
+      "created_by_ref and labels",
+      "confidence and lang"
+    ],
+    answer: 1,
+    explanation: "Every STIX object — SDO, SCO, or SRO — must have a type (e.g. 'malware', 'relationship') and a unique id (a UUID prefixed by the type, e.g. 'malware--abc123...'). Fields like name and description are common on many types but not universally required on every object."
+  }
+];
+
+let order = [];
+let current = 0;
+let score = 0;
+let results = [];
+let answered = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const letters = ['A', 'B', 'C', 'D'];
+
+function initDots() {
+  const dots = document.getElementById('dots');
+  dots.innerHTML = '';
+  for (let i = 0; i < questions.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.id = 'dot-' + i;
+    dots.appendChild(d);
+  }
+}
+
+function updateProgress() {
+  const pct = (current / questions.length) * 100;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = current < questions.length
+    ? 'Question ' + (current + 1) + ' of ' + questions.length
+    : 'Complete!';
+  document.getElementById('prog-score').textContent = 'Score: ' + score;
+}
+
+function render() {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('q-card').style.display = '';
+
+  if (current >= questions.length) {
+    showResults();
+    return;
+  }
+
+  answered = false;
+  updateProgress();
+
+  const q = questions[order[current]];
+  document.getElementById('q-tag').textContent = q.tag;
+  document.getElementById('q-text').textContent = q.q;
+
+  const optsEl = document.getElementById('opts');
+  optsEl.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.disabled = false;
+    btn.innerHTML = `<span class="option-letter">${letters[i]}</span><span>${opt}</span>`;
+    btn.onclick = () => pick(i);
+    optsEl.appendChild(btn);
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback';
+  fb.innerHTML = '';
+
+  const nb = document.getElementById('next-btn');
+  nb.className = 'next-btn';
+  document.getElementById('next-label').textContent =
+    current + 1 < questions.length ? 'Next question' : 'See results';
+}
+
+function pick(idx) {
+  if (answered) return;
+  answered = true;
+
+  const q = questions[order[current]];
+  const btns = document.querySelectorAll('.option');
+  btns.forEach(b => b.disabled = true);
+
+  const correct = idx === q.answer;
+  if (correct) score++;
+  results[current] = correct;
+
+  btns[idx].classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) btns[q.answer].classList.add('reveal');
+
+  const dot = document.getElementById('dot-' + current);
+  if (dot) dot.classList.add(correct ? 'correct' : 'wrong');
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback ' + (correct ? 'correct' : 'wrong') + ' show';
+  fb.innerHTML = `<strong>${correct ? '✓ Correct' : '✗ Incorrect'}</strong>${q.explanation}`;
+
+  document.getElementById('next-btn').classList.add('show');
+  updateProgress();
+}
+
+function advance() {
+  current++;
+  render();
+}
+
+function showResults() {
+  document.getElementById('prog-fill').style.width = '100%';
+  document.getElementById('q-card').style.display = 'none';
+
+  const pct = Math.round((score / questions.length) * 100);
+  const wrong = questions.length - score;
+
+  document.getElementById('res-score').textContent = score;
+  document.getElementById('res-correct').textContent = score;
+  document.getElementById('res-wrong').textContent = wrong;
+
+  const msgs = [
+    [100, "Flawless.", "You have a thorough mastery of STIX and MITRE ATT&CK. Impressive."],
+    [80,  "Excellent work.", "You have a strong grasp of the core concepts. Review any explanations you missed to solidify the edges."],
+    [60,  "Good effort.", "You've got the fundamentals. Go back through the question explanations to fill in the gaps."],
+    [0,   "Keep studying.", "STIX and ATT&CK have a lot of moving parts. Re-read the concepts and try again — you'll get there."]
+  ];
+
+  for (const [threshold, title, sub] of msgs) {
+    if (pct >= threshold) {
+      document.getElementById('res-msg').textContent = title + ' ' + pct + '% correct.';
+      document.getElementById('res-sub').textContent = sub;
+      break;
+    }
+  }
+
+  document.getElementById('results').classList.add('show');
+}
+
+function restart() {
+  current = 0;
+  score = 0;
+  results = [];
+  order = shuffle([...Array(questions.length).keys()]);
+  initDots();
+  render();
+}
+
+restart();
+</script>
+</body>
+</html>
