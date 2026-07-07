@@ -243,22 +243,148 @@
             background: #3366ff;
             color: white;
         }
-        
+
         .prediction-correct {
             background: #00ff88;
             color: #000;
         }
-        
+
         .prediction-incorrect {
             background: #ff3333;
             color: #fff;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .title-row h1 {
+            margin: 0;
+        }
+
+        .help-button {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: #00ff88;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .help-button:hover {
+            background: #00ff88;
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .overlay.active {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .overlay-content {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 100%;
+            margin: 30px auto;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .overlay-content h2 {
+            color: #00ff88;
+            margin-top: 0;
+        }
+
+        .overlay-content h3 {
+            color: #00ff88;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+
+        .overlay-content ul {
+            padding-left: 22px;
+        }
+
+        .overlay-content li {
+            margin-bottom: 8px;
+        }
+
+        .overlay-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: #fff;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        .overlay-close:hover {
+            background: #ff3333;
+            border-color: #ff3333;
+        }
+
+        .use-case-box {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 12px 0;
+        }
+
+        .use-case-box h4 {
+            margin: 0 0 8px 0;
+        }
+
+        .use-case-box.minimize-fp h4 {
+            color: #3366ff;
+        }
+
+        .use-case-box.minimize-fn h4 {
+            color: #ff3333;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎯 Interactive ROC Curve Explorer</h1>
-        
+        <div class="title-row">
+            <h1>🎯 Interactive ROC Curve Explorer</h1>
+            <button class="help-button" onclick="toggleHelp(true)" aria-label="Help" title="Help">?</button>
+        </div>
+
         <div class="controls">
             <div class="slider-container">
                 <label for="threshold">Classification Threshold: <span id="thresholdValue">0.50</span></label>
@@ -320,6 +446,65 @@
                 <p>Below are all instances ranked by their predicted scores. Green highlighting shows correct predictions, red shows incorrect ones.</p>
                 <div id="instancesDisplay"></div>
             </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="helpOverlay" onclick="if(event.target === this) toggleHelp(false)">
+        <div class="overlay-content">
+            <button class="overlay-close" onclick="toggleHelp(false)" aria-label="Close">✕</button>
+            <h2>📚 ROC & AUC, Quick Primer</h2>
+            <p>A classifier assigns every instance a <strong>score</strong> from 0 to 1. Picking a <strong>threshold</strong> turns those scores into "positive" / "negative" predictions. The <strong>ROC curve</strong> plots True Positive Rate (TPR) against False Positive Rate (FPR) as that threshold sweeps from 1 down to 0, showing every possible trade-off a single threshold choice locks you into.</p>
+            <ul>
+                <li><strong>TPR (Sensitivity/Recall)</strong> = TP / (TP + FN) &mdash; fraction of real positives you catch.</li>
+                <li><strong>FPR</strong> = FP / (FP + TN) &mdash; fraction of real negatives you wrongly flag.</li>
+                <li><strong>AUC</strong> = area under that curve &mdash; a threshold-free summary of separability. 0.5 is random guessing, 1.0 is a perfect ranking of positives above negatives.</li>
+            </ul>
+
+            <h3>🕹️ Playing with the Demo</h3>
+            <ul>
+                <li>Drag the <strong>Classification Threshold</strong> slider &mdash; anything scored at or above it is predicted positive.</li>
+                <li>Watch the red dot slide along the <strong>ROC curve</strong> and the dashed line move through the <strong>Score Distribution</strong> histogram in lockstep.</li>
+                <li>Open the <strong>Ranked Instances</strong> tab to see exactly which individual points became TP/FP/FN/TN at the current threshold.</li>
+                <li>AUC stays fixed as you drag &mdash; it's a property of the scores, not of any one threshold. Only TPR, FPR, and Accuracy change.</li>
+            </ul>
+
+            <h3>🔧 Settings Worth Trying</h3>
+            <ul>
+                <li><strong>Threshold ≈ 1.0:</strong> almost nothing is predicted positive &mdash; FPR near 0, but TPR (recall) near 0 too. Watch the False Negatives column fill up.</li>
+                <li><strong>Threshold ≈ 0.0:</strong> almost everything is predicted positive &mdash; TPR near 1, but FPR near 1 too. Watch False Positives dominate.</li>
+                <li><strong>Threshold ≈ 0.5:</strong> the balanced default &mdash; compare its Accuracy to the extremes above.</li>
+                <li>Find the threshold that hugs the ROC curve's <strong>top-left corner</strong> &mdash; that's usually the best joint trade-off between TPR and FPR.</li>
+                <li>Compare the curve's bow against the gray diagonal: the more it bulges toward the top-left, the higher the AUC and the better the model separates the two classes.</li>
+            </ul>
+
+            <h3>⚖️ When to Minimize False Positives vs False Negatives</h3>
+            <p>You can't usually minimize both at once &mdash; lowering one raises the other. Which one to prioritize depends on which mistake is more costly:</p>
+
+            <div class="use-case-box minimize-fp">
+                <h4>🔵 Minimize False Positives (raise the threshold)</h4>
+                <p>Use when flagging a negative as positive is the expensive/harmful mistake:</p>
+                <ul>
+                    <li><strong>Spam filtering</strong> &mdash; a false positive buries a real, possibly important email.</li>
+                    <li><strong>Criminal justice / fraud accusations</strong> &mdash; wrongly flagging an innocent person or legitimate transaction has serious consequences.</li>
+                    <li><strong>Marketing / promo eligibility</strong> &mdash; giving a discount to someone who wasn't going to churn wastes margin.</li>
+                    <li><strong>Content moderation (auto-removal)</strong> &mdash; wrongly taking down legitimate content harms users and trust.</li>
+                    <li><strong>Automated approval systems</strong> (e.g., loan pre-approval) &mdash; approving a bad candidate outright is costlier than sending a good one to manual review.</li>
+                </ul>
+            </div>
+
+            <div class="use-case-box minimize-fn">
+                <h4>🔴 Minimize False Negatives (lower the threshold)</h4>
+                <p>Use when missing a true positive is the expensive/harmful mistake:</p>
+                <ul>
+                    <li><strong>Medical screening</strong> (cancer, disease tests) &mdash; missing an actual illness can be life-threatening; a false alarm just means a follow-up test.</li>
+                    <li><strong>Fraud / intrusion detection</strong> &mdash; missing real fraud or a breach can cause major financial or security damage.</li>
+                    <li><strong>Airport / security screening</strong> &mdash; missing an actual threat is far worse than an extra bag check.</li>
+                    <li><strong>Predictive maintenance</strong> &mdash; failing to flag a part that will actually fail can cause equipment damage or safety incidents.</li>
+                    <li><strong>Search & rescue / disaster alerts</strong> &mdash; missing a real emergency signal is far costlier than a false alarm.</li>
+                </ul>
+            </div>
+
+            <p style="margin-top: 20px; color: #ccc;"><em>Tip: come back to this demo and set the threshold near the extremes to see, in the Ranked Instances tab, exactly which real cases you'd be trading off in each scenario.</em></p>
         </div>
     </div>
 
@@ -693,9 +878,18 @@
             drawROC(threshold);
         }
         
+        // Help overlay
+        function toggleHelp(show) {
+            document.getElementById('helpOverlay').classList.toggle('active', show);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') toggleHelp(false);
+        });
+
         // Event listeners
         document.getElementById('threshold').addEventListener('input', updateDisplay);
-        
+
         // Initial display
         updateDisplay();
     </script>
