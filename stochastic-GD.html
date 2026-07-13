@@ -312,6 +312,28 @@
             display: none;
         }
 
+        .seed-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .seed-input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #34495e;
+            background: #1a252f;
+            color: white;
+            font-size: 0.95em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .seed-input:focus {
+            border-color: #3498db;
+        }
+
         @media (max-width: 1200px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -402,6 +424,14 @@
                     </div>
                 </div>
 
+                <div class="control-group">
+                    <label class="control-label">Random Seed</label>
+                    <div class="seed-input-container">
+                        <input type="number" id="seedInput" value="42" min="0" step="1" class="seed-input">
+                        <button class="btn btn-secondary" id="randomSeedBtn" style="padding: 8px 12px; margin: 0; flex: none;">Roll</button>
+                    </div>
+                </div>
+
                 <div class="button-group">
                     <button class="btn btn-primary" id="startBtn">Start Training</button>
                     <button class="btn btn-secondary" id="pauseBtn">Pause</button>
@@ -450,9 +480,26 @@
                 this.height = this.canvas.height;
                 
                 this.setupControls();
+                
+                // Initialize pseudo-random number generator
+                const initialSeed = parseInt(this.seedInput.value) || 42;
+                this.initPRNG(initialSeed);
+                
                 this.setupLossLandscape(); // Initial landscape setup
                 this.reset(true); // Call reset once to initialize with random position initially
                 this.drawLandscape();
+            }
+
+            // Mulberry32 pseudo-random number generator
+            initPRNG(seed) {
+                this.prngState = seed;
+            }
+
+            seededRandom() {
+                let t = this.prngState += 0x6D2B79F5;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
             }
 
             setupControls() {
@@ -472,6 +519,10 @@
                 // Normalization
                 this.normalizationToggle = document.getElementById('normalizationToggle');
                 
+                // Seed
+                this.seedInput = document.getElementById('seedInput');
+                this.randomSeedBtn = document.getElementById('randomSeedBtn');
+                
                 // Buttons
                 this.startBtn = document.getElementById('startBtn');
                 this.pauseBtn = document.getElementById('pauseBtn');
@@ -487,8 +538,6 @@
                 this.setupEventListeners();
 
                 // Set initial toggle states
-                // These should reflect the default values from the sliders/initial state if they are to be active by default
-                // Currently, they are false by default as per the reset method.
                 if (this.useLRDecay) this.decayToggle.classList.add('active');
                 if (this.useNormalization) this.normalizationToggle.classList.add('active');
             }
@@ -518,8 +567,24 @@
                 this.normalizationToggle.addEventListener('click', () => {
                     this.normalizationToggle.classList.toggle('active');
                     this.useNormalization = this.normalizationToggle.classList.contains('active');
-                    this.setupLossLandscape(); // Recalculate landscape when normalization changes
+                    
+                    // When landscape changes due to normalization, reset PRNG to current seed
+                    // to ensure setupLossLandscape results are reproducible
+                    const seedVal = parseInt(this.seedInput.value) || 42;
+                    this.initPRNG(seedVal);
+                    this.setupLossLandscape(); 
+                    
                     this.drawLandscape();
+                });
+
+                this.randomSeedBtn.addEventListener('click', () => {
+                    const newSeed = Math.floor(Math.random() * 1000000);
+                    this.seedInput.value = newSeed;
+                    this.reset(true, true);
+                });
+
+                this.seedInput.addEventListener('change', () => {
+                    this.reset(true, true);
                 });
 
                 this.startBtn.addEventListener('click', () => this.startTraining());
@@ -531,15 +596,15 @@
             setupLossLandscape() {
                 // Randomize parameters for a dynamic landscape
                 this.minima = [
-                    { x: 0.7 + (Math.random() * 0.2 - 0.1), y: 0.3 + (Math.random() * 0.2 - 0.1), depth: 0.1 + Math.random() * 0.1, width: 0.1 + Math.random() * 0.05 }, 
-                    { x: 0.3 + (Math.random() * 0.2 - 0.1), y: 0.7 + (Math.random() * 0.2 - 0.1), depth: 0.3 + Math.random() * 0.2, width: 0.15 + Math.random() * 0.05 }, 
-                    { x: 0.8 + (Math.random() * 0.2 - 0.1), y: 0.8 + (Math.random() * 0.2 - 0.1), depth: 0.8 + Math.random() * 0.2, width: 0.2 + Math.random() * 0.05 }, 
-                    { x: 0.2 + (Math.random() * 0.2 - 0.1), y: 0.2 + (Math.random() * 0.2 - 0.1), depth: 0.4 + Math.random() * 0.15, width: 0.12 + Math.random() * 0.05 }, 
+                    { x: 0.7 + (this.seededRandom() * 0.2 - 0.1), y: 0.3 + (this.seededRandom() * 0.2 - 0.1), depth: 0.1 + this.seededRandom() * 0.1, width: 0.1 + this.seededRandom() * 0.05 }, 
+                    { x: 0.3 + (this.seededRandom() * 0.2 - 0.1), y: 0.7 + (this.seededRandom() * 0.2 - 0.1), depth: 0.3 + this.seededRandom() * 0.2, width: 0.15 + this.seededRandom() * 0.05 }, 
+                    { x: 0.8 + (this.seededRandom() * 0.2 - 0.1), y: 0.8 + (this.seededRandom() * 0.2 - 0.1), depth: 0.8 + this.seededRandom() * 0.2, width: 0.2 + this.seededRandom() * 0.05 }, 
+                    { x: 0.2 + (this.seededRandom() * 0.2 - 0.1), y: 0.2 + (this.seededRandom() * 0.2 - 0.1), depth: 0.4 + this.seededRandom() * 0.15, width: 0.12 + this.seededRandom() * 0.05 }, 
                 ];
                 
                 this.saddles = [
-                    { x: 0.5 + (Math.random() * 0.2 - 0.1), y: 0.5 + (Math.random() * 0.2 - 0.1), height: 0.3 + Math.random() * 0.1 },
-                    { x: 0.6 + (Math.random() * 0.2 - 0.1), y: 0.1 + (Math.random() * 0.2 - 0.1), height: 0.2 + Math.random() * 0.1 },
+                    { x: 0.5 + (this.seededRandom() * 0.2 - 0.1), y: 0.5 + (this.seededRandom() * 0.2 - 0.1), height: 0.3 + this.seededRandom() * 0.1 },
+                    { x: 0.6 + (this.seededRandom() * 0.2 - 0.1), y: 0.1 + (this.seededRandom() * 0.2 - 0.1), height: 0.2 + this.seededRandom() * 0.1 },
                 ];
             }
 
@@ -677,12 +742,16 @@
             }
 
             reset(randomizePosition = false, regenerateLandscape = false) {
+                // Initialize/reset PRNG to ensure reproducibility
+                const seedVal = parseInt(this.seedInput.value) || 42;
+                this.initPRNG(seedVal);
+
                 if (regenerateLandscape) {
                     this.setupLossLandscape(); // Generate a new random landscape only if requested
                 }
                 
                 if (randomizePosition || !this.position) { // Randomize position if requested or on first load
-                    this.position = { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8 }; 
+                    this.position = { x: 0.1 + this.seededRandom() * 0.8, y: 0.1 + this.seededRandom() * 0.8 }; 
                 }
                 
                 this.velocity = { x: 0, y: 0 };
@@ -752,8 +821,8 @@
                 // Add noise for SGD (less noise for larger batch sizes)
                 // Adjust noise scale to be more noticeable and dependent on batch size
                 const noiseScale = (this.batchSize < 100) ? 0.005 * (1 - (this.batchSize / 100)) : 0; 
-                const noiseX = (Math.random() - 0.5) * noiseScale;
-                const noiseY = (Math.random() - 0.5) * noiseScale;
+                const noiseX = (this.seededRandom() - 0.5) * noiseScale;
+                const noiseY = (this.seededRandom() - 0.5) * noiseScale;
                 
                 // Apply momentum
                 this.velocity.x = this.momentum * this.velocity.x - this.currentLR * (grad.dx + noiseX);
