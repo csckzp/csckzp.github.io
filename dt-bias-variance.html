@@ -1,0 +1,299 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+#app { padding: 1rem 0; }
+h2 { font-size: 18px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+p.sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 1rem; }
+.ctrl-group { display: flex; align-items: center; gap: 8px; }
+label { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
+.k-val { font-size: 15px; font-weight: 500; color: var(--color-text-primary); min-width: 28px; }
+input[type=range] { width: 160px; }
+input[type=number] { width: 64px; }
+canvas { display: block; width: 100%; max-width: 680px; margin: 0 auto; border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 1rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; }
+.metric .mlabel { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.metric .mval { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.metric .mval.good { color: var(--color-text-success); }
+.metric .mval.bad { color: var(--color-text-danger); }
+.legend { display: flex; gap: 16px; margin-top: 8px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--color-text-secondary); }
+.legend-sq { width: 12px; height: 12px; border-radius: 2px; }
+.note { font-size: 12px; color: var(--color-text-secondary); margin-top: 8px; line-height: 1.5; }
+</style>
+
+<div id="app">
+  <h2>Decision tree classifier — bias &amp; variance</h2>
+  <p class="sub">Adjust max depth to see how tree complexity affects overfitting and underfitting.</p>
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <label for="depthslider">Depth =</label>
+      <input type="range" id="depthslider" min="1" max="10" step="1" value="3">
+      <span class="k-val" id="depthval">3</span>
+    </div>
+    <div class="ctrl-group">
+      <label for="nslider">Train N =</label>
+      <input type="range" id="nslider" min="20" max="150" step="10" value="60">
+      <span class="k-val" id="nval">60</span>
+    </div>
+    <div class="ctrl-group">
+      <label for="nseed">Seed</label>
+      <input type="number" id="nseed" value="42" min="1" max="9999">
+      <button id="genbtn">Regenerate</button>
+    </div>
+  </div>
+
+  <canvas id="cvs" width="680" height="420"></canvas>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-sq" style="background:#4a90d9;"></div>Class 0 (train)</div>
+      <div class="legend-item"><div class="legend-sq" style="background:#e8924a;"></div>Class 1 (train)</div>
+    </div>
+    <p style="font-size:11px;color:var(--color-text-secondary);">Test instances hidden from view</p>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="mlabel">Train accuracy</div><div class="mval" id="m-trainacc">—</div></div>
+    <div class="metric"><div class="mlabel">Train error</div><div class="mval" id="m-trainerr">—</div></div>
+    <div class="metric"><div class="mlabel">Test accuracy</div><div class="mval" id="m-testacc">—</div></div>
+    <div class="metric"><div class="mlabel">Test error</div><div class="mval" id="m-testerr">—</div></div>
+  </div>
+  <p class="note" id="complexnote"></p>
+</div>
+
+<script>
+const cvs = document.getElementById('cvs');
+const ctx = cvs.getContext('2d');
+const W = 680, H = 420;
+cvs.width = W; cvs.height = H;
+
+const PAD = 44;
+const xMin = -5, xMax = 5, yMin = -4, yMax = 4;
+
+function toCanvas(x, y) {
+  return [
+    PAD + (x - xMin) / (xMax - xMin) * (W - 2*PAD),
+    H - PAD - (y - yMin) / (yMax - yMin) * (H - 2*PAD)
+  ];
+}
+
+function seededRng(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function randNorm(rng) {
+  const u = 1 - rng(), v = rng();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function makeMoons(seed, n) {
+  const rng = seededRng(seed);
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = rng() * Math.PI;
+    const r = 3.5 + randNorm(rng) * 0.4;
+    pts.push([r * Math.cos(t), r * Math.sin(t) - 0.4, 0]);
+  }
+  for (let i = 0; i < n; i++) {
+    const t = rng() * Math.PI + Math.PI * 0.05;
+    const r = 3.5 + randNorm(rng) * 0.4;
+    pts.push([r * Math.cos(t) + 0.4, -r * Math.sin(t) + 0.4, 1]);
+  }
+  return pts;
+}
+
+function majority(data) {
+  let c1 = 0;
+  data.forEach(p => { if (p[2] === 1) c1++; });
+  return c1 >= data.length - c1 ? 1 : 0;
+}
+
+function giniImpurity(data) {
+  if (!data.length) return 0;
+  let c1 = 0;
+  data.forEach(p => { if (p[2] === 1) c1++; });
+  const p1 = c1 / data.length;
+  return 1 - p1 * p1 - (1 - p1) * (1 - p1);
+}
+
+function buildTree(data, depth, maxDepth) {
+  const node = {};
+  if (depth >= maxDepth || data.length <= 1 || data.every(p => p[2] === data[0][2])) {
+    node.leaf = true; node.label = majority(data); return node;
+  }
+
+  let bestScore = Infinity, bestF = 0, bestT = 0;
+  for (let f = 0; f < 2; f++) {
+    const sorted = data.slice().sort((a, b) => a[f] - b[f]);
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i][f] === sorted[i + 1][f]) continue;
+      const thresh = (sorted[i][f] + sorted[i + 1][f]) / 2;
+      const left = data.filter(p => p[f] <= thresh);
+      const right = data.filter(p => p[f] > thresh);
+      const score = (left.length * giniImpurity(left) + right.length * giniImpurity(right)) / data.length;
+      if (score < bestScore) { bestScore = score; bestF = f; bestT = thresh; }
+    }
+  }
+
+  const left = data.filter(p => p[bestF] <= bestT);
+  const right = data.filter(p => p[bestF] > bestT);
+  if (!left.length || !right.length) {
+    node.leaf = true; node.label = majority(data); return node;
+  }
+
+  node.leaf = false; node.feature = bestF; node.threshold = bestT;
+  node.left = buildTree(left, depth + 1, maxDepth);
+  node.right = buildTree(right, depth + 1, maxDepth);
+  return node;
+}
+
+function dtPredict(node, x, y) {
+  if (node.leaf) return node.label;
+  return (node.feature === 0 ? x : y) <= node.threshold
+    ? dtPredict(node.left, x, y)
+    : dtPredict(node.right, x, y);
+}
+
+function accuracy(data, tree) {
+  let ok = 0;
+  data.forEach(p => { if (dtPredict(tree, p[0], p[1]) === p[2]) ok++; });
+  return ok / data.length;
+}
+
+let trainData = [], testData = [], tree = null;
+
+function genData(seed, nTrain) {
+  const all = makeMoons(seed, Math.ceil(nTrain / 2));
+  const rng2 = seededRng(seed + 1);
+  trainData = []; testData = [];
+  all.forEach(p => { (rng2() < 0.7 ? trainData : testData).push(p); });
+  makeMoons(seed + 999, 40).forEach(p => testData.push(p));
+}
+
+function drawGrid() {
+  const imgd = ctx.createImageData(W, H);
+  const d = imgd.data;
+  for (let py = 0; py < H; py += 2) {
+    for (let px = 0; px < W; px += 2) {
+      const gx = xMin + (px - PAD) / (W - 2 * PAD) * (xMax - xMin);
+      const gy = yMin + (H - py - PAD) / (H - 2 * PAD) * (yMax - yMin);
+      if (gx < xMin || gx > xMax || gy < yMin || gy > yMax) continue;
+      const lbl = dtPredict(tree, gx, gy);
+      const r = lbl === 0 ? 160 : 232;
+      const g = lbl === 0 ? 200 : 180;
+      const b = lbl === 0 ? 230 : 140;
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          const idx = ((py + dy) * W + (px + dx)) * 4;
+          d[idx] = r; d[idx + 1] = g; d[idx + 2] = b; d[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(imgd, 0, 0);
+}
+
+function drawAxes() {
+  ctx.strokeStyle = 'rgba(100,100,100,0.35)';
+  ctx.lineWidth = 0.5;
+  ctx.fillStyle = 'rgba(100,100,100,0.7)';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+
+  [-4, -3, -2, -1, 0, 1, 2, 3, 4].forEach(v => {
+    const [cx] = toCanvas(v, 0);
+    ctx.beginPath(); ctx.moveTo(cx, PAD); ctx.lineTo(cx, H - PAD); ctx.stroke();
+    ctx.fillText(v, cx, H - PAD + 14);
+  });
+
+  ctx.textAlign = 'right';
+  [-3, -2, -1, 0, 1, 2, 3].forEach(v => {
+    const [, cy] = toCanvas(0, v);
+    ctx.beginPath(); ctx.moveTo(PAD, cy); ctx.lineTo(W - PAD, cy); ctx.stroke();
+    ctx.fillText(v, PAD - 5, cy + 4);
+  });
+
+  ctx.fillStyle = 'rgba(80,80,80,0.9)';
+  ctx.textAlign = 'center';
+  ctx.fillText('X', W / 2, H - 6);
+  ctx.save();
+  ctx.translate(12, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Y', 0, 0);
+  ctx.restore();
+}
+
+function drawPoints() {
+  trainData.forEach(p => {
+    const [cx, cy] = toCanvas(p[0], p[1]);
+    if (p[2] === 0) {
+      ctx.fillStyle = '#2563c4'; ctx.strokeStyle = '#1a4a9e'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.rect(cx - 5, cy - 5, 10, 10); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#d4722a'; ctx.strokeStyle = '#a8561a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx + 6, cy + 5); ctx.lineTo(cx - 6, cy + 5);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  });
+}
+
+function updateMetrics(depth) {
+  const trainAcc = accuracy(trainData, tree);
+  const testAcc = accuracy(testData, tree);
+  const trainErr = 1 - trainAcc, testErr = 1 - testAcc;
+  document.getElementById('m-trainacc').textContent = (trainAcc * 100).toFixed(1) + '%';
+  document.getElementById('m-trainerr').textContent = (trainErr * 100).toFixed(1) + '%';
+  document.getElementById('m-testacc').textContent = (testAcc * 100).toFixed(1) + '%';
+  document.getElementById('m-testerr').textContent = (testErr * 100).toFixed(1) + '%';
+  document.getElementById('m-testerr').className = 'mval' + (testErr < 0.15 ? ' good' : testErr > 0.30 ? ' bad' : '');
+
+  const notes = {
+    1: 'Depth 1 (stump): a single axis-aligned split — maximum underfitting, cannot approximate any curved boundary.',
+    2: 'Depth 2: two splits — still very blocky; misses the arc curvature at the crescent ends.',
+    3: 'Depth 3: coarse rectangular approximation of the boundary — low variance, moderate bias.',
+  };
+  let note = notes[depth] ||
+    (depth <= 5 ? 'Moderate depth: reasonable bias–variance balance for most training sizes.' :
+     depth <= 7 ? 'Deep tree: boundary starts tracing individual training points — watch test error rise.' :
+                  'Very deep tree: fine-grained rectangular patchwork memorises noise, generalising poorly.');
+  document.getElementById('complexnote').textContent = note;
+}
+
+function render(depth) {
+  ctx.clearRect(0, 0, W, H);
+  tree = buildTree(trainData, 0, depth);
+  drawGrid();
+  drawAxes();
+  drawPoints();
+  updateMetrics(depth);
+}
+
+let currentDepth = 3, currentSeed = 42, currentN = 60;
+genData(currentSeed, currentN);
+render(currentDepth);
+
+document.getElementById('depthslider').addEventListener('input', e => {
+  currentDepth = +e.target.value;
+  document.getElementById('depthval').textContent = currentDepth;
+  render(currentDepth);
+});
+
+document.getElementById('nslider').addEventListener('input', e => {
+  currentN = +e.target.value;
+  document.getElementById('nval').textContent = currentN;
+  genData(currentSeed, currentN);
+  render(currentDepth);
+});
+
+document.getElementById('genbtn').addEventListener('click', () => {
+  currentSeed = parseInt(document.getElementById('nseed').value) || 42;
+  genData(currentSeed, currentN);
+  render(currentDepth);
+});
+</script>

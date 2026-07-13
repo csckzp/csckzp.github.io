@@ -122,15 +122,15 @@
         }
 
         .cell.highlighted {
-            background: #f39c12;
-            color: white;
+            background: #f39c12 !important;
+            color: white !important;
             transform: scale(1.1);
             box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
         }
 
         .cell.filter-active {
-            background: #e74c3c;
-            color: white;
+            background: #e74c3c !important;
+            color: white !important;
             transform: scale(1.1);
             box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
         }
@@ -140,6 +140,11 @@
             color: white;
             transform: scale(1.1);
             box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .cell.padding-cell {
+            border: 1px dashed #95a5a6;
+            opacity: 0.5;
         }
 
         .cell input {
@@ -572,14 +577,41 @@
             }
             
             updateInputDisplay() {
+                const effSize = this.getEffectiveInputSize();
+                const data = this.getEffectiveInputData();
                 const cells = document.querySelectorAll('#inputGrid .cell');
                 cells.forEach((cell, index) => {
-                    const row = Math.floor(index / this.inputSize);
-                    const col = index % this.inputSize;
-                    cell.textContent = this.inputData[row][col].toFixed(1);
-                    cell.style.backgroundColor = this.inputData[row][col] > 0 ? '#3498db' : 'white';
-                    cell.style.color = this.inputData[row][col] > 0 ? 'white' : '#333';
+                    const row = Math.floor(index / effSize);
+                    const col = index % effSize;
+                    const value = data[row][col];
+                    cell.textContent = value.toFixed(1);
+                    cell.style.backgroundColor = value > 0 ? '#3498db' : 'white';
+                    cell.style.color = value > 0 ? 'white' : '#333';
                 });
+            }
+
+            // Size of the grid actually fed into the convolution: the raw
+            // input, or the raw input plus a 1-cell zero border when padding
+            // is enabled. Every method below (display, convolution loop,
+            // output sizing) derives from this so they can't drift apart.
+            getEffectiveInputSize() {
+                return this.padding ? this.inputSize + 2 : this.inputSize;
+            }
+
+            getEffectiveInputData() {
+                if (!this.padding) return this.inputData;
+                const effSize = this.getEffectiveInputSize();
+                const padded = Array(effSize).fill().map(() => Array(effSize).fill(0));
+                for (let i = 0; i < this.inputSize; i++) {
+                    for (let j = 0; j < this.inputSize; j++) {
+                        padded[i + 1][j + 1] = this.inputData[i][j];
+                    }
+                }
+                return padded;
+            }
+
+            getOutputSize() {
+                return Math.floor((this.getEffectiveInputSize() - this.filterSize) / this.stride) + 1;
             }
             
             selectFilter(filterKey) {
@@ -657,13 +689,28 @@
             
             updatePadding(checked) {
                 this.padding = checked;
+
+                // The padded input is a physically larger grid (a zero
+                // border around the real pattern), so it has to be redrawn
+                // at its own size, not just relabeled.
+                const effSize = this.getEffectiveInputSize();
+                this.createGrid('inputGrid', effSize, effSize, false);
+                document.querySelector('#inputGrid').style.gridTemplateColumns = `repeat(${effSize}, 1fr)`;
+
+                document.querySelectorAll('#inputGrid .cell').forEach(cell => {
+                    const row = parseInt(cell.dataset.row, 10);
+                    const col = parseInt(cell.dataset.col, 10);
+                    const isBorder = row === 0 || col === 0 || row === effSize - 1 || col === effSize - 1;
+                    cell.classList.toggle('padding-cell', this.padding && isBorder);
+                });
+
+                this.updateInputDisplay();
                 this.calculateOutputSize();
             }
-            
+
             calculateOutputSize() {
-                const inputSize = this.padding ? this.inputSize + 2 : this.inputSize;
-                const outputSize = Math.floor((inputSize - this.filterSize) / this.stride) + 1;
-                
+                const outputSize = this.getOutputSize();
+
                 // Recreate output grid with new size
                 this.createGrid('outputGrid', outputSize, outputSize, false);
                 document.querySelector('#outputGrid').style.gridTemplateColumns = `repeat(${outputSize}, 1fr)`;
@@ -674,8 +721,8 @@
                 
                 this.isAnimating = true;
                 this.reset();
-                
-                const outputSize = Math.floor((this.inputSize - this.filterSize) / this.stride) + 1;
+
+                const outputSize = this.getOutputSize();
                 let step = 0;
                 const totalSteps = outputSize * outputSize;
                 
@@ -701,41 +748,44 @@
             
             async animateConvolutionStep(inputRow, inputCol, outputRow, outputCol) {
                 this.clearHighlights();
-                
+
+                const effSize = this.getEffectiveInputSize();
+                const data = this.getEffectiveInputData();
+
                 // Highlight input patch
                 const inputCells = document.querySelectorAll('#inputGrid .cell');
                 const filterCells = document.querySelectorAll('#filterGrid .cell');
-                
+
                 let calculation = [];
                 let sum = 0;
-                
+
                 for (let i = 0; i < this.filterSize; i++) {
                     for (let j = 0; j < this.filterSize; j++) {
                         const globalRow = inputRow + i;
                         const globalCol = inputCol + j;
-                        const inputIndex = globalRow * this.inputSize + globalCol;
+                        const inputIndex = globalRow * effSize + globalCol;
                         const filterIndex = i * this.filterSize + j;
-                        
-                        if (globalRow < this.inputSize && globalCol < this.inputSize) {
+
+                        if (globalRow < effSize && globalCol < effSize) {
                             inputCells[inputIndex].classList.add('highlighted');
                             filterCells[filterIndex].classList.add('filter-active');
-                            
-                            const inputValue = this.inputData[globalRow][globalCol];
+
+                            const inputValue = data[globalRow][globalCol];
                             const filterValue = this.currentFilter.matrix[i][j];
                             const product = inputValue * filterValue;
-                            
-                            calculation.push(`${inputValue} × ${filterValue.toFixed(1)} = ${product.toFixed(1)}`);
+
+                            calculation.push({ input: inputValue, filter: filterValue, product });
                             sum += product;
                         }
                     }
                 }
-                
+
                 // Update calculation display
                 this.updateCalculationDisplay(calculation, sum);
-                
+
                 // Highlight output cell
                 const outputCells = document.querySelectorAll('#outputGrid .cell');
-                const outputSize = Math.floor((this.inputSize - this.filterSize) / this.stride) + 1;
+                const outputSize = this.getOutputSize();
                 const outputIndex = outputRow * outputSize + outputCol;
                 
                 if (outputCells[outputIndex]) {
@@ -758,13 +808,15 @@
             
             updateCalculationDisplay(calculation, sum) {
                 const stepsDiv = document.getElementById('calculationSteps');
+                const terms = calculation.map(c => `${c.input.toFixed(1)} × ${c.filter.toFixed(1)}`).join(' + ');
+                const products = calculation.map(c => c.product.toFixed(1)).join(' + ');
                 stepsDiv.innerHTML = `
                     <div class="calculation-step">
                         <strong>Element-wise multiplication:</strong><br>
-                        ${calculation.join(' + ')}
+                        ${terms}
                     </div>
                     <div class="calculation-step">
-                        <strong>Sum:</strong> ${sum.toFixed(2)}
+                        <strong>Sum of products:</strong> ${products} = ${sum.toFixed(2)}
                     </div>
                 `;
             }
