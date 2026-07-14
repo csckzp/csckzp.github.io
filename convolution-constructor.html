@@ -218,6 +218,20 @@
             transform: translateY(-2px);
         }
 
+        .btn-secondary.active {
+            background: #764ba2;
+        }
+
+        .btn-secondary.active:hover {
+            background: #667eea;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         .calculation-display {
             background: linear-gradient(135deg, #f8f9fa, #e9ecef);
             border-radius: 10px;
@@ -364,7 +378,9 @@
                     
                     <div class="control-group">
                         <button class="btn btn-primary" id="startBtn">Start Convolution</button>
+                        <button class="btn btn-primary" id="oneStepBtn">One Step</button>
                         <button class="btn btn-secondary" id="resetBtn">Reset</button>
+                        <button class="btn btn-secondary" id="doubleSpeedBtn">Double Speed: Off</button>
                     </div>
                 </div>
 
@@ -437,6 +453,8 @@
                 this.currentStep = 0;
                 this.isAnimating = false;
                 this.animationSpeed = 1000;
+                this.speedMultiplier = 1;
+                this.stepIndex = 0;
                 
                 this.filters = {
                     identity: {
@@ -520,7 +538,9 @@
             
             setupEventListeners() {
                 document.getElementById('startBtn').addEventListener('click', () => this.startConvolution());
+                document.getElementById('oneStepBtn').addEventListener('click', () => this.oneStep());
                 document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('doubleSpeedBtn').addEventListener('click', () => this.toggleDoubleSpeed());
                 document.getElementById('inputPattern').addEventListener('change', (e) => this.generateInputPattern(e.target.value));
                 document.getElementById('strideSlider').addEventListener('input', (e) => this.updateStride(e.target.value));
                 document.getElementById('paddingToggle').addEventListener('change', (e) => this.updatePadding(e.target.checked));
@@ -572,8 +592,9 @@
                         }
                         break;
                 }
-                
+
                 this.updateInputDisplay();
+                this.reset();
             }
             
             updateInputDisplay() {
@@ -618,9 +639,10 @@
                 this.currentFilter = this.filters[filterKey];
                 this.updateFilterDisplay();
                 this.updateFilterInfo();
-                
+
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelector(`[data-filter="${filterKey}"]`).classList.add('active');
+                this.reset();
             }
             
             updateFilterDisplay() {
@@ -677,14 +699,16 @@
                 
                 this.updateFilterDisplay();
                 this.updateFilterInfo();
-                
+
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                this.reset();
             }
-            
+
             updateStride(value) {
                 this.stride = parseInt(value);
                 document.getElementById('strideValue').textContent = value;
                 this.calculateOutputSize();
+                this.reset();
             }
             
             updatePadding(checked) {
@@ -706,6 +730,7 @@
 
                 this.updateInputDisplay();
                 this.calculateOutputSize();
+                this.reset();
             }
 
             calculateOutputSize() {
@@ -718,32 +743,64 @@
             
             async startConvolution() {
                 if (this.isAnimating) return;
-                
+
                 this.isAnimating = true;
                 this.reset();
+                this.updateButtonStates();
 
                 const outputSize = this.getOutputSize();
-                let step = 0;
                 const totalSteps = outputSize * outputSize;
-                
-                for (let outputRow = 0; outputRow < outputSize; outputRow++) {
-                    for (let outputCol = 0; outputCol < outputSize; outputCol++) {
-                        const inputRow = outputRow * this.stride;
-                        const inputCol = outputCol * this.stride;
-                        
-                        await this.animateConvolutionStep(inputRow, inputCol, outputRow, outputCol);
-                        
-                        step++;
-                        this.updateProgress(step / totalSteps);
-                        
-                        if (step < totalSteps) {
-                            await this.sleep(this.animationSpeed);
-                        }
+
+                while (this.stepIndex < totalSteps) {
+                    const outputRow = Math.floor(this.stepIndex / outputSize);
+                    const outputCol = this.stepIndex % outputSize;
+                    const inputRow = outputRow * this.stride;
+                    const inputCol = outputCol * this.stride;
+
+                    await this.animateConvolutionStep(inputRow, inputCol, outputRow, outputCol);
+
+                    this.stepIndex++;
+                    this.updateProgress(this.stepIndex / totalSteps);
+
+                    if (this.stepIndex < totalSteps) {
+                        await this.sleep(this.animationSpeed / this.speedMultiplier);
                     }
                 }
-                
+
                 this.isAnimating = false;
                 this.clearHighlights();
+                this.updateButtonStates();
+            }
+
+            oneStep() {
+                if (this.isAnimating) return;
+
+                const outputSize = this.getOutputSize();
+                const totalSteps = outputSize * outputSize;
+                if (this.stepIndex >= totalSteps) return;
+
+                const outputRow = Math.floor(this.stepIndex / outputSize);
+                const outputCol = this.stepIndex % outputSize;
+                const inputRow = outputRow * this.stride;
+                const inputCol = outputCol * this.stride;
+
+                this.animateConvolutionStep(inputRow, inputCol, outputRow, outputCol);
+
+                this.stepIndex++;
+                this.updateProgress(this.stepIndex / totalSteps);
+            }
+
+            toggleDoubleSpeed() {
+                this.speedMultiplier = this.speedMultiplier === 1 ? 2 : 1;
+                const btn = document.getElementById('doubleSpeedBtn');
+                const isDouble = this.speedMultiplier === 2;
+                btn.classList.toggle('active', isDouble);
+                btn.textContent = `Double Speed: ${isDouble ? 'On' : 'Off'}`;
+            }
+
+            updateButtonStates() {
+                document.getElementById('startBtn').disabled = this.isAnimating;
+                document.getElementById('oneStepBtn').disabled = this.isAnimating;
             }
             
             async animateConvolutionStep(inputRow, inputCol, outputRow, outputCol) {
@@ -832,6 +889,7 @@
             }
             
             reset() {
+                this.stepIndex = 0;
                 this.clearHighlights();
                 this.updateProgress(0);
                 
