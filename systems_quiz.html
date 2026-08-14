@@ -255,6 +255,19 @@
     margin-top: 26px;
     letter-spacing:0.04em;
   }
+  footer #clear-btn{
+    font: inherit;
+    font-size:10.5px;
+    letter-spacing:0.04em;
+    background:none;
+    border:none;
+    padding:0;
+    color:#3d4656;
+    text-decoration:underline;
+    text-underline-offset:2px;
+    cursor:pointer;
+  }
+  footer #clear-btn:hover{ color: var(--amber); }
 
   @media (max-width:480px){
     .question{ font-size:14.5px; }
@@ -320,7 +333,10 @@
     </div>
   </div>
 
-  <footer>ESC to skip questions is not implemented &mdash; use the buttons. Order is randomized each run.</footer>
+  <footer>
+    Order is randomized each run &middot; progress saves automatically in this browser
+    &middot; <button id="clear-btn" type="button">clear saved progress &amp; restart</button>
+  </footer>
 </div>
 
 <script>
@@ -541,6 +557,41 @@ function checkAnswer(userInput, question){
   return false;
 }
 
+// ---------- PERSISTENCE ----------
+// Uses localStorage so an in-progress run survives a page refresh in this browser.
+// Note: this only works when the file is opened as a normal page in a real browser tab —
+// sandboxed preview iframes (like Claude.ai's inline artifact viewer) block storage access,
+// so if you're viewing this inside claude.ai, download the file and open it directly for
+// progress-saving to take effect.
+const STORAGE_KEY = "sysquiz_progress_v1";
+
+function saveState(){
+  try{
+    const payload = { order, idx, correctCount, attempted, history, finished: doneCard.style.display === "block" };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }catch(e){
+    // storage unavailable (sandboxed preview, private mode, etc.) — fail silently
+  }
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const data = JSON.parse(raw);
+    if(!Array.isArray(data.order) || typeof data.idx !== "number") return null;
+    // guard against a stale save from a previous version of the question bank
+    if(data.order.length !== QUESTIONS.length) return null;
+    return data;
+  }catch(e){
+    return null;
+  }
+}
+
+function clearState(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
+
 // ---------- STATE ----------
 let order = [];
 let idx = 0;
@@ -569,7 +620,7 @@ const finalScore = document.getElementById("final-score");
 const doneBars = document.getElementById("done-bars");
 const restartBtn = document.getElementById("restart-btn");
 
-function init(){
+function startFresh(){
   order = shuffle(QUESTIONS.map(q => q.id));
   idx = 0;
   correctCount = 0;
@@ -578,6 +629,29 @@ function init(){
   quizCard.style.display = "block";
   doneCard.style.display = "none";
   renderQuestion();
+  saveState();
+}
+
+function init(){
+  const saved = loadState();
+  if(saved){
+    order = saved.order;
+    idx = saved.idx;
+    correctCount = saved.correctCount;
+    attempted = saved.attempted;
+    history = saved.history;
+    if(saved.finished){
+      quizCard.style.display = "none";
+      doneCard.style.display = "block";
+      showDone();
+    } else {
+      quizCard.style.display = "block";
+      doneCard.style.display = "none";
+      renderQuestion();
+    }
+  } else {
+    startFresh();
+  }
 }
 
 function renderQuestion(){
@@ -634,6 +708,7 @@ function submitAnswer(userVal, wasSkipped){
   nextBtn.style.display = "inline-block";
   nextBtn.focus();
   updateProgress();
+  saveState();
 }
 
 function escapeHtml(s){
@@ -659,16 +734,29 @@ nextBtn.addEventListener("click", () => {
   }
 });
 
-function finish(){
-  quizCard.style.display = "none";
-  doneCard.style.display = "block";
+function showDone(){
   finalScore.textContent = correctCount + " / " + attempted;
   const pct = attempted ? Math.round((correctCount / attempted) * 100) : 0;
   doneBars.innerHTML =
     '<div class="row"><span style="width:70px;">score</span><div class="track"><div class="fill" style="width:' + pct + '%;"></div></div><span>' + pct + '%</span></div>';
 }
 
-restartBtn.addEventListener("click", init);
+function finish(){
+  quizCard.style.display = "none";
+  doneCard.style.display = "block";
+  showDone();
+  saveState();
+}
+
+restartBtn.addEventListener("click", () => {
+  clearState();
+  startFresh();
+});
+
+document.getElementById("clear-btn").addEventListener("click", () => {
+  clearState();
+  startFresh();
+});
 
 init();
 </script>
