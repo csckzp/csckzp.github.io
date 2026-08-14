@@ -247,6 +247,11 @@
   .done .bars .row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
   .done .bars .row .track{ flex:1; height:6px; background:var(--bg); border:1px solid var(--line); border-radius:3px; overflow:hidden; }
   .done .bars .row .fill{ height:100%; background: var(--accent); }
+  .done .done-actions{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+  }
 
   footer{
     text-align:center;
@@ -329,7 +334,10 @@
       <div class="big" id="final-score">0/0</div>
       <div class="label">final score</div>
       <div class="bars" id="done-bars"></div>
-      <button id="restart-btn">restart &raquo;</button>
+      <div class="done-actions">
+        <button id="redo-missed-btn" style="display:none;">redo missed &raquo;</button>
+        <button class="ghost" id="restart-btn">redo all &raquo;</button>
+      </div>
     </div>
   </div>
 
@@ -580,8 +588,11 @@ function loadState(){
     if(!raw) return null;
     const data = JSON.parse(raw);
     if(!Array.isArray(data.order) || typeof data.idx !== "number") return null;
-    // guard against a stale save from a previous version of the question bank
-    if(data.order.length !== QUESTIONS.length) return null;
+    // guard against a corrupted/foreign save: every id must be a valid question index
+    const valid = data.order.length > 0 && data.order.every(
+      id => Number.isInteger(id) && id >= 0 && id < QUESTIONS.length
+    );
+    if(!valid) return null;
     return data;
   }catch(e){
     return null;
@@ -620,6 +631,7 @@ const doneCard = document.getElementById("done-card");
 const finalScore = document.getElementById("final-score");
 const doneBars = document.getElementById("done-bars");
 const restartBtn = document.getElementById("restart-btn");
+const redoMissedBtn = document.getElementById("redo-missed-btn");
 
 function startFresh(){
   order = shuffle(QUESTIONS.map(q => q.id));
@@ -750,11 +762,28 @@ nextBtn.addEventListener("click", () => {
   }
 });
 
+function getMissedIds(){
+  // history[i] corresponds to the question at order[i]
+  const missed = [];
+  for(let i = 0; i < history.length; i++){
+    if(!history[i].correct) missed.push(order[i]);
+  }
+  return missed;
+}
+
 function showDone(){
   finalScore.textContent = correctCount + " / " + attempted;
   const pct = attempted ? Math.round((correctCount / attempted) * 100) : 0;
   doneBars.innerHTML =
     '<div class="row"><span style="width:70px;">score</span><div class="track"><div class="fill" style="width:' + pct + '%;"></div></div><span>' + pct + '%</span></div>';
+
+  const missedCount = getMissedIds().length;
+  if(missedCount > 0){
+    redoMissedBtn.style.display = "inline-block";
+    redoMissedBtn.textContent = "redo " + missedCount + " missed \u00bb";
+  } else {
+    redoMissedBtn.style.display = "none";
+  }
 }
 
 function finish(){
@@ -764,9 +793,28 @@ function finish(){
   saveState();
 }
 
+function startMissedOnly(){
+  const missed = getMissedIds();
+  if(missed.length === 0) return;
+  order = shuffle(missed);
+  idx = 0;
+  correctCount = 0;
+  attempted = 0;
+  history = [];
+  pendingFeedback = null;
+  quizCard.style.display = "block";
+  doneCard.style.display = "none";
+  renderQuestion();
+  saveState();
+}
+
 restartBtn.addEventListener("click", () => {
   clearState();
   startFresh();
+});
+
+redoMissedBtn.addEventListener("click", () => {
+  startMissedOnly();
 });
 
 document.getElementById("clear-btn").addEventListener("click", () => {
