@@ -567,7 +567,7 @@ const STORAGE_KEY = "sysquiz_progress_v1";
 
 function saveState(){
   try{
-    const payload = { order, idx, correctCount, attempted, history, finished: doneCard.style.display === "block" };
+    const payload = { order, idx, correctCount, attempted, history, pendingFeedback, finished: doneCard.style.display === "block" };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }catch(e){
     // storage unavailable (sandboxed preview, private mode, etc.) — fail silently
@@ -598,6 +598,7 @@ let idx = 0;
 let correctCount = 0;
 let attempted = 0;
 let history = []; // {correct: bool}
+let pendingFeedback = null; // {isCorrect, wasSkipped} for the currently-displayed, already-answered question
 
 const qFile = document.getElementById("q-file");
 const qText = document.getElementById("q-text");
@@ -626,6 +627,7 @@ function startFresh(){
   correctCount = 0;
   attempted = 0;
   history = [];
+  pendingFeedback = null;
   quizCard.style.display = "block";
   doneCard.style.display = "none";
   renderQuestion();
@@ -640,6 +642,7 @@ function init(){
     correctCount = saved.correctCount;
     attempted = saved.attempted;
     history = saved.history;
+    pendingFeedback = saved.pendingFeedback || null;
     if(saved.finished){
       quizCard.style.display = "none";
       doneCard.style.display = "block";
@@ -666,7 +669,31 @@ function renderQuestion(){
   answerInput.disabled = false;
   submitBtn.disabled = false;
   updateProgress();
-  setTimeout(() => answerInput.focus(), 30);
+
+  if(pendingFeedback){
+    // this question was already answered before a refresh — restore that view
+    renderFeedbackUI(q, pendingFeedback.isCorrect, pendingFeedback.wasSkipped);
+  } else {
+    setTimeout(() => answerInput.focus(), 30);
+  }
+}
+
+function renderFeedbackUI(q, isCorrect, wasSkipped){
+  feedback.classList.add("show");
+  feedback.classList.remove("correct", "wrong");
+  feedback.classList.add(isCorrect ? "correct" : "wrong");
+  fbTag.textContent = wasSkipped ? "SKIPPED" : (isCorrect ? "OK" : "MISMATCH");
+  fbMsg.textContent = wasSkipped
+    ? "no answer submitted."
+    : (isCorrect ? "accepted." : "not quite — see below.");
+  fbAnswer.innerHTML = "expected: <b>" + escapeHtml(displayAnswer(q.raw, q.type)) + "</b>";
+
+  answerInput.disabled = true;
+  submitBtn.disabled = true;
+  submitBtn.style.display = "none";
+  skipBtn.style.display = "none";
+  nextBtn.style.display = "inline-block";
+  nextBtn.focus();
 }
 
 function updateProgress(){
@@ -691,22 +718,9 @@ function submitAnswer(userVal, wasSkipped){
   attempted++;
   if(isCorrect) correctCount++;
   history.push({ correct: isCorrect, skipped: !!wasSkipped });
+  pendingFeedback = { isCorrect, wasSkipped: !!wasSkipped };
 
-  feedback.classList.add("show");
-  feedback.classList.remove("correct", "wrong");
-  feedback.classList.add(isCorrect ? "correct" : "wrong");
-  fbTag.textContent = wasSkipped ? "SKIPPED" : (isCorrect ? "OK" : "MISMATCH");
-  fbMsg.textContent = wasSkipped
-    ? "no answer submitted."
-    : (isCorrect ? "accepted." : "not quite — see below.");
-  fbAnswer.innerHTML = "expected: <b>" + escapeHtml(displayAnswer(q.raw, q.type)) + "</b>";
-
-  answerInput.disabled = true;
-  submitBtn.disabled = true;
-  submitBtn.style.display = "none";
-  skipBtn.style.display = "none";
-  nextBtn.style.display = "inline-block";
-  nextBtn.focus();
+  renderFeedbackUI(q, isCorrect, wasSkipped);
   updateProgress();
   saveState();
 }
@@ -727,10 +741,12 @@ skipBtn.addEventListener("click", () => {
 
 nextBtn.addEventListener("click", () => {
   idx++;
+  pendingFeedback = null;
   if(idx >= order.length){
     finish();
   } else {
     renderQuestion();
+    saveState();
   }
 });
 
