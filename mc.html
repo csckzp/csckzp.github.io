@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CYBERQUIZ MC(1)</title>
+<style>
+  :root{
+    --bg: #0b0e13;
+    --bg-raised: #11151d;
+    --line: #232a36;
+    --text: #d7dee6;
+    --text-dim: #7c8798;
+    --accent: #5eead4;      /* phosphor teal */
+    --accent-dim: #2b6f66;
+    --amber: #ffb454;       /* wrong / warn */
+    --amber-dim: #7a5326;
+    --violet: #b39ddb;
+    --danger: #ff6b6b;
+    --radius: 8px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.018) 0px,
+        rgba(255,255,255,0.018) 1px,
+        transparent 1px,
+        transparent 3px
+      ),
+      radial-gradient(ellipse at top, #10141c 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display:flex;
+    justify-content:center;
+    padding: 20px 14px 50px;
+    min-height:100%;
+  }
+  .wrap{
+    width:100%;
+    max-width: 480px;
+  }
+  .manbar{
+    display:flex;
+    justify-content:space-between;
+    font-size:10.5px;
+    letter-spacing:0.05em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    text-transform:uppercase;
+  }
+  .manbar span:nth-child(2){ color: var(--accent); }
+  h1{
+    font-size: 14px;
+    font-weight:600;
+    letter-spacing:0.02em;
+    margin: 12px 0 2px;
+    color: var(--text);
+  }
+  .subtitle{
+    font-size:11.5px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    line-height:1.5;
+  }
+  .subtitle .cursor{
+    display:inline-block;
+    width:7px; height:11px;
+    background: var(--accent);
+    margin-left:4px;
+    vertical-align:-1px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* progress */
+  .progress-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:10.5px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .bar-track{
+    flex:1;
+    height:8px;
+    background: var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius: 4px;
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    width:0%;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+    transition: width 0.35s ease;
+  }
+  .stat-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:10.5px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+  .stat-row .score{ color: var(--accent); }
+  .stat-row .score.zero{ color: var(--text-dim); }
+
+  /* card */
+  .card{
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 16px 16px;
+  }
+  .prompt-line{
+    font-size:11px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .prompt-line .user{ color: var(--accent); }
+  .prompt-line .path{ color: var(--violet); }
+
+  .question{
+    font-size: 16px;
+    line-height:1.5;
+    color: var(--text);
+    margin-bottom: 18px;
+  }
+
+  .options{
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .opt-btn{
+    width:100%;
+    text-align:left;
+    font: inherit;
+    font-size:14.5px;
+    line-height:1.4;
+    color: var(--text);
+    background:#0d1119;
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 14px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  .opt-btn .letter{
+    flex:0 0 auto;
+    width:22px; height:22px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    color: var(--text-dim);
+  }
+  .opt-btn:active{ transform: translateY(1px); }
+  .opt-btn:not(:disabled):hover{ border-color: var(--accent-dim); background:#0f1420; }
+  .opt-btn:disabled{ cursor:default; }
+  .opt-btn.selected:not(.correct):not(.wrong){
+    border-color: var(--accent);
+    background: rgba(94,234,212,0.07);
+  }
+  .opt-btn.correct{
+    border-color: var(--accent);
+    background: rgba(94,234,212,0.14);
+  }
+  .opt-btn.correct .letter{ border-color: var(--accent); color: var(--accent); }
+  .opt-btn.wrong{
+    border-color: var(--amber);
+    background: rgba(255,180,84,0.1);
+  }
+  .opt-btn.wrong .letter{ border-color: var(--amber); color: var(--amber); }
+  .opt-btn.dim{ opacity: 0.5; }
+
+  .feedback{
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    font-size: 12.5px;
+    line-height:1.5;
+    border:1px solid var(--line);
+    display:none;
+  }
+  .feedback.show{ display:block; }
+  .feedback.correct{ border-color: var(--accent-dim); background: rgba(94,234,212,0.06); color: var(--accent); }
+  .feedback.wrong{ border-color: var(--amber-dim); background: rgba(255,180,84,0.06); color: var(--amber); }
+
+  .footer-row{
+    display:flex;
+    justify-content:space-between;
+    margin-top: 16px;
+    gap:10px;
+  }
+  button.action{
+    font: inherit;
+    font-size:13px;
+    letter-spacing:0.03em;
+    background: var(--accent-dim);
+    color:#dffdf7;
+    border:1px solid var(--accent);
+    border-radius: 6px;
+    padding: 11px 18px;
+    cursor:pointer;
+  }
+  button.action:hover{ background: var(--accent); color:#052620; }
+  button.action.ghost{
+    background:transparent;
+    border-color: var(--line);
+    color: var(--text-dim);
+  }
+  button.action.ghost:hover{ background: var(--bg); color:var(--text); border-color:var(--text-dim); }
+  button.action.full{ width:100%; }
+
+  .done{
+    text-align:center;
+    padding: 30px 8px 6px;
+  }
+  .done .big{
+    font-size: 32px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .done .label{
+    color: var(--text-dim);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-bottom: 22px;
+  }
+  .done .bars{
+    max-width: 320px;
+    margin: 0 auto 22px;
+    text-align:left;
+    font-size:11.5px;
+    color:var(--text-dim);
+  }
+  .done .bars .row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .done .bars .row .track{ flex:1; height:6px; background:var(--bg); border:1px solid var(--line); border-radius:3px; overflow:hidden; }
+  .done .bars .row .fill{ height:100%; background: var(--accent); }
+  .done .done-actions{
+    display:flex;
+    flex-direction: column;
+    gap:10px;
+  }
+
+  footer{
+    text-align:center;
+    font-size:10px;
+    color:#3d4656;
+    margin-top: 22px;
+    letter-spacing:0.03em;
+    line-height:1.6;
+  }
+  footer #clear-btn{
+    font: inherit;
+    font-size:10px;
+    letter-spacing:0.03em;
+    background:none;
+    border:none;
+    padding:0;
+    color:#3d4656;
+    text-decoration:underline;
+    text-underline-offset:2px;
+    cursor:pointer;
+  }
+  footer #clear-btn:hover{ color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="manbar">
+    <span>CYBERQUIZ(1)</span>
+    <span>Multiple Choice</span>
+    <span>MC</span>
+  </div>
+
+  <h1>NAME</h1>
+  <div class="subtitle">cyberquiz-mc &mdash; CIA triad, common attacks, IDS/IPS, networking &amp; incident response, tap to answer<span class="cursor"></span></div>
+
+  <div class="progress-row">
+    <span id="progress-label">0 / 0</span>
+    <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
+    <span id="progress-pct">0%</span>
+  </div>
+  <div class="stat-row">
+    <span>choices are terms from elsewhere in this quiz</span>
+    <span class="score zero" id="score-label">correct: 0/0</span>
+  </div>
+
+  <div class="card" id="quiz-card">
+    <div class="prompt-line">
+      <span><span class="user">analyst@cyberquiz</span>:<span class="path">~</span>$ cat</span>
+      <span id="q-file">question_001.txt</span>
+    </div>
+    <div class="question" id="q-text">Loading...</div>
+
+    <div class="options" id="options"></div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="footer-row">
+      <button class="action ghost" id="skip-btn" type="button">skip &raquo;</button>
+      <button class="action" id="next-btn" type="button" style="display:none;">next &raquo;</button>
+    </div>
+  </div>
+
+  <div class="card" id="done-card" style="display:none;">
+    <div class="done">
+      <div class="big" id="final-score">0/0</div>
+      <div class="label">final score</div>
+      <div class="bars" id="done-bars"></div>
+      <div class="done-actions">
+        <button class="action full" id="redo-missed-btn" style="display:none;">redo missed &raquo;</button>
+        <button class="action ghost full" id="restart-btn">redo all &raquo;</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Order &amp; choices are randomized each run &middot; progress saves automatically in this browser
+    <br>
+    <button id="clear-btn" type="button">clear saved progress &amp; restart</button>
+  </footer>
+</div>
+
+<script>
+// ---------- DATA ----------
+// Each entry: [question, canonical answer term]
+// "canonical answer term" is also drawn into the distractor pool for OTHER questions.
+const RAW = [
+  ["What does the \"C\" in the CIA triad stand for?", "confidentiality"],
+  ["What does the \"I\" in the CIA triad stand for?", "integrity"],
+  ["What does the \"A\" in the CIA triad stand for?", "availability"],
+  ["Which CIA triad principle ensures data hasn't been altered, in transit or at rest?", "integrity"],
+  ["Which CIA triad principle ensures authorized users can access systems and data when they need to?", "availability"],
+  ["Which CIA triad principle ensures only authorized parties can view sensitive data?", "confidentiality"],
+  ["What property prevents someone from denying they performed an action (e.g. via digital signatures)?", "non-repudiation"],
+  ["What three-part model describes verifying identity, granting permissions, and logging activity?", "authentication, authorization, accounting (AAA)"],
+  ["What's it called when a user proves their identity using two or more independent factors?", "multi-factor authentication (MFA)"],
+  ["What security principle says users should only have the minimum access needed to do their job?", "principle of least privilege"],
+  ["What's a weakness in a system that could be exploited called?", "vulnerability"],
+  ["What's a piece of code or technique that takes advantage of a vulnerability called?", "exploit"],
+  ["What's a potential danger that could exploit a vulnerability called?", "threat"],
+  ["What term describes the potential for loss or damage when a threat exploits a vulnerability?", "risk"],
+  ["What security model grants access based on a user's role within an organization?", "role-based access control (RBAC)"],
+
+  ["What social engineering attack uses fraudulent emails to trick users into revealing information?", "phishing"],
+  ["What's a highly targeted phishing attack aimed at a specific individual called?", "spear phishing"],
+  ["What's phishing aimed specifically at executives or other high-value targets called?", "whaling"],
+  ["What's phishing conducted over voice calls called?", "vishing"],
+  ["What's phishing conducted via SMS text messages called?", "smishing"],
+  ["What attack floods a target with traffic from a single source to make it unavailable?", "denial of service (DoS)"],
+  ["What attack floods a target with traffic from many distributed sources at once?", "distributed denial of service (DDoS)"],
+  ["What attack technique injects malicious SQL code into input fields to manipulate a database?", "SQL injection (SQLi)"],
+  ["What malicious software encrypts a victim's files and demands payment for the decryption key?", "ransomware"],
+  ["What type of malware secretly records user activity, often keystrokes?", "spyware / keylogger"],
+  ["What type of malware disguises itself as legitimate software to trick users into installing it?", "Trojan"],
+  ["What type of malware self-replicates and spreads across a network without needing a host file?", "worm"],
+  ["What type of malware attaches itself to legitimate files or programs and needs user action to spread?", "virus"],
+  ["What's it called when an attacker secretly intercepts communication between two parties?", "man-in-the-middle (MITM)"],
+  ["What attack systematically tries many password combinations to guess valid credentials?", "brute force attack"],
+  ["What attack reuses stolen username/password pairs from one breach to log into other unrelated sites?", "credential stuffing"],
+  ["What web attack injects malicious scripts into pages viewed by other users?", "cross-site scripting (XSS)"],
+  ["What web attack tricks a logged-in user's browser into performing unwanted actions on a site they're authenticated to?", "cross-site request forgery (CSRF)"],
+  ["What's a vulnerability that's exploited before the vendor knows about it or has released a patch?", "zero-day"],
+  ["What's the broad term for manipulating people (rather than systems) into divulging confidential information?", "social engineering"],
+  ["What malware secretly gives an attacker persistent, privileged remote access to a system?", "backdoor / rootkit"],
+  ["What's it called when malicious code lies dormant until triggered by a specific condition or date?", "logic bomb"],
+  ["What attack involves an attacker following an authorized person through a secured door without credentials?", "tailgating"],
+  ["What's malware that requires no file on disk, running only in memory to evade detection, called?", "fileless malware"],
+
+  ["What system monitors network or system traffic for malicious activity but does NOT block it?", "intrusion detection system (IDS)"],
+  ["What system monitors network or system traffic AND actively blocks malicious activity in real time?", "intrusion prevention system (IPS)"],
+  ["An IDS detects and alerts on threats. What does an IPS do differently?", "detects AND actively blocks the threat"],
+  ["What detection method compares traffic against known attack patterns or signatures?", "signature-based detection"],
+  ["What detection method flags deviations from a baseline of normal behavior?", "anomaly-based detection"],
+  ["What's a decoy system designed to lure and observe attackers called?", "honeypot"],
+  ["What platform aggregates and correlates logs from across an organization for security monitoring?", "SIEM"],
+  ["What team is responsible for monitoring, detecting, and responding to security incidents day-to-day?", "security operations center (SOC)"],
+  ["What's a piece of evidence indicating a system may be compromised, like a malicious IP or file hash, called?", "indicator of compromise (IOC)"],
+  ["What offensive security team simulates real-world attacks to test an organization's defenses?", "red team"],
+  ["What defensive security team detects and responds to the red team's (or real) attacks?", "blue team"],
+  ["What's a combined, collaborative red-and-blue security exercise called?", "purple team"],
+
+  ["What protocol suite underlies most internet communication, written as two acronyms joined by a slash?", "TCP/IP"],
+  ["What networking device filters incoming and outgoing traffic based on defined security rules?", "firewall"],
+  ["What type of firewall tracks the state of active connections to make smarter filtering decisions?", "stateful firewall"],
+  ["What type of firewall filters packets based on static rules without tracking connection state?", "stateless firewall"],
+  ["What network segment sits between a trusted internal network and the untrusted internet, hosting public-facing servers?", "DMZ (demilitarized zone)"],
+  ["What technology creates an encrypted tunnel over an untrusted network like the internet?", "VPN"],
+  ["What process establishes a TCP connection using SYN, SYN-ACK, ACK?", "three-way handshake"],
+  ["Default port for SSH?", "22"],
+  ["Default port for HTTPS?", "443"],
+  ["Default port for HTTP?", "80"],
+  ["Default port for DNS?", "53"],
+  ["Default port used by SMTP for sending email?", "25"],
+  ["What process translates private internal IP addresses to a public one for internet access?", "NAT"],
+  ["What server sits between clients and the internet, forwarding requests on the client's behalf?", "forward proxy"],
+  ["What protocol resolves domain names into IP addresses?", "DNS"],
+  ["What layer 2 address uniquely identifies a network interface on a local network?", "MAC address"],
+  ["What's the practice of dividing a network into smaller isolated zones to limit lateral movement called?", "network segmentation"],
+
+  ["What's the first phase of incident response, covering policies, tools, and training before an incident occurs?", "preparation"],
+  ["What IR phase involves detecting and confirming that a security incident has actually occurred?", "identification"],
+  ["What IR phase involves limiting the spread and impact of an ongoing incident?", "containment"],
+  ["What IR phase involves removing the root cause of the incident from affected systems?", "eradication"],
+  ["What IR phase involves restoring affected systems back to normal operation?", "recovery"],
+  ["What IR phase involves reviewing the incident afterward to improve future response?", "lessons learned"],
+  ["What documented process tracks who handled a piece of evidence, when, and how, to preserve its integrity for legal use?", "chain of custody"],
+  ["What's a predefined, documented set of steps for responding to a specific type of incident called?", "playbook / runbook"],
+  ["What metric measures how long it takes a team to detect a security incident?", "mean time to detect (MTTD)"],
+  ["What metric measures how long it takes a team to resolve or respond to a security incident?", "mean time to respond (MTTR)"],
+  ["When collecting digital evidence, what principle says to collect the most volatile data first (e.g. RAM before disk)?", "order of volatility"],
+  ["What's it called when responders make an exact copy of a compromised system's disk for analysis without altering the original?", "forensic image"],
+  ["What NIST publication provides the standard guidelines for handling computer security incidents?", "NIST SP 800-61"],
+
+  ["What type of encryption uses the same key to both encrypt and decrypt data?", "symmetric encryption"],
+  ["What type of encryption uses a mathematically linked public/private key pair?", "asymmetric encryption"],
+  ["What one-way function converts data into a fixed-length string used to verify integrity?", "hashing"],
+  ["What's random data added to a password before hashing, to defend against precomputed rainbow-table attacks?", "salt"],
+  ["What's the ongoing process of applying vendor updates to fix known vulnerabilities called?", "patch management"],
+  ["What OWASP-maintained list ranks the most critical web application security risks?", "OWASP Top 10"],
+  ["What international standard specifies requirements for an information security management system?", "ISO 27001"],
+  ["What authorized, simulated attack tests an organization's defenses with explicit permission?", "penetration testing"],
+];
+
+// ---------- BUILD CANONICAL TERMS + QUESTION OBJECTS ----------
+let QUESTIONS = RAW.map((r, i) => ({ id: i, q: r[0], term: r[1] }));
+const TERM_POOL = QUESTIONS.map(q => q.term);
+
+function normalize(s){
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// build a de-duplicated pool of {term, norm} once, so distractors never repeat text
+const DEDUPED_POOL = (() => {
+  const seen = new Set();
+  const out = [];
+  for(const t of TERM_POOL){
+    const n = normalize(t);
+    if(!seen.has(n)){ seen.add(n); out.push({ term: t, norm: n }); }
+  }
+  return out;
+})();
+
+function buildMCQuestion(qId){
+  const q = QUESTIONS[qId];
+  const correctNorm = normalize(q.term);
+  const candidates = shuffle(DEDUPED_POOL.filter(p => p.norm !== correctNorm));
+  const distractors = candidates.slice(0, 3).map(p => p.term);
+  const options = shuffle([q.term, ...distractors]);
+  const correctIndex = options.indexOf(q.term);
+  return { options, correctIndex };
+}
+
+// ---------- STATE ----------
+let order = [];          // array of question ids, in quiz order
+let mc = [];             // parallel array: { options: [...4 strings], correctIndex }
+let idx = 0;
+let correctCount = 0;
+let attempted = 0;
+let history = [];        // { correct: bool, skipped: bool }
+let pendingFeedback = null; // { selIdx, isCorrect, wasSkipped } for the currently-displayed answered question
+
+const qFile = document.getElementById("q-file");
+const qText = document.getElementById("q-text");
+const optionsWrap = document.getElementById("options");
+const skipBtn = document.getElementById("skip-btn");
+const nextBtn = document.getElementById("next-btn");
+const feedback = document.getElementById("feedback");
+const barFill = document.getElementById("bar-fill");
+const progressLabel = document.getElementById("progress-label");
+const progressPct = document.getElementById("progress-pct");
+const scoreLabel = document.getElementById("score-label");
+const quizCard = document.getElementById("quiz-card");
+const doneCard = document.getElementById("done-card");
+const finalScore = document.getElementById("final-score");
+const doneBars = document.getElementById("done-bars");
+const restartBtn = document.getElementById("restart-btn");
+const redoMissedBtn = document.getElementById("redo-missed-btn");
+
+// ---------- PERSISTENCE ----------
+// Note: localStorage only works when this file is opened as a normal page in a real
+// browser tab. Sandboxed preview iframes (like Claude.ai's inline artifact viewer)
+// block storage access — download the file and open it directly for saving to work.
+const STORAGE_KEY = "cyberquiz_mc_progress_v1";
+
+function saveState(){
+  try{
+    const payload = { order, mc, idx, correctCount, attempted, history, pendingFeedback, finished: doneCard.style.display === "block" };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }catch(e){ /* storage unavailable — fail silently */ }
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const data = JSON.parse(raw);
+    if(!Array.isArray(data.order) || !Array.isArray(data.mc) || typeof data.idx !== "number") return null;
+    const valid = data.order.length > 0 && data.order.length === data.mc.length &&
+      data.order.every(id => Number.isInteger(id) && id >= 0 && id < QUESTIONS.length);
+    if(!valid) return null;
+    return data;
+  }catch(e){ return null; }
+}
+
+function clearState(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
+
+// ---------- RUN CONTROL ----------
+function beginRun(ids){
+  order = shuffle(ids);
+  mc = order.map(id => buildMCQuestion(id));
+  idx = 0;
+  correctCount = 0;
+  attempted = 0;
+  history = [];
+  pendingFeedback = null;
+  quizCard.style.display = "block";
+  doneCard.style.display = "none";
+  renderQuestion();
+  saveState();
+}
+
+function startFresh(){ beginRun(QUESTIONS.map(q => q.id)); }
+
+function init(){
+  const saved = loadState();
+  if(saved){
+    order = saved.order;
+    mc = saved.mc;
+    idx = saved.idx;
+    correctCount = saved.correctCount;
+    attempted = saved.attempted;
+    history = saved.history;
+    pendingFeedback = saved.pendingFeedback || null;
+    if(saved.finished){
+      quizCard.style.display = "none";
+      doneCard.style.display = "block";
+      showDone();
+    } else {
+      quizCard.style.display = "block";
+      doneCard.style.display = "none";
+      renderQuestion();
+    }
+  } else {
+    startFresh();
+  }
+}
+
+// ---------- RENDERING ----------
+function renderQuestion(){
+  const q = QUESTIONS[order[idx]];
+  const opts = mc[idx];
+  qFile.textContent = "question_" + String(idx + 1).padStart(3, "0") + ".txt";
+  qText.textContent = q.q;
+  feedback.classList.remove("show", "correct", "wrong");
+  feedback.textContent = "";
+  nextBtn.style.display = "none";
+  skipBtn.style.display = "inline-block";
+  updateProgress();
+
+  optionsWrap.innerHTML = "";
+  const letters = ["A", "B", "C", "D"];
+  opts.options.forEach((text, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "opt-btn";
+    btn.innerHTML = '<span class="letter">' + letters[i] + '</span><span>' + escapeHtml(text) + '</span>';
+    btn.addEventListener("click", () => selectOption(i));
+    optionsWrap.appendChild(btn);
+  });
+
+  if(pendingFeedback){
+    renderFeedbackUI(opts, pendingFeedback.selIdx, pendingFeedback.isCorrect, pendingFeedback.wasSkipped);
+  }
+}
+
+function renderFeedbackUI(opts, selIdx, isCorrect, wasSkipped){
+  const btns = optionsWrap.querySelectorAll(".opt-btn");
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if(i === opts.correctIndex) btn.classList.add("correct");
+    if(i === selIdx && !isCorrect) btn.classList.add("wrong");
+    if(i === selIdx && isCorrect) btn.classList.add("selected");
+    if(i !== opts.correctIndex && i !== selIdx) btn.classList.add("dim");
+  });
+
+  feedback.classList.add("show");
+  feedback.classList.remove("correct", "wrong");
+  feedback.classList.add(isCorrect ? "correct" : "wrong");
+  feedback.textContent = wasSkipped ? "skipped — correct answer highlighted above."
+    : (isCorrect ? "correct!" : "not quite — correct answer highlighted above.");
+
+  skipBtn.style.display = "none";
+  nextBtn.style.display = "inline-block";
+}
+
+function updateProgress(){
+  const total = order.length;
+  progressLabel.textContent = idx + " / " + total;
+  const pct = Math.round((idx / total) * 100);
+  barFill.style.width = pct + "%";
+  progressPct.textContent = pct + "%";
+  scoreLabel.textContent = "correct: " + correctCount + "/" + attempted;
+  scoreLabel.classList.toggle("zero", attempted === 0);
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+}
+
+function selectOption(selIdx){
+  if(pendingFeedback) return; // already answered
+  const opts = mc[idx];
+  const isCorrect = selIdx === opts.correctIndex;
+
+  attempted++;
+  if(isCorrect) correctCount++;
+  history.push({ correct: isCorrect, skipped: false });
+  pendingFeedback = { selIdx, isCorrect, wasSkipped: false };
+
+  renderFeedbackUI(opts, selIdx, isCorrect, false);
+  updateProgress();
+  saveState();
+}
+
+skipBtn.addEventListener("click", () => {
+  if(pendingFeedback) return;
+  const opts = mc[idx];
+  attempted++;
+  history.push({ correct: false, skipped: true });
+  pendingFeedback = { selIdx: null, isCorrect: false, wasSkipped: true };
+
+  renderFeedbackUI(opts, null, false, true);
+  updateProgress();
+  saveState();
+});
+
+nextBtn.addEventListener("click", () => {
+  idx++;
+  pendingFeedback = null;
+  if(idx >= order.length){
+    finish();
+  } else {
+    renderQuestion();
+    saveState();
+  }
+});
+
+function getMissedIds(){
+  const missed = [];
+  for(let i = 0; i < history.length; i++){
+    if(!history[i].correct) missed.push(order[i]);
+  }
+  return missed;
+}
+
+function showDone(){
+  finalScore.textContent = correctCount + " / " + attempted;
+  const pct = attempted ? Math.round((correctCount / attempted) * 100) : 0;
+  doneBars.innerHTML =
+    '<div class="row"><span style="width:60px;">score</span><div class="track"><div class="fill" style="width:' + pct + '%;"></div></div><span>' + pct + '%</span></div>';
+
+  const missedCount = getMissedIds().length;
+  if(missedCount > 0){
+    redoMissedBtn.style.display = "block";
+    redoMissedBtn.textContent = "redo " + missedCount + " missed \u00bb";
+  } else {
+    redoMissedBtn.style.display = "none";
+  }
+}
+
+function finish(){
+  quizCard.style.display = "none";
+  doneCard.style.display = "block";
+  showDone();
+  saveState();
+}
+
+restartBtn.addEventListener("click", () => {
+  clearState();
+  startFresh();
+});
+
+redoMissedBtn.addEventListener("click", () => {
+  const missed = getMissedIds();
+  if(missed.length === 0) return;
+  beginRun(missed);
+});
+
+document.getElementById("clear-btn").addEventListener("click", () => {
+  clearState();
+  startFresh();
+});
+
+init();
+</script>
+</body>
+</html>
