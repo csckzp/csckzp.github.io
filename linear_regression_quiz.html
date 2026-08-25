@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side Semantic Quiz (Gemini Nano)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --primary-light: #e8f0fe;
+            --success: #137333;
+            --success-bg: #e6f4ea;
+            --success-border: #ceead6;
+            --danger: #c5221f;
+            --danger-bg: #fce8e6;
+            --danger-border: #fad2cf;
+            --text: #202124;
+            --text-secondary: #5f6368;
+            --card-bg: #ffffff;
+            --border: #dadce0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            max-width: 680px;
+            margin: 36px auto;
+            padding: 0 20px;
+            color: var(--text);
+            background-color: #f8f9fa;
+            line-height: 1.5;
+        }
+
+        h2 {
+            margin: 0 0 16px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-banner {
+            padding: 14px 16px;
+            border-radius: 8px;
+            background: var(--primary-light);
+            color: #1967d2;
+            margin-bottom: 20px;
+            font-size: 0.92rem;
+            font-weight: 500;
+            border: 1px solid #d2e3fc;
+        }
+
+        progress {
+            width: 100%;
+            height: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Nav & Progress Header */
+        .quiz-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f1f3f4;
+            gap: 12px;
+        }
+
+        .nav-arrow-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .arrow-btn {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .arrow-btn:hover:not(:disabled) {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .arrow-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            background: #f8f9fa;
+        }
+
+        .nav-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-progress {
+            background: #e8eaed;
+            color: var(--text-secondary);
+        }
+
+        .badge-score {
+            background: #e6f4ea;
+            color: var(--success);
+            border: 1px solid var(--success-border);
+        }
+
+        .question-title {
+            margin: 0 0 16px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            line-height: 1.45;
+            color: #202124;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 14px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            background: #fff;
+            color: var(--text);
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+        }
+
+        /* Controls row */
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .bottom-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-family: inherit;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.15s ease, opacity 0.15s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e8eaed;
+        }
+
+        button:disabled {
+            background: #e0e0e0;
+            color: #9aa0a6;
+            border: 1px solid transparent;
+            cursor: not-allowed;
+        }
+
+        /* Feedback box */
+        .feedback {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feedback strong {
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .feedback.correct {
+            background: var(--success-bg);
+            color: var(--success);
+            border: 1px solid var(--success-border);
+        }
+
+        .feedback.incorrect {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Client-Side AI Quiz (Gemini Nano)</h2>
+
+    <!-- Status & Download Area -->
+    <div id="statusContainer" class="status-banner">
+        <span id="statusText">Checking model status...</span>
+        <button id="downloadBtn" class="btn-primary" style="display: none; margin-top: 10px;">Download AI Model &
+            Start</button>
+        <progress id="downloadBar" value="0" max="100" style="display: none;"></progress>
+    </div>
+
+    <!-- Quiz Container -->
+    <div class="card">
+        <!-- Forward & Backward Navigation Header -->
+        <div class="quiz-nav-header">
+            <div class="nav-arrow-group">
+                <button id="prevArrowBtn" class="arrow-btn" title="Previous Question" disabled
+                    aria-label="Previous Question">←</button>
+                <span id="questionCounter" class="badge badge-progress">Question 1 of 5</span>
+                <button id="nextArrowBtn" class="arrow-btn" title="Next Question" aria-label="Next Question">→</button>
+            </div>
+            <span id="scoreBadge" class="badge badge-score">Score: 0 / 5</span>
+        </div>
+
+        <!-- Current Question -->
+        <h3 id="questionTitle" class="question-title">Loading question...</h3>
+        <textarea id="studentAnswer" rows="4" placeholder="Type your answer here..."></textarea>
+
+        <!-- Controls Row -->
+        <div class="controls-row">
+            <div class="bottom-nav">
+                <button id="prevBtn" class="btn-secondary" disabled>← Previous</button>
+                <button id="nextBtn" class="btn-secondary">Next →</button>
+            </div>
+            <button id="submitBtn" class="btn-primary" disabled>Submit Answer</button>
+        </div>
+
+        <!-- Feedback Result -->
+        <div id="feedbackBox" class="feedback" style="display: none;"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Quiz Question Bank (Dictionary of Questions)
+        // Topic: Linear Regression (Google ML Crash Course)
+        // ==========================================
+        const quizQuestions = [
+            {
+                id: "q1",
+                question: "What is linear regression?",
+                keyConcepts: "A statistical technique that models the relationship between one or more features and a label as a straight line (or hyperplane), used to predict a continuous numeric value."
+            },
+            {
+                id: "q2",
+                question: "In machine learning, what is a 'feature' and what is a 'label'?",
+                keyConcepts: "A feature is an input variable used to make a prediction; a label is the true output value (the thing being predicted) in supervised learning."
+            },
+            {
+                id: "q3",
+                question: "In the equation y' = b + w1x1, what do 'b' (bias) and 'w1' (weight) represent?",
+                keyConcepts: "Bias is the y-intercept, the value of the prediction when all feature values are zero; weight is the coefficient/slope that determines how much a feature influences the prediction."
+            },
+            {
+                id: "q4",
+                question: "What is a 'parameter' in a machine learning model, and how do bias and weights relate to it?",
+                keyConcepts: "Parameters are the variables (like bias and weights) that a model learns and adjusts during training in order to minimize loss."
+            },
+            {
+                id: "q5",
+                question: "What does 'loss' mean in machine learning, and why is it important?",
+                keyConcepts: "Loss is a numeric measure of how wrong a model's prediction is compared to the actual label; training aims to minimize loss so predictions get closer to true values."
+            },
+            {
+                id: "q6",
+                question: "How is Mean Squared Error (MSE) calculated, and how does it differ from Mean Absolute Error (MAE)?",
+                keyConcepts: "MSE is the average of the squared differences between predicted and actual values, which penalizes larger errors/outliers more heavily; MAE is the average of the absolute differences, treating all errors more proportionally."
+            },
+            {
+                id: "q7",
+                question: "What is an outlier, and how can it affect a linear regression model trained with MSE?",
+                keyConcepts: "An outlier is a data point that differs significantly from other observations; because MSE squares errors, outliers can disproportionately increase loss and pull the fitted line toward them."
+            },
+            {
+                id: "q8",
+                question: "What is the difference between L1 loss and L2 loss?",
+                keyConcepts: "L1 loss is the sum (or average) of absolute differences between predicted and actual values; L2 loss is the sum (or average) of squared differences, making it more sensitive to large errors/outliers."
+            },
+            {
+                id: "q9",
+                question: "What is gradient descent, and what problem does it solve?",
+                keyConcepts: "Gradient descent is an iterative optimization algorithm that adjusts model parameters (weights and bias) in the direction that reduces loss, in order to find the parameter values that minimize the loss function."
+            },
+            {
+                id: "q10",
+                question: "What is a convex function, and why does it matter for gradient descent?",
+                keyConcepts: "A convex function has a single minimum (bowl-shaped curve); this guarantees gradient descent can reliably converge to the global minimum without getting stuck in local minima."
+            },
+            {
+                id: "q11",
+                question: "What does 'convergence' mean in the context of training a model?",
+                keyConcepts: "Convergence is the point during training when loss stops decreasing significantly (or changes very little) with additional iterations, indicating the model has found an optimal or near-optimal set of parameters."
+            },
+            {
+                id: "q12",
+                question: "What is a learning rate, and what happens if it is set too high or too low?",
+                keyConcepts: "The learning rate is a hyperparameter that controls the size of the steps taken during gradient descent; too high can cause the model to overshoot the minimum and diverge, too low can make training very slow or get stuck before convergence."
+            },
+            {
+                id: "q13",
+                question: "What is the difference between a parameter and a hyperparameter?",
+                keyConcepts: "Parameters (like weights and bias) are learned by the model during training; hyperparameters (like learning rate and batch size) are settings chosen by the practitioner before/during training that control the training process."
+            },
+            {
+                id: "q14",
+                question: "What is an epoch, and how does it relate to iterations?",
+                keyConcepts: "An epoch is one full pass through the entire training dataset; an iteration is a single update of the model's parameters, and one epoch may consist of many iterations depending on batch size."
+            },
+            {
+                id: "q15",
+                question: "What is batch size, and how does it affect training?",
+                keyConcepts: "Batch size is the number of examples used to calculate the gradient and update parameters in a single iteration; it affects the speed and stability of training."
+            },
+            {
+                id: "q16",
+                question: "What is the difference between stochastic gradient descent (SGD) and mini-batch stochastic gradient descent?",
+                keyConcepts: "SGD uses a single randomly chosen example per iteration to update parameters, which is fast but noisy; mini-batch SGD uses a small random subset (batch) of examples per iteration, balancing the efficiency of full-batch gradient descent with the speed of SGD."
+            },
+            {
+                id: "q17",
+                question: "What is a loss curve, and what does it show?",
+                keyConcepts: "A loss curve is a graph plotting loss against the number of training iterations, used to visualize how a model's loss decreases (or fails to decrease) as training progresses."
+            },
+            {
+                id: "q18",
+                question: "What does it mean for a model to 'generalize' well?",
+                keyConcepts: "A model generalizes well when it performs accurately on new, unseen data, not just on the data it was trained on."
+            },
+            {
+                id: "q19",
+                question: "What is a prediction in the context of a trained linear regression model?",
+                keyConcepts: "A prediction (often denoted y') is the output value the model computes for a given set of feature values using its learned weights and bias."
+            },
+            {
+                id: "q20",
+                question: "What is a neural network, and how does it relate to linear regression?",
+                keyConcepts: "A neural network is a model composed of connected layers of nodes (neurons) that can learn complex, non-linear relationships; linear regression can be viewed as the simplest possible case, a single-layer network with one linear output."
+            }
+        ];
+
+        // ==========================================
+        // 2. Application State
+        // ==========================================
+        let graderSession = null;
+        let currentIndex = 0;
+
+        // Stores state for each question: { studentAnswer, isCorrect, feedback, graded }
+        const userState = {};
+        quizQuestions.forEach((_, idx) => {
+            userState[idx] = {
+                studentAnswer: "",
+                isCorrect: null,
+                feedback: "",
+                graded: false
+            };
+        });
+
+        // DOM Element References
+        const statusText = document.getElementById('statusText');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const downloadBar = document.getElementById('downloadBar');
+        const submitBtn = document.getElementById('submitBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevArrowBtn = document.getElementById('prevArrowBtn');
+        const nextArrowBtn = document.getElementById('nextArrowBtn');
+        const questionCounter = document.getElementById('questionCounter');
+        const scoreBadge = document.getElementById('scoreBadge');
+        const questionTitle = document.getElementById('questionTitle');
+        const studentAnswerInput = document.getElementById('studentAnswer');
+        const feedbackBox = document.getElementById('feedbackBox');
+
+        function getLanguageModelAPI() {
+            if (typeof LanguageModel !== 'undefined') return LanguageModel;
+            if (window.ai && window.ai.languageModel) return window.ai.languageModel;
+            return null;
+        }
+
+        // ==========================================
+        // 3. Model Availability & Session Setup
+        // ==========================================
+        async function checkAvailability() {
+            const LM = getLanguageModelAPI();
+            if (!LM) {
+                statusText.textContent = "⚠️ Chrome Prompt API not detected. Enable flags in chrome://flags.";
+                return;
+            }
+
+            try {
+                const availability = await LM.availability();
+                console.log("Model availability:", availability);
+
+                if (availability === 'available' || availability === 'readily') {
+                    await createSession();
+                } else if (availability === 'downloadable' || availability === 'downloading') {
+                    statusText.textContent = "Model needs to be downloaded once to run locally (~1.5GB).";
+                    downloadBtn.style.display = "inline-block";
+                } else {
+                    statusText.textContent = "❌ Built-in AI is not supported on this device.";
+                }
+            } catch (err) {
+                statusText.textContent = "Error checking availability: " + err.message;
+            }
+        }
+
+        async function createSession() {
+            const LM = getLanguageModelAPI();
+            downloadBtn.style.display = "none";
+            statusText.textContent = "Initializing Gemini Nano...";
+
+            try {
+                graderSession = await LM.create({
+                    temperature: 0.1,
+                    topK: 1,
+                    systemPrompt: `You are an educational grader. Grade the student answer against the key concepts. Output ONLY valid JSON: {"isCorrect": true, "feedback": "Explanation"}`,
+                    monitor(m) {
+                        downloadBar.style.display = "block";
+                        m.addEventListener('downloadprogress', (e) => {
+                            const pct = Math.round((e.loaded / e.total) * 100) || 0;
+                            downloadBar.value = pct;
+                            statusText.textContent = `Downloading model: ${pct}% complete...`;
+                        });
+                    }
+                });
+
+                downloadBar.style.display = "none";
+                statusText.textContent = "✅ Gemini Nano is ready. Grading runs 100% locally.";
+                updateSubmitButtonState();
+            } catch (err) {
+                downloadBar.style.display = "none";
+                statusText.textContent = "Failed to create session: " + err.message;
+                console.error(err);
+            }
+        }
+
+        // ==========================================
+        // 4. UI Rendering & Question Navigation
+        // ==========================================
+        function saveCurrentAnswer() {
+            userState[currentIndex].studentAnswer = studentAnswerInput.value;
+        }
+
+        function renderQuestion() {
+            const total = quizQuestions.length;
+            const currentQ = quizQuestions[currentIndex];
+            const currentState = userState[currentIndex];
+
+            // Update Header & Question Text (clean without number prefixes)
+            questionCounter.textContent = `Question ${currentIndex + 1} of ${total}`;
+            questionTitle.textContent = currentQ.question;
+            studentAnswerInput.value = currentState.studentAnswer;
+
+            // Update Forward and Backward Arrows & Buttons
+            const isFirst = (currentIndex === 0);
+            const isLast = (currentIndex === total - 1);
+
+            prevBtn.disabled = isFirst;
+            prevArrowBtn.disabled = isFirst;
+            nextBtn.disabled = isLast;
+            nextArrowBtn.disabled = isLast;
+
+            // Update Feedback Display
+            if (currentState.graded) {
+                feedbackBox.style.display = "block";
+                feedbackBox.className = `feedback ${currentState.isCorrect ? 'correct' : 'incorrect'}`;
+                feedbackBox.innerHTML = `<strong>${currentState.isCorrect ? '✓ Correct' : '✗ Incorrect'}</strong><br>${currentState.feedback}`;
+            } else {
+                feedbackBox.style.display = "none";
+                feedbackBox.innerHTML = "";
+            }
+
+            updateSubmitButtonState();
+            updateScoreBadge();
+        }
+
+        function updateScoreBadge() {
+            const total = quizQuestions.length;
+            const correctCount = Object.values(userState).filter(s => s.graded && s.isCorrect).length;
+            const gradedCount = Object.values(userState).filter(s => s.graded).length;
+            scoreBadge.textContent = `Score: ${correctCount} / ${total} (${gradedCount} answered)`;
+        }
+
+        function updateSubmitButtonState() {
+            if (!graderSession) {
+                submitBtn.disabled = true;
+                return;
+            }
+            submitBtn.disabled = false;
+        }
+
+        function goPrevious() {
+            if (currentIndex > 0) {
+                saveCurrentAnswer();
+                currentIndex--;
+                renderQuestion();
+            }
+        }
+
+        function goNext() {
+            if (currentIndex < quizQuestions.length - 1) {
+                saveCurrentAnswer();
+                currentIndex++;
+                renderQuestion();
+            }
+        }
+
+        // ==========================================
+        // 5. Grading Logic
+        // ==========================================
+        submitBtn.addEventListener('click', async () => {
+            saveCurrentAnswer();
+            const text = userState[currentIndex].studentAnswer.trim();
+            if (!text || !graderSession) return;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Grading...";
+            feedbackBox.style.display = "none";
+
+            const currentQ = quizQuestions[currentIndex];
+
+            try {
+                const prompt = `You are an educational grader. Evaluate whether the student answer accurately covers the key concepts.
+
+Question: ${currentQ.question}
+Key Concepts: ${currentQ.keyConcepts}
+Student Answer: "${text}"
+
+Respond ONLY with a JSON object in this exact format:
+{"isCorrect": true, "feedback": "Explanation of whether the answer is accurate and what was covered or missed."}`;
+
+                const responseText = await graderSession.prompt(prompt);
+                console.log(`[Q${currentIndex + 1}] AI Output:`, responseText);
+
+                // Extract JSON object safely
+                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    throw new Error("Invalid response format from AI model");
+                }
+
+                const res = JSON.parse(jsonMatch[0]);
+
+                // Resilient property extraction
+                const isCorrect = Boolean(
+                    res.isCorrect === true ||
+                    res.correct === true ||
+                    res.is_correct === true ||
+                    String(res.isCorrect ?? res.correct ?? res.is_correct ?? '').toLowerCase() === 'true'
+                );
+
+                const feedback = res.feedback || res.explanation || res.reason || res.comments || (isCorrect ? "Correct! Good job." : "Incorrect. Please review the key concepts.");
+
+                // Update state
+                userState[currentIndex] = {
+                    studentAnswer: studentAnswerInput.value,
+                    isCorrect: isCorrect,
+                    feedback: feedback,
+                    graded: true
+                };
+
+                // Render updated UI
+                feedbackBox.style.display = "block";
+                feedbackBox.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+                feedbackBox.innerHTML = `<strong>${isCorrect ? '✓ Correct' : '✗ Incorrect'}</strong><br>${feedback}`;
+
+                updateScoreBadge();
+            } catch (err) {
+                console.error("Grading failed:", err);
+                feedbackBox.style.display = "block";
+                feedbackBox.className = "feedback incorrect";
+                feedbackBox.textContent = "Grading error: " + err.message;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Submit Answer";
+            }
+        });
+
+        // Event Listeners
+        downloadBtn.addEventListener('click', createSession);
+
+        studentAnswerInput.addEventListener('input', () => {
+            saveCurrentAnswer();
+        });
+
+        prevBtn.addEventListener('click', goPrevious);
+        prevArrowBtn.addEventListener('click', goPrevious);
+
+        nextBtn.addEventListener('click', goNext);
+        nextArrowBtn.addEventListener('click', goNext);
+
+        // Initialize UI
+        window.addEventListener('DOMContentLoaded', () => {
+            renderQuestion();
+            checkAvailability();
+        });
+    </script>
+</body>
+
+</html>
