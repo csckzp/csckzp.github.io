@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match the Terms — NLP &amp; Transformer Glossary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F1F3F7;
+    --panel: #FFFFFF;
+    --ink: #171B24;
+    --ink-soft: #626E80;
+    --rule: #D7DCE5;
+    --accent: #2451E0;
+    --accent-bg: #E7ECFC;
+    --correct: #1F7A4D;
+    --correct-bg: #E2F5EA;
+    --incorrect: #C13B2F;
+    --incorrect-bg: #FCE7E4;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+  }
+
+  body {
+    background-image:
+      linear-gradient(var(--rule) 1px, transparent 1px),
+      linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 40px 20px 64px;
+  }
+
+  .sheet {
+    max-width: 920px;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    box-shadow: 0 1px 0 var(--rule);
+  }
+
+  header {
+    padding: 32px 36px 24px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .heading-block h1 {
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .heading-block p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    max-width: 480px;
+    line-height: 1.5;
+  }
+
+  .score-pill {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    background: var(--accent-bg);
+    border: 1px solid var(--rule);
+    padding: 10px 16px;
+    white-space: nowrap;
+    min-width: 128px;
+    text-align: center;
+  }
+
+  .score-pill .value {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 2px;
+  }
+
+  .score-pill.graded .value.perfect { color: var(--correct); }
+  .score-pill.graded .value.partial { color: var(--incorrect); }
+
+  main {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+  }
+
+  @media (max-width: 780px) {
+    main { grid-template-columns: 1fr; }
+    .col-defs { border-top: 1px solid var(--rule); }
+  }
+
+  .col {
+    padding: 28px 36px 36px;
+  }
+
+  .col-terms {
+    border-right: 1px solid var(--rule);
+  }
+
+  @media (max-width: 780px) {
+    .col-terms { border-right: none; }
+  }
+
+  .col-label {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin: 0 0 18px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .term-row {
+    display: grid;
+    grid-template-columns: 26px 1fr 108px;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--rule);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .term-row:last-child { border-bottom: none; }
+
+  .term-row .idx {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+
+  .term-row .term-name {
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .term-row select {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 7px 8px;
+    width: 100%;
+    appearance: auto;
+    cursor: pointer;
+  }
+
+  .term-row select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .term-row.correct {
+    background: var(--correct-bg);
+    border-bottom-color: var(--correct-bg);
+  }
+
+  .term-row.incorrect {
+    background: var(--incorrect-bg);
+    border-bottom-color: var(--incorrect-bg);
+  }
+
+  .feedback {
+    grid-column: 1 / -1;
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    margin-top: -4px;
+  }
+
+  .feedback.wrong-text { color: var(--incorrect); }
+  .feedback.right-text { color: var(--correct); }
+
+  .def-row {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px;
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .def-row:last-child { border-bottom: none; }
+
+  .def-row .letter {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .def-row .def-text {
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--ink);
+    max-width: 62ch;
+  }
+
+  footer {
+    padding: 24px 36px 32px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  button {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 11px 20px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--panel);
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  button:hover { opacity: 0.85; }
+
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  button.secondary {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+  }
+
+  .hint {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .term-row, button { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <div class="heading-block">
+      <h1>Match the Terms</h1>
+      <p>NLP &amp; Transformer glossary. Pick the letter of the matching definition for each term on the left, then check your answers.</p>
+    </div>
+    <div class="score-pill" id="scorePill">
+      score
+      <span class="value" id="scoreValue">— / 10</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="col col-terms">
+      <p class="col-label">terms</p>
+      <div id="termsList"></div>
+    </div>
+    <div class="col col-defs">
+      <p class="col-label">definitions</p>
+      <div id="defsList"></div>
+    </div>
+  </main>
+
+  <footer>
+    <span class="hint" id="hintText">Answer all 10, then check your work.</span>
+    <div class="btn-group">
+      <button type="button" class="secondary" id="newSetBtn">New set</button>
+      <button type="button" id="checkBtn">Check answers</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+  const GLOSSARY = [
+    { term: "NLP (Natural Language Processing)", def: "The broader field of linguistics and machine learning focused on enabling computers to understand, interpret, and generate human language." },
+    { term: "LLMs (Large Language Models)", def: "A powerful subset of NLP models characterized by massive scale, extensive training data, general capabilities, in-context learning, and emergent abilities." },
+    { term: "Self-supervised learning", def: "A type of training where the learning objective is computed automatically from the input text without requiring human-annotated labels." },
+    { term: "Pretraining", def: "The act of training a model from scratch with randomly initialized weights, typically on massive corpora of unlabeled data." },
+    { term: "Transfer learning", def: "The process of taking a pretrained model and initializing a new model with its weights to adapt to a different task." },
+    { term: "Fine-tuning", def: "The supervised, additional training performed on a pretrained model using a smaller, task-specific, human-annotated dataset." },
+    { term: "Scratch", def: "Training a model completely from the beginning with randomly initialized weights, instead of leveraging a pretrained model." },
+    { term: "Instruction tuning", def: "Fine-tuning a pretrained model to follow instructions and generate helpful responses." },
+    { term: "Architecture", def: "The structural skeleton of a model, defining its layers and mathematical operations." },
+    { term: "Checkpoints", def: "The specific set of trained weights that are loaded into a given architecture." },
+    { term: "Model", def: "An umbrella term that is often used loosely to refer to either an architecture, a checkpoint, or both." },
+    { term: "Encoder", def: "The block of a Transformer that receives an input and builds a bidirectional representation, optimized for understanding-based tasks." },
+    { term: "Decoder", def: "The block of a Transformer that uses the encoder's features alongside other inputs to autoregressively generate outputs, optimized for generative tasks." },
+    { term: "Encoder-Decoder (Sequence-to-Sequence)", def: "Models that utilize both the encoder and decoder to map an input sequence to an output sequence, such as for translation or summarization." },
+    { term: "Attention layers", def: "Special layers in a Transformer that calculate how much specific attention the model should pay to certain words in a sentence relative to others." },
+    { term: "Attention mask", def: "A mask used in self-attention or cross-attention to prevent the model from focusing on certain tokens, such as padding words or future tokens." },
+    { term: "Masked self-attention", def: "A specialized attention layer in decoders that restricts the model from attending to future tokens, so it can only look at tokens on its left." },
+    { term: "Masked Language Modeling (MLM)", def: "An encoder-only training approach where a percentage of input tokens are randomly masked, and the model learns to predict them bidirectionally using surrounding context." },
+    { term: "Causal Language Modeling (CLM)", def: "An autoregressive training approach where the model predicts the next token based purely on the previous tokens to its left." },
+    { term: "Next-sentence prediction", def: "A pretraining objective where the model predicts whether a given sentence B logically follows sentence A." },
+    { term: "Text infilling", def: "A corruption strategy where multiple text spans of arbitrary lengths are replaced by a single mask token, and the model is trained to reconstruct the original text." },
+    { term: "Byte Pair Encoding (BPE)", def: "A tokenization method used by models like GPT-2 to tokenize words and generate token embeddings." },
+    { term: "WordPiece", def: "A tokenization method used by models like BERT." },
+    { term: "[CLS] token", def: "A special classification token added to the beginning of sequences in models like BERT or ViT to capture the overall representation of the input." },
+    { term: "[SEP] token", def: "A special token used to separate different sentences in a pair of inputs." },
+    { term: "Mask token", def: "A special placeholder token, such as [MASK] or <mask>, representing a hidden word that the model is tasked with predicting." },
+    { term: "Patch embedding", def: "Representing square, non-overlapping parts of an image as vector representations in Vision Transformers." },
+    { term: "Position embeddings", def: "Learnable embeddings added to token or patch embeddings to convey the spatial or sequential order of the input." },
+    { term: "Segment embedding", def: "An embedding used in BERT to denote whether a token belongs to the first or second sentence in a pair." },
+    { term: "LSH (Locality-Sensitive Hashing) attention", def: "An efficient attention mechanism, used by Reformer, that clusters queries and keys into hash buckets to restrict attention computation to highly similar vectors." },
+    { term: "Local attention", def: "An attention window mechanism, used by Longformer, where each token only pays attention to a small window of adjacent tokens, allowing the model to handle longer texts." },
+    { term: "Axial positional encodings", def: "A factorized positional encoding method that splits a massive positional encoding matrix into two smaller matrices to conserve GPU memory." },
+    { term: "Inference", def: "The process of using a trained model to generate predictions or text from a given input prompt." },
+    { term: "Prefill Phase", def: "The first phase of LLM inference where the entire input prompt is tokenized, converted into embeddings, and processed as a batch to build context representations." },
+    { term: "Decode Phase", def: "The second phase of LLM inference where the model autoregressively generates text one token at a time." },
+    { term: "KV (Key-Value) caching", def: "An optimization technique that stores and reuses intermediate calculated keys and values from prior tokens to avoid redundant calculations during decoding." },
+    { term: "Time to First Token (TTFT)", def: "The performance metric measuring how quickly the model outputs its very first token, driven by the prefill phase." },
+    { term: "Time Per Output Token (TPOT)", def: "The speed at which subsequent individual tokens are generated." },
+    { term: "Throughput", def: "The number of concurrent inference requests the system can handle simultaneously." },
+    { term: "VRAM Usage", def: "The amount of GPU memory occupied during the execution of the model and its active contexts." },
+    { term: "Logits", def: "The raw, unnormalized prediction scores output by the model's head for every word in its vocabulary." },
+    { term: "Temperature Control", def: "A sampling parameter that alters the randomness of generation: higher settings increase creativity, while lower settings make choices more focused and deterministic." },
+    { term: "Top-p (Nucleus) Sampling", def: "A technique that filters token selection to only the most likely words whose cumulative probability matches a chosen percentage threshold." },
+    { term: "Top-k Filtering", def: "A strategy where the model only considers the k most likely next words." },
+    { term: "Presence Penalty", def: "A penalty applied to any token that has already appeared in the output to encourage the model to explore new vocabulary." },
+    { term: "Frequency Penalty", def: "A penalty that scales based on how often a token has already appeared, actively preventing repetitive text." },
+    { term: "Beam Search", def: "A decoding strategy that maintains multiple candidate sequences simultaneously and selects the sequence with the highest overall probability." },
+    { term: "Sentiment analysis", def: "Classifying text as positive or negative based on its tone." },
+    { term: "Zero-shot classification", def: "Classifying text into custom categories without requiring any prior fine-tuning on those specific labels." },
+    { term: "Named Entity Recognition (NER)", def: "Identifying and classifying key entities in text, such as persons, locations, and organizations." },
+    { term: "Part-of-speech (POS) tagging", def: "Labeling words with their grammatical roles in a sentence: noun, verb, adjective, and so on." },
+    { term: "Question answering", def: "Finding the answer to a question by extracting a span of text directly from a provided context." },
+    { term: "Summarization", def: "Condensing a longer document into a shorter version while retaining the primary information and meaning." },
+    { term: "Translation", def: "Converting text from one language to another while preserving its meaning." }
+  ];
+
+  const NUM_QUESTIONS = 10;
+  const LETTERS = "ABCDEFGHIJ".split("");
+
+  let currentSet = []; // [{term, def, letter}]
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buildSet() {
+    const chosen = shuffle(GLOSSARY).slice(0, NUM_QUESTIONS);
+    const termOrder = shuffle(chosen);
+    const defOrder = shuffle(chosen);
+    currentSet = termOrder.map(item => ({
+      term: item.term,
+      def: item.def,
+      correctLetter: LETTERS[defOrder.findIndex(d => d.term === item.term)]
+    }));
+    return defOrder;
+  }
+
+  function render() {
+    const defOrder = buildSet();
+
+    const termsList = document.getElementById("termsList");
+    const defsList = document.getElementById("defsList");
+    termsList.innerHTML = "";
+    defsList.innerHTML = "";
+
+    currentSet.forEach((item, i) => {
+      const row = document.createElement("div");
+      row.className = "term-row";
+      row.dataset.correct = item.correctLetter;
+
+      const idx = document.createElement("span");
+      idx.className = "idx";
+      idx.textContent = String(i + 1).padStart(2, "0");
+
+      const name = document.createElement("span");
+      name.className = "term-name";
+      name.textContent = item.term;
+
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", "Definition for " + item.term);
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "choose \u2014";
+      select.appendChild(blank);
+      LETTERS.forEach(l => {
+        const opt = document.createElement("option");
+        opt.value = l;
+        opt.textContent = l;
+        select.appendChild(opt);
+      });
+
+      row.appendChild(idx);
+      row.appendChild(name);
+      row.appendChild(select);
+      termsList.appendChild(row);
+    });
+
+    defOrder.forEach((item, i) => {
+      const row = document.createElement("div");
+      row.className = "def-row";
+
+      const letter = document.createElement("span");
+      letter.className = "letter";
+      letter.textContent = LETTERS[i];
+
+      const text = document.createElement("span");
+      text.className = "def-text";
+      text.textContent = item.def;
+
+      row.appendChild(letter);
+      row.appendChild(text);
+      defsList.appendChild(row);
+    });
+
+    resetScore();
+  }
+
+  function resetScore() {
+    const pill = document.getElementById("scorePill");
+    const value = document.getElementById("scoreValue");
+    pill.classList.remove("graded");
+    value.classList.remove("perfect", "partial");
+    value.textContent = "\u2014 / " + NUM_QUESTIONS;
+    document.getElementById("hintText").textContent = "Answer all " + NUM_QUESTIONS + ", then check your work.";
+
+    document.querySelectorAll(".term-row").forEach(row => {
+      row.classList.remove("correct", "incorrect");
+      const fb = row.querySelector(".feedback");
+      if (fb) fb.remove();
+    });
+  }
+
+  function checkAnswers() {
+    const rows = document.querySelectorAll(".term-row");
+    let score = 0;
+
+    rows.forEach(row => {
+      const select = row.querySelector("select");
+      const chosen = select.value;
+      const correct = row.dataset.correct;
+      const existingFb = row.querySelector(".feedback");
+      if (existingFb) existingFb.remove();
+
+      if (chosen === correct) {
+        row.classList.remove("incorrect");
+        row.classList.add("correct");
+        score++;
+      } else {
+        row.classList.remove("correct");
+        row.classList.add("incorrect");
+        const fb = document.createElement("span");
+        fb.className = "feedback wrong-text";
+        fb.textContent = chosen
+          ? "Correct answer: " + correct
+          : "No answer selected \u2014 correct answer: " + correct;
+        row.appendChild(fb);
+      }
+    });
+
+    const pill = document.getElementById("scorePill");
+    const value = document.getElementById("scoreValue");
+    pill.classList.add("graded");
+    value.classList.add(score === NUM_QUESTIONS ? "perfect" : "partial");
+    value.textContent = score + " / " + NUM_QUESTIONS;
+    document.getElementById("hintText").textContent =
+      score === NUM_QUESTIONS ? "All correct. Nice work." : "Review the highlighted rows, then try a new set if you'd like.";
+  }
+
+  document.getElementById("checkBtn").addEventListener("click", checkAnswers);
+  document.getElementById("newSetBtn").addEventListener("click", render);
+
+  render();
+</script>
+
+</body>
+</html>
