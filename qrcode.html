@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side QR Code Generator</title>
+    <!-- Load QRCode.js via CDN -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+            background: #f4f4f9;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        input {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>QR Code Generator</h2>
+    <input type="text" id="text-input" placeholder="Type a URL or text..." value="https://example.com">
+    <div id="qrcode"></div>
+</div>
+
+<script>
+    // Target the container element
+    const qrContainer = document.getElementById("qrcode");
+    const textInput = document.getElementById("text-input");
+
+    // Initialize the QRCode instance with options
+    const qrcode = new QRCode(qrContainer, {
+        text: textInput.value,
+        width: 200,
+        height: 200,
+        colorDark : "#000000",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+
+    // Update the QR code instantly on user input
+    textInput.addEventListener("input", (e) => {
+        const value = e.target.value.trim();
+        if (value) {
+            qrcode.makeCode(value);
+        } else {
+            qrcode.clear(); 
+        }
+    });
+</script>
+
+</body>
+</html>
