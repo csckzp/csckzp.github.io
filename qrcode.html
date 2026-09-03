@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client-Side QR Code Generator</title>
-    <!-- Load QRCode.js via CDN -->
-    <script src="https://cloudflare.com"></script>
+    <!-- Corrected: Load QRCode.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -41,7 +41,8 @@
 <div class="container">
     <h2>QR Code Generator</h2>
     <input type="text" id="text-input" placeholder="Type a URL or text..." value="https://example.com">
-    <div id="qrcode"></div>
+    
+    <P>Code</P><div id="qrcode"></div>
 </div>
 
 <script>
