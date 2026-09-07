@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client-Side QR Code Generator</title>
-    <!-- Corrected: Load QRCode.js via CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
@@ -22,54 +21,145 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             text-align: center;
         }
-        input {
+        input[type="text"] {
             width: 80%;
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             border: 1px solid #ccc;
             border-radius: 4px;
+        }
+        .logo-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
         }
         #qrcode {
             display: flex;
             justify-content: center;
             margin-top: 15px;
         }
+        small {
+            display: block;
+            margin-top: 10px;
+            color: #888;
+        }
     </style>
 </head>
 <body>
-
 <div class="container">
     <h2>QR Code Generator</h2>
     <input type="text" id="text-input" placeholder="Type a URL or text..." value="https://example.com">
-    
-    <P>Code</P><div id="qrcode"></div>
-</div>
 
+    <div class="logo-row">
+        <label for="logo-input">Center logo (optional):</label>
+        <input type="file" id="logo-input" accept="image/*">
+        <button id="clear-logo" type="button">Clear</button>
+    </div>
+
+    <p>Code</p>
+    <div id="qrcode"></div>
+    <small>Uses High error correction, so a small centered logo won't break scanning.</small>
+</div>
 <script>
-    // Target the container element
     const qrContainer = document.getElementById("qrcode");
     const textInput = document.getElementById("text-input");
+    const logoInput = document.getElementById("logo-input");
+    const clearLogoBtn = document.getElementById("clear-logo");
 
-    // Initialize the QRCode instance with options
+    let logoImage = null; // holds an HTMLImageElement once a logo is loaded
+
+    // Force canvas render mode explicitly (qrcode.js defaults to this,
+    // but being explicit avoids ever falling back to the <table> renderer)
     const qrcode = new QRCode(qrContainer, {
         text: textInput.value,
         width: 1024,
         height: 1024,
-        colorDark : "#000000",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H,
+        useSVG: false
     });
 
-    // Update the QR code instantly on user input
-    textInput.addEventListener("input", (e) => {
-        const value = e.target.value.trim();
+    function getCanvas() {
+        return qrContainer.querySelector("canvas");
+    }
+
+    function drawLogo() {
+        const canvas = getCanvas();
+        if (!canvas || !logoImage) return;
+
+        const ctx = canvas.getContext("2d");
+        const size = canvas.width;
+
+        // Keep the logo around 22% of the QR's width — comfortably inside
+        // the ~30% correction budget of Level H, with margin to spare.
+        const logoSize = size * 0.22;
+        const x = (size - logoSize) / 2;
+        const y = (size - logoSize) / 2;
+
+        // White padded background behind the logo so QR modules directly
+        // under the logo edges don't interfere with its silhouette
+        const pad = logoSize * 0.12;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(x - pad, y - pad, logoSize + pad * 2, logoSize + pad * 2);
+
+        // Fit the image inside the logoSize box without distorting it
+        const aspect = logoImage.width / logoImage.height;
+        let drawW = logoSize, drawH = logoSize;
+        if (aspect > 1) {
+            drawH = logoSize / aspect;
+        } else if (aspect < 1) {
+            drawW = logoSize * aspect;
+        }
+        const drawX = x + (logoSize - drawW) / 2;
+        const drawY = y + (logoSize - drawH) / 2;
+
+        ctx.drawImage(logoImage, drawX, drawY, drawW, drawH);
+    }
+
+    // qrcode.js redraws the canvas asynchronously inside makeCode(),
+    // so give it a moment before drawing the logo back on top
+    function regenerate(value) {
         if (value) {
             qrcode.makeCode(value);
         } else {
-            qrcode.clear(); 
+            qrcode.clear();
+            return;
         }
-    });
-</script>
+        // small delay to let the library finish drawing to canvas
+        setTimeout(drawLogo, 60);
+    }
 
+    textInput.addEventListener("input", (e) => {
+        regenerate(e.target.value.trim());
+    });
+
+    logoInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const img = new Image();
+            img.onload = () => {
+                logoImage = img;
+                regenerate(textInput.value.trim());
+            };
+            img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    clearLogoBtn.addEventListener("click", () => {
+        logoImage = null;
+        logoInput.value = "";
+        regenerate(textInput.value.trim());
+    });
+
+    // Initial render
+    setTimeout(drawLogo, 60);
+</script>
 </body>
 </html>
