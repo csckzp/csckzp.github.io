@@ -60,8 +60,13 @@
     </div>
 
     <p>Code</p>
-    <div id="qrcode"></div>
-    <small>Uses High error correction, so a small centered logo won't break scanning.</small>
+    <div id="qrcode" style="position: relative;">
+        <img id="gif-overlay" alt="animated logo"
+             style="display:none; position:absolute; top:50%; left:50%;
+                    transform:translate(-50%,-50%);
+                    width:22%; background:#ffffff; padding:4px; box-sizing:border-box;">
+    </div>
+    <small>Uses High error correction, so a small centered logo — static or animated — won't break scanning.</small>
 </div>
 <script>
     const qrContainer = document.getElementById("qrcode");
@@ -69,7 +74,10 @@
     const logoInput = document.getElementById("logo-input");
     const clearLogoBtn = document.getElementById("clear-logo");
 
-    let logoImage = null; // holds an HTMLImageElement once a logo is loaded
+    const gifOverlay = document.getElementById("gif-overlay");
+
+    let logoImage = null; // holds an HTMLImageElement for a STATIC logo (baked into canvas)
+    let isGifLogo = false; // true when using the live <img> overlay instead
 
     // Force canvas render mode explicitly (qrcode.js defaults to this,
     // but being explicit avoids ever falling back to the <table> renderer)
@@ -95,9 +103,15 @@
         // hides the canvas (a legacy Android-compat workaround that runs
         // on every browser). Drawing onto the canvas alone changes nothing
         // visible, so we always need to push the result back into the img.
-        const img = qrContainer.querySelector("img");
+        // Note: this is only the LIBRARY's own <img> (its rendered QR code),
+        // not our gif-overlay element, which is a separate sibling untouched
+        // by any of this.
+        const img = qrContainer.querySelector("#qrcode > img:not(#gif-overlay)");
 
-        if (!logoImage) {
+        // GIF logos live entirely in the CSS overlay — nothing to bake in,
+        // and baking a single frame into the canvas would just be redundant
+        // work sitting underneath the animated overlay anyway.
+        if (isGifLogo || !logoImage) {
             if (img) img.src = canvas.toDataURL("image/png");
             return;
         }
@@ -153,9 +167,29 @@
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
+
+        if (file.type === "image/gif") {
+            reader.onload = (evt) => {
+                // Live overlay: the browser animates this natively, no
+                // canvas redraw loop needed. Make sure any previously
+                // baked-in static logo is cleared from the canvas first.
+                logoImage = null;
+                isGifLogo = true;
+                gifOverlay.src = evt.target.result;
+                gifOverlay.style.display = "block";
+                regenerate(textInput.value.trim());
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
+
+        // Static image path: bake it into the canvas as before
         reader.onload = (evt) => {
             const img = new Image();
             img.onload = () => {
+                isGifLogo = false;
+                gifOverlay.style.display = "none";
+                gifOverlay.src = "";
                 logoImage = img;
                 regenerate(textInput.value.trim());
             };
@@ -166,6 +200,9 @@
 
     clearLogoBtn.addEventListener("click", () => {
         logoImage = null;
+        isGifLogo = false;
+        gifOverlay.style.display = "none";
+        gifOverlay.src = "";
         logoInput.value = "";
         regenerate(textInput.value.trim());
     });
