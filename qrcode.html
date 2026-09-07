@@ -89,7 +89,18 @@
 
     function drawLogo() {
         const canvas = getCanvas();
-        if (!canvas || !logoImage) return;
+        if (!canvas) return;
+
+        // qrcode.js immediately converts the canvas to a static <img> and
+        // hides the canvas (a legacy Android-compat workaround that runs
+        // on every browser). Drawing onto the canvas alone changes nothing
+        // visible, so we always need to push the result back into the img.
+        const img = qrContainer.querySelector("img");
+
+        if (!logoImage) {
+            if (img) img.src = canvas.toDataURL("image/png");
+            return;
+        }
 
         const ctx = canvas.getContext("2d");
         const size = canvas.width;
@@ -118,10 +129,12 @@
         const drawY = y + (logoSize - drawH) / 2;
 
         ctx.drawImage(logoImage, drawX, drawY, drawW, drawH);
+
+        // The visible element is the <img> the library swapped in, not the
+        // canvas we just drew on — refresh it from our modified canvas.
+        if (img) img.src = canvas.toDataURL("image/png");
     }
 
-    // qrcode.js redraws the canvas asynchronously inside makeCode(),
-    // so give it a moment before drawing the logo back on top
     function regenerate(value) {
         if (value) {
             qrcode.makeCode(value);
@@ -129,8 +142,7 @@
             qrcode.clear();
             return;
         }
-        // small delay to let the library finish drawing to canvas
-        setTimeout(drawLogo, 60);
+        drawLogo();
     }
 
     textInput.addEventListener("input", (e) => {
@@ -159,7 +171,7 @@
     });
 
     // Initial render
-    setTimeout(drawLogo, 60);
+    drawLogo();
 </script>
 </body>
 </html>
