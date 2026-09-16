@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,11 +23,38 @@
             text-align: center;
         }
         input[type="text"] {
-            width: 80%;
+            flex: 1;
             padding: 10px;
-            margin-bottom: 12px;
             border: 1px solid #ccc;
             border-radius: 4px;
+        }
+        .text-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .text-row label {
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .code-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .code-row button {
+            font-size: 14px;
+            padding: 4px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        .code-row button:disabled {
+            color: #bbb;
+            cursor: default;
         }
         .logo-row {
             display: flex;
@@ -51,15 +79,22 @@
 <body>
 <div class="container">
     <h2>QR Code Generator</h2>
-    <input type="text" id="text-input" placeholder="Type a URL or text..." value="">
+    <div class="text-row">
+        <label for="text-input">Enter text</label>
+        <input type="text" id="text-input" placeholder="Type a URL or text..." value="">
+        <button id="clear-text" type="button">Clear text</button>
+    </div>
 
     <div class="logo-row">
         <label for="logo-input">Center logo (optional):</label>
         <input type="file" id="logo-input" accept="image/*">
-        <button id="clear-logo" type="button">Clear</button>
+        <button id="clear-logo" type="button">Clear Logo</button>
     </div>
 
-    <p>Code</p>
+    <div class="code-row">
+        <p>Code</p>
+        <button id="download-btn" type="button" disabled>Download code</button>
+    </div>
     <div id="qrcode" style="position: relative;">
         <img id="gif-overlay" alt="animated logo"
              style="display:none; position:absolute; top:50%; left:50%;
@@ -73,6 +108,8 @@
     const textInput = document.getElementById("text-input");
     const logoInput = document.getElementById("logo-input");
     const clearLogoBtn = document.getElementById("clear-logo");
+    const clearTextBtn = document.getElementById("clear-text");
+    const downloadBtn = document.getElementById("download-btn");
 
     const gifOverlay = document.getElementById("gif-overlay");
 
@@ -113,6 +150,7 @@
         // work sitting underneath the animated overlay anyway.
         if (isGifLogo || !logoImage) {
             if (img) img.src = canvas.toDataURL("image/png");
+            updateDownloadLink(canvas);
             return;
         }
 
@@ -147,13 +185,72 @@
         // The visible element is the <img> the library swapped in, not the
         // canvas we just drew on — refresh it from our modified canvas.
         if (img) img.src = canvas.toDataURL("image/png");
+        updateDownloadLink(canvas);
     }
+
+    let latestCanvas = null;
+    let downloadsApi = null;
+    (async () => {
+        // window.claude only exists inside Claude's published-artifact viewer.
+        // Running this file standalone (e.g. python -m http.server) or in any
+        // other browser context, it's simply undefined — fall back below.
+        if (typeof claude !== "undefined" && claude.use) {
+            try {
+                downloadsApi = await claude.use("downloads");
+            } catch (err) {
+                downloadsApi = null;
+            }
+        }
+        if (!downloadsApi) {
+            console.log("Claude downloads capability unavailable — using standard browser download.");
+        }
+    })();
+
+    function updateDownloadLink(canvas) {
+        latestCanvas = canvas;
+        downloadBtn.disabled = false;
+    }
+
+    function disableDownloadLink() {
+        latestCanvas = null;
+        downloadBtn.disabled = true;
+    }
+
+    function downloadViaBrowser(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    downloadBtn.addEventListener("click", async () => {
+        if (!latestCanvas) return;
+        latestCanvas.toBlob(async (blob) => {
+            if (!blob) return;
+            if (downloadsApi) {
+                try {
+                    await downloadsApi.save({ filename: "qrcode.png", data: blob });
+                    return;
+                } catch (err) {
+                    // "declined" (viewer said no) needs no fallback; anything else,
+                    // fall through to the plain browser download below.
+                    if (err && err.code === "declined") return;
+                }
+            }
+            downloadViaBrowser(blob, "qrcode.png");
+        }, "image/png");
+    });
 
     function regenerate(value) {
         if (value) {
             qrcode.makeCode(value);
         } else {
             qrcode.clear();
+            disableDownloadLink();
             return;
         }
         drawLogo();
@@ -198,6 +295,12 @@
         reader.readAsDataURL(file);
     });
 
+    clearTextBtn.addEventListener("click", () => {
+        textInput.value = "";
+        regenerate("");
+        textInput.focus();
+    });
+
     clearLogoBtn.addEventListener("click", () => {
         logoImage = null;
         isGifLogo = false;
@@ -208,7 +311,11 @@
     });
 
     // Initial render
-    drawLogo();
+    if (textInput.value.trim()) {
+        drawLogo();
+    } else {
+        disableDownloadLink();
+    }
 </script>
 </body>
 </html>
