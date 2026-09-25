@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>K-Nearest Neighbors: From Distance to Prediction</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#controls">Skip to controls</a>
+
+  <header class="page-header">
+    <p class="kicker">KNN classification demo</p>
+    <h1>K-Nearest Neighbors: From Distance to Prediction</h1>
+    <p class="lede">Move the test case around the plot. The highlighted training cases are its <var>K</var> nearest neighbors. Their majority label becomes the prediction.</p>
+  </header>
+
+  <main class="layout">
+    <!-- ============ Left: the plot ============ -->
+    <section class="plot-column" aria-labelledby="plot-title">
+      <h2 id="plot-title" class="visually-hidden">Interactive plot</h2>
+
+      <div class="plot-wrap" id="plotWrap">
+        <canvas id="plot" tabindex="0" role="application"
+          aria-roledescription="interactive plot"
+          aria-label="KNN plot. Use the arrow keys to move the test case. Hold Shift for larger steps."
+          aria-describedby="plotHelp"></canvas>
+      </div>
+
+      <ul class="legend" aria-label="Legend">
+        <li><svg class="glyph" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" class="fill-a"/></svg><span id="legendA">Submitted assignment</span></li>
+        <li><svg class="glyph" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" class="fill-b"/></svg><span id="legendB">Did not submit</span></li>
+        <li><svg class="glyph glyph-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.1l-6.1 3.5 1.5-6.8L2.2 9.2l6.9-.7z" class="star"/></svg><span id="legendTest">New student</span></li>
+        <li><svg class="glyph" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" class="fill-gray"/></svg><span>Not a current neighbor</span></li>
+      </ul>
+
+      <p id="plotHelp" class="plot-help">Mouse: move to preview, click to freeze. Touch: drag to place the test case. Keyboard: focus the plot, then use the arrow keys (hold Shift for bigger steps).</p>
+
+      <p class="map-note" id="mapNote" hidden>The prediction map repeats the same neighbor vote at many locations. The edge where the predicted color changes is the decision boundary.</p>
+
+      <p class="clarify">This demonstration uses two features so that we can see the data. KNN can use more than two features even when the resulting comparisons cannot be drawn on a screen.</p>
+    </section>
+
+    <!-- ============ Right: controls and result ============ -->
+    <aside class="panel" id="controls" aria-label="Controls and prediction">
+
+      <div class="control-group">
+        <div class="field">
+          <label for="datasetSelect">Dataset</label>
+          <select id="datasetSelect">
+            <option value="student" selected>Student Support</option>
+            <option value="moons">Twin Moons</option>
+            <option value="clusters">Overlapping Clusters</option>
+            <option value="rings">Concentric Rings</option>
+          </select>
+        </div>
+
+        <div class="sample-row">
+          <output id="sampleLabel" for="newSampleBtn resetSampleBtn" aria-live="off">Sample 1</output>
+          <button type="button" id="newSampleBtn" aria-label="Draw a new sample of this dataset">New Sample</button>
+          <button type="button" id="resetSampleBtn" class="secondary" aria-label="Return to the original sample of this dataset">Reset Sample</button>
+        </div>
+
+        <div class="field">
+          <label for="kSelect">Number of neighbors, K</label>
+          <select id="kSelect"></select>
+          <p class="note">Odd values of K avoid an equal class vote in this two-class demonstration.</p>
+        </div>
+
+        <fieldset class="mode-switch">
+          <legend>View</legend>
+          <div class="segmented">
+            <input type="radio" name="mode" id="modeNeighbors" value="neighbors" checked>
+            <label for="modeNeighbors">Neighbors</label>
+            <input type="radio" name="mode" id="modeMap" value="map">
+            <label for="modeMap">Prediction Map</label>
+          </div>
+        </fieldset>
+      </div>
+
+      <!-- Result: the heart of the lesson -->
+      <section class="result" id="result" data-pred="a" aria-labelledby="resultHeading">
+        <h2 id="resultHeading" class="result-k"><var>K</var> = <span id="kValue">3</span></h2>
+
+        <div class="vote-row" id="voteRowA">
+          <svg class="glyph" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" class="fill-a"/></svg>
+          <span class="vote-name" id="voteNameA">Submitted assignment</span>
+          <strong class="vote-count" id="votesA">0 votes</strong>
+          <span class="tally tally-a" id="tallyA" aria-hidden="true"></span>
+        </div>
+        <div class="vote-row" id="voteRowB">
+          <svg class="glyph" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" class="fill-b"/></svg>
+          <span class="vote-name" id="voteNameB">Did not submit</span>
+          <strong class="vote-count" id="votesB">0 votes</strong>
+          <span class="tally tally-b" id="tallyB" aria-hidden="true"></span>
+        </div>
+
+        <p class="prediction">
+          <span class="prediction-label">Prediction:</span>
+          <svg class="glyph pred-glyph pred-glyph-a" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" class="fill-a"/></svg>
+          <svg class="glyph pred-glyph pred-glyph-b" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" class="fill-b"/></svg>
+          <strong id="predText">Submitted assignment</strong>
+        </p>
+
+        <div class="coords" id="coords">
+          <div class="coords-title" id="coordTitle">New student</div>
+          <div><span id="coordXLabel">Study hours</span>: <span id="coordX">0.0</span></div>
+          <div><span id="coordYLabel">Sleep hours</span>: <span id="coordY">0.0</span></div>
+        </div>
+
+        <details class="neighbors-details" id="neighborsDetails">
+          <summary>Nearest neighbors, nearest first</summary>
+          <ol class="neighbor-list" id="neighborList"></ol>
+          <div class="tie-info">
+            <button type="button" class="info-btn" id="tieInfoBtn" aria-expanded="false" aria-controls="tieNote">
+              <span aria-hidden="true">i</span><span class="visually-hidden">About distance ties</span>
+            </button>
+            <p id="tieNote" class="tie-note" hidden>If two cases are exactly the same distance away, this demonstration uses their fixed point order to break the distance tie.</p>
+          </div>
+        </details>
+      </section>
+
+      <div class="test-status">
+        <p id="followStatus">Following the cursor. Click the plot to freeze the test case.</p>
+        <button type="button" id="followBtn" aria-pressed="true">Follow cursor</button>
+      </div>
+
+      <details class="drawer" id="teachingOptions">
+        <summary>Teaching Options</summary>
+        <div class="drawer-body">
+          <label class="check"><input type="checkbox" id="optCircle" checked> Show neighborhood circle</label>
+          <label class="check"><input type="checkbox" id="optLines" checked> Show neighbor lines <span class="hint">(drawn when K ≤ 5)</span></label>
+          <label class="check"><input type="checkbox" id="optIds"> Show point IDs</label>
+          <label class="check"><input type="checkbox" id="optCoords" checked> Show coordinate readout</label>
+          <label class="check"><input type="checkbox" id="optFollow" checked> Follow cursor (uncheck to freeze)</label>
+          <button type="button" id="resetTestBtn" class="secondary">Reset test case position</button>
+        </div>
+      </details>
+
+      <details class="drawer" id="notice">
+        <summary>What to notice</summary>
+        <ul class="drawer-body notice-list">
+          <li>Moving the test case changes which training cases are closest.</li>
+          <li>Changing <var>K</var> changes how many nearby cases influence the prediction.</li>
+          <li>A small <var>K</var> produces a very local decision.</li>
+          <li>A larger <var>K</var> uses a broader neighborhood.</li>
+          <li>Nearby cases provide evidence, not a guarantee.</li>
+          <li>The two-dimensional plot is for human visualization; KNN can calculate distance using more features than we can draw.</li>
+        </ul>
+      </details>
+    </aside>
+  </main>
+
+  <div id="announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
