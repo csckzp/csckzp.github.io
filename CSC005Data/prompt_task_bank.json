@@ -1,0 +1,116 @@
+[
+  {
+    "task_id": "T1",
+    "task_type": "factual",
+    "title": "Impossible Prize Question",
+    "task": "A student asks: 'Who won the Nobel Prize in Computer Science in 2025?'",
+    "what_to_watch": "This task contains a false premise. A careful system should challenge the premise instead of inventing an answer.",
+    "verification_note": "There is no Nobel Prize in Computer Science.",
+    "strategies": [
+      {
+        "strategy": "zero_shot",
+        "label": "Zero-shot",
+        "prompt": "Who won the Nobel Prize in Computer Science in 2025?",
+        "output": "The 2025 Nobel Prize in Computer Science was awarded to Geoffrey Hinton for his foundational work on deep learning and neural networks.",
+        "trust_note": "Confident but fabricated. It answers smoothly without challenging the premise."
+      },
+      {
+        "strategy": "few_shot",
+        "label": "Few-shot",
+        "prompt": "Example 1: Q: Who won the Nobel Prize in Physics in 2024? A: I should answer only if the award exists and I can verify the category.\nExample 2: Q: Who won the Nobel Prize in Literature in 2024? A: I should avoid inventing a prize category or winner.\n\nNow answer: Who won the Nobel Prize in Computer Science in 2025?",
+        "output": "There is no Nobel Prize in Computer Science. If you mean the Turing Award or another computing prize, I can help identify the 2025 recipient if that information is available.",
+        "trust_note": "Better because it checks the premise before answering."
+      },
+      {
+        "strategy": "chain_of_thought",
+        "label": "Chain-of-thought",
+        "prompt": "Think step by step about whether the award category exists before answering: Who won the Nobel Prize in Computer Science in 2025?",
+        "output": "I should first check whether 'Nobel Prize in Computer Science' is a real Nobel category. The Nobel Prizes include Physics, Chemistry, Physiology or Medicine, Literature, Peace, and the economics prize. Since Computer Science is not one of them, the correct response is to say that no such Nobel Prize exists.",
+        "trust_note": "Helpful here because the intermediate reasoning catches the false premise, though the reasoning itself should still be checked."
+      },
+      {
+        "strategy": "role_based",
+        "label": "Role-based",
+        "prompt": "You are a careful fact-checking research assistant. If the question contains a false premise, say so directly before offering a nearby correction. Question: Who won the Nobel Prize in Computer Science in 2025?",
+        "output": "The question contains a false premise: there is no Nobel Prize in Computer Science. If you meant a major computing prize such as the Turing Award, I can help with that instead.",
+        "trust_note": "Strong because the role and instruction reward caution over fluency."
+      }
+    ]
+  },
+  {
+    "task_id": "T2",
+    "task_type": "explanatory",
+    "title": "Train/Test Split for a First-Year Student",
+    "task": "Explain to a first-year student why we use a train/test split, and use a dorm RA analogy.",
+    "what_to_watch": "This task is not about factual retrieval. It is about clarity, usefulness, and whether the analogy really fits.",
+    "verification_note": "There is no single correct wording, so students should compare clarity and overclaiming.",
+    "strategies": [
+      {
+        "strategy": "zero_shot",
+        "label": "Zero-shot",
+        "prompt": "Explain to a first-year student why we use a train/test split, and use a dorm RA analogy.",
+        "output": "A train/test split means we let the model learn from one part of the data and then check it on a different part. Think of an RA learning residents' names from a roster and then later meeting students in the hallway. If the RA only repeats the roster, that is memorization. If the RA can still recognize people in a new setting, that is closer to real learning.",
+        "trust_note": "Clear and short, but it leaves out why testing on the same data would be misleading."
+      },
+      {
+        "strategy": "few_shot",
+        "label": "Few-shot",
+        "prompt": "Example 1: Explain precision to a first-year student using campus mailboxes.\nExample 2: Explain overfitting to a first-year student using flash cards.\n\nNow explain why we use a train/test split, and use a dorm RA analogy.",
+        "output": "We split the data because we want to know whether the model can handle people or cases it has not already seen. Imagine an RA studying the resident roster before move-in. Later, the RA tries to greet students in the lobby without looking at the list. If the RA only seems good when the roster is open, that does not prove real recognition. The test set is like that hallway moment: it checks whether the model can do more than repeat the examples it practiced on.",
+        "trust_note": "Usually the clearest version here because the examples nudge the answer toward explanation rather than jargon."
+      },
+      {
+        "strategy": "chain_of_thought",
+        "label": "Chain-of-thought",
+        "prompt": "Reason step by step before you answer. Then explain to a first-year student why we use a train/test split, using a dorm RA analogy.",
+        "output": "A model learns patterns from the training data, so the main danger is confusing memorization with generalization. We therefore keep some data separate until the end. For a first-year analogy: imagine an RA memorizing the room list before students arrive. Later, the RA tries to match names to students in the common room without checking the sheet. That second moment matters because it shows whether the RA can recognize new examples instead of just repeating the list.",
+        "trust_note": "Accurate, but the extra reasoning can make the answer denser than needed for beginners."
+      },
+      {
+        "strategy": "role_based",
+        "label": "Role-based",
+        "prompt": "You are a patient peer tutor speaking to a first-year non-major. Avoid jargon, use one analogy, and keep the explanation to five sentences. Explain why we use a train/test split.",
+        "output": "We split the data so the model can practice on one set of examples and then prove itself on a different set. Otherwise, we might mistake memory for understanding. Think about an RA who studies a list of residents and then later has to recognize people in the lounge. If the RA only looks good when holding the list, that is not much of a test. The test set is the lounge moment: new cases, same job.",
+        "trust_note": "Very accessible; the role instruction improves tone and audience awareness."
+      }
+    ]
+  },
+  {
+    "task_id": "T3",
+    "task_type": "ethical",
+    "title": "AI Writing Assistant for Employee Feedback",
+    "task": "A manager wants to use an AI writing assistant to draft employee performance feedback. What safeguards should be in place before using it?",
+    "what_to_watch": "A polished answer can still be shallow. Students should look for missing stakeholders, overconfidence, and whether human review is meaningful.",
+    "verification_note": "No prompt strategy removes the need for human judgment in this scenario.",
+    "strategies": [
+      {
+        "strategy": "zero_shot",
+        "label": "Zero-shot",
+        "prompt": "A manager wants to use an AI writing assistant to draft employee performance feedback. What safeguards should be in place before using it?",
+        "output": "The company should have a human review every AI-generated message, protect employee privacy, and make sure the feedback is respectful. It should also watch for biased language and avoid letting the system make final employment decisions.",
+        "trust_note": "Reasonable start, but too generic to guide real use."
+      },
+      {
+        "strategy": "few_shot",
+        "label": "Few-shot",
+        "prompt": "Example 1: In a student advising chatbot case, good safeguards included human review, logging, and an appeal path.\nExample 2: In an AI hiring case, good safeguards included checking for bias, limiting the system's role, and documenting data use.\n\nNow answer: A manager wants to use an AI writing assistant to draft employee performance feedback. What safeguards should be in place before using it?",
+        "output": "At minimum, the company should limit the tool to drafting rather than final evaluation, require the manager to review and revise every draft, and prohibit the system from inventing facts about performance. Employees should know AI assisted with the draft, sensitive personnel data should be tightly controlled, and the company should audit outputs for biased or unequal language patterns across groups.",
+        "trust_note": "More concrete because the examples push the answer toward structure and policy details."
+      },
+      {
+        "strategy": "chain_of_thought",
+        "label": "Chain-of-thought",
+        "prompt": "Think step by step about the risks, stakeholders, and safeguards before answering: A manager wants to use an AI writing assistant to draft employee performance feedback. What safeguards should be in place before using it?",
+        "output": "The core risks are privacy, unequal wording across employees, fabricated claims, and managers over-relying on the draft. Safeguards should therefore include limiting the tool to drafting, requiring the manager to verify all factual statements, logging prompts and edits, checking for biased patterns over time, and giving employees a way to challenge inaccurate feedback. Even with those safeguards, the system should not determine ratings or disciplinary outcomes on its own.",
+        "trust_note": "Rich and careful, though students should notice that the detailed tone can feel more authoritative than the evidence available."
+      },
+      {
+        "strategy": "role_based",
+        "label": "Role-based",
+        "prompt": "You are an HR compliance adviser writing for managers. Give a short policy memo with bullet points on safeguards for using an AI writing assistant in employee feedback.",
+        "output": "Recommended safeguards: (1) managers remain accountable for the final text; (2) the system may draft language but may not assign ratings; (3) prompts should exclude unnecessary personal details; (4) every draft should be reviewed for bias, tone, and factual accuracy; (5) employees should have a correction path if the final feedback includes inaccurate AI-generated claims.",
+        "trust_note": "Useful format and audience fit, but students should still ask what would make the review process meaningful rather than symbolic."
+      }
+    ]
+  }
+]
