@@ -105,7 +105,9 @@
 
             if (isfirst) {
                 mf = Object.keys(frequency).reduce((a, b) => frequency[a] > frequency[b] ? a : b);
+                mf = mf + "(" + frequency[mf] + ")"
                 mf2 = mostFreq(words, guesses + mf, false)
+                mf2 = mf2 + "(" + frequency[mf2] + ")"
                 return mf + mf2
             }
             return Object.keys(frequency).reduce((a, b) => frequency[a] > frequency[b] ? a : b);
