@@ -1,0 +1,817 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Classification Dataset Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a wide plotting surface on the left, a quiet control column on the right; stacks on phones.
+     Type: Instrument Sans for UI, JetBrains Mono for coordinates and CSV.
+     Color: cool graph-paper neutrals, a blue UI accent, and red/green reserved for the two classes. */
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --fg: #121c27;
+    --muted: #586879;
+    --line: #d3dae2;
+    --grid: #e7ecf1;
+    --accent: #1d4ed8;
+    --accent-fg: #ffffff;
+    --red: #d9392b;
+    --green: #139a58;
+    --warn: #b4540a;
+    --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e141b;
+      --surface: #151d26;
+      --fg: #e7edf3;
+      --muted: #94a4b4;
+      --line: #2a3643;
+      --grid: #202b36;
+      --accent: #7a9cff;
+      --accent-fg: #0b1220;
+      --red: #ff6252;
+      --green: #3ccf8a;
+      --warn: #f2a45c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e141b;
+    --surface: #151d26;
+    --fg: #e7edf3;
+    --muted: #94a4b4;
+    --line: #2a3643;
+    --grid: #202b36;
+    --accent: #7a9cff;
+    --accent-fg: #0b1220;
+    --red: #ff6252;
+    --green: #3ccf8a;
+    --warn: #f2a45c;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .app {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 20px 32px;
+    display: grid;
+    gap: 16px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  header p { margin: 4px 0 0; color: var(--muted); max-width: 65ch; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 920px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .stage { min-width: 0; display: grid; gap: 8px; }
+  .plotwrap {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    aspect-ratio: 4 / 3;
+    max-height: 80vh;
+    width: 100%;
+    overflow: hidden;
+  }
+  @media (max-width: 520px) { .plotwrap { aspect-ratio: 1 / 1; } }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: crosshair;
+  }
+  .statusbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .readout { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: pre; }
+
+  .panel { display: grid; gap: 0; min-width: 0; }
+  .group {
+    border: 0;
+    margin: 0;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+  .group:first-child { border-top: 0; padding-top: 0; }
+  .group > legend, .label {
+    padding: 0;
+    float: left;
+    width: 100%;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .group > legend + * { clear: both; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button, input { font: inherit; color: inherit; }
+  .btn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--muted); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:focus-visible, input:focus-visible, summary:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); border-color: var(--accent); }
+  .btn.danger { color: var(--red); }
+  .btn.danger:hover:not(:disabled) { border-color: var(--red); }
+  .btn.tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  .btn.cls[aria-pressed="true"] { border-width: 2px; padding: 5px 11px; font-weight: 600; }
+  .btn.cls.red[aria-pressed="true"] { border-color: var(--red); background: color-mix(in srgb, var(--red) 12%, var(--surface)); }
+  .btn.cls.green[aria-pressed="true"] { border-color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--surface)); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .dot.red { background: var(--red); }
+  .dot.green { background: var(--green); }
+  .count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 400; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .range { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+  .val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+
+  .axes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field { display: grid; gap: 3px; min-width: 0; }
+  .field span { font-size: 12px; color: var(--muted); }
+  .field input {
+    width: 100%;
+    min-height: 36px;
+    padding: 4px 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .field input[aria-invalid="true"] { border-color: var(--warn); }
+  .note { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .note.warn { color: var(--warn); }
+  .msg { min-height: 1.4em; margin: 0; font-size: 12.5px; color: var(--muted); }
+
+  details { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+  summary { cursor: pointer; padding: 8px 10px; font-weight: 500; }
+  textarea {
+    display: block;
+    width: 100%;
+    height: 180px;
+    resize: vertical;
+    border: 0;
+    border-top: 1px solid var(--line);
+    padding: 8px 10px;
+    background: transparent;
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    border-radius: 0 0 6px 6px;
+  }
+  .keys { margin: 0; font-size: 12px; color: var(--muted); }
+  kbd { font-family: var(--font-mono); font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn { transition: border-color 0.12s, background-color 0.12s; }
+  }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Classification Dataset Builder</h1>
+    <p>Click the plot to place labeled points, then download them as a CSV with columns x, y and label. Use it to sketch data for decision-boundary demos.</p>
+  </header>
+
+  <div class="layout">
+    <section class="stage" aria-label="Plot">
+      <div class="plotwrap" id="plotwrap">
+        <canvas id="plot" role="img" aria-label="Scatter plot of red and green points. Click to add a point."></canvas>
+      </div>
+      <div class="statusbar">
+        <span class="readout" id="readout">x —    y —</span>
+        <span id="hint"></span>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Controls">
+      <fieldset class="group">
+        <legend>Label to add</legend>
+        <div class="seg">
+          <button type="button" class="btn cls red" id="cls-red" aria-pressed="true"><i class="dot red"></i>Red <span class="count" id="n-red">0</span></button>
+          <button type="button" class="btn cls green" id="cls-green" aria-pressed="false"><i class="dot green"></i>Green <span class="count" id="n-green">0</span></button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Tool</legend>
+        <div class="seg">
+          <button type="button" class="btn tool" id="tool-add" aria-pressed="true">Add points</button>
+          <button type="button" class="btn tool" id="tool-select" aria-pressed="false">Select area</button>
+        </div>
+        <button type="button" class="btn danger" id="delete-sel" disabled>Delete selected</button>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Point size</legend>
+        <div class="range">
+          <input type="range" id="radius" min="2" max="16" step="1" value="6" aria-label="Point radius in pixels">
+          <span class="val" id="radius-val">6 px</span>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Axis range</legend>
+        <div class="axes">
+          <label class="field"><span>X min</span><input type="number" id="xmin" step="any" inputmode="decimal"></label>
+          <label class="field"><span>X max</span><input type="number" id="xmax" step="any" inputmode="decimal"></label>
+          <label class="field"><span>Y min</span><input type="number" id="ymin" step="any" inputmode="decimal"></label>
+          <label class="field"><span>Y max</span><input type="number" id="ymax" step="any" inputmode="decimal"></label>
+        </div>
+        <p class="note warn" id="axis-err" hidden></p>
+        <p class="note" id="hidden-note" hidden></p>
+        <button type="button" class="btn" id="fit">Fit axes to data</button>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Dataset</legend>
+        <p class="note" id="example-note" hidden>An example dataset is loaded. Clear it to start your own.</p>
+        <div class="row">
+          <button type="button" class="btn" id="undo" disabled>Undo</button>
+          <button type="button" class="btn danger" id="clear" disabled>Clear all</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Export</legend>
+        <button type="button" class="btn primary" id="download" disabled>Download CSV</button>
+        <button type="button" class="btn" id="copy" disabled>Copy CSV</button>
+        <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        <details id="preview">
+          <summary>CSV preview</summary>
+          <textarea id="csv-text" readonly spellcheck="false" aria-label="CSV contents"></textarea>
+        </details>
+      </fieldset>
+
+      <p class="keys"><kbd>R</kbd> red · <kbd>G</kbd> green · <kbd>A</kbd> add · <kbd>S</kbd> select · <kbd>Del</kbd> delete · <kbd>Esc</kbd> deselect · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var STORE_KEY = "classification-dataset-builder-v1";
+
+  var state = {
+    points: [],
+    xmin: 0, xmax: 1100, ymin: -50, ymax: 1000,
+    r: 6,
+    cls: "red",
+    mode: "add",
+    sel: null,          // {xa, xb, ya, yb} in data coordinates
+    example: false
+  };
+  var undoStack = [];
+  var hover = null;     // {x, y} in canvas pixels
+  var drag = null;      // {x, y} data coords where the drag began
+  var W = 0, H = 0, dpr = 1;
+
+  var canvas = $("plot");
+  var ctx = canvas.getContext("2d");
+
+  /* ---------- storage (optional convenience) ---------- */
+  var saveTimer = null;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify({
+          points: state.points, xmin: state.xmin, xmax: state.xmax, ymin: state.ymin, ymax: state.ymax,
+          r: state.r, cls: state.cls, example: state.example
+        }));
+      } catch (e) {}
+    }, 250);
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return false;
+      var d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.points)) return false;
+      state.points = d.points.filter(function (p) {
+        return p && isFinite(p.x) && isFinite(p.y) && (p.c === "red" || p.c === "green");
+      });
+      ["xmin", "xmax", "ymin", "ymax"].forEach(function (k) { if (isFinite(d[k])) state[k] = d[k]; });
+      if (!(state.xmin < state.xmax)) { state.xmin = 0; state.xmax = 1100; }
+      if (!(state.ymin < state.ymax)) { state.ymin = -50; state.ymax = 1000; }
+      if (isFinite(d.r)) state.r = Math.min(16, Math.max(2, d.r));
+      if (d.cls === "red" || d.cls === "green") state.cls = d.cls;
+      state.example = !!d.example;
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ---------- example data ---------- */
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function exampleData() {
+    var rand = rng(42), pts = [], guard = 0;
+    while (pts.length < 130 && guard++ < 5000) {
+      var x = 40 + rand() * 1020, y = rand() * 980;
+      if (x > 400 && y > 540) continue;
+      var edge = 170 + 70000 / Math.max(x - 100, 1) + (rand() - 0.5) * 60;
+      var green = x > 170 && y > edge;
+      pts.push({ x: Math.round(x), y: Math.round(y), c: green ? "green" : "red" });
+    }
+    return pts;
+  }
+
+  /* ---------- helpers ---------- */
+  function decFor(span) { return Math.max(0, Math.min(6, 2 - Math.floor(Math.log10(span)))); }
+  function rnd(v, span) { return +v.toFixed(decFor(span)); }
+  function fmt(v, span) { return v.toFixed(decFor(span)); }
+  function margins() {
+    return W < 460 ? { l: 46, r: 10, t: 10, b: 40 } : { l: 60, r: 16, t: 14, b: 46 };
+  }
+  function plotRect() {
+    var m = margins();
+    return { x: m.l, y: m.t, w: Math.max(W - m.l - m.r, 10), h: Math.max(H - m.t - m.b, 10) };
+  }
+  function toPx(x) { var p = plotRect(); return p.x + (x - state.xmin) / (state.xmax - state.xmin) * p.w; }
+  function toPy(y) { var p = plotRect(); return p.y + p.h - (y - state.ymin) / (state.ymax - state.ymin) * p.h; }
+  function toDx(px) { var p = plotRect(); return state.xmin + (px - p.x) / p.w * (state.xmax - state.xmin); }
+  function toDy(py) { var p = plotRect(); return state.ymin + (p.y + p.h - py) / p.h * (state.ymax - state.ymin); }
+  function inPlot(pt) { var p = plotRect(); return pt.x >= p.x && pt.x <= p.x + p.w && pt.y >= p.y && pt.y <= p.y + p.h; }
+  function visible(p) { return p.x >= state.xmin && p.x <= state.xmax && p.y >= state.ymin && p.y <= state.ymax; }
+  function inSel(p) {
+    var s = state.sel;
+    return !!s && visible(p) && p.x >= Math.min(s.xa, s.xb) && p.x <= Math.max(s.xa, s.xb) &&
+      p.y >= Math.min(s.ya, s.yb) && p.y <= Math.max(s.ya, s.yb);
+  }
+  function selectedCount() { var n = 0; for (var i = 0; i < state.points.length; i++) if (inSel(state.points[i])) n++; return n; }
+
+  function niceTicks(min, max, target) {
+    var span = max - min, raw = span / target;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var r = raw / mag;
+    var step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * mag;
+    var out = [], v = Math.ceil(min / step - 1e-9) * step;
+    for (; v <= max + step * 1e-9; v += step) out.push(+v.toFixed(10));
+    return { ticks: out, step: step };
+  }
+  function tickText(v, step) {
+    var d = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+    return v.toFixed(Math.min(d, 6));
+  }
+
+  /* ---------- drawing ---------- */
+  function theme() {
+    var cs = getComputedStyle(document.documentElement);
+    var g = function (n) { return cs.getPropertyValue(n).trim(); };
+    return { surface: g("--surface"), fg: g("--fg"), muted: g("--muted"), line: g("--line"), grid: g("--grid"),
+      accent: g("--accent"), red: g("--red"), green: g("--green") };
+  }
+  function draw() {
+    if (!W || !H) return;
+    var th = theme(), p = plotRect();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = th.surface;
+    ctx.fillRect(0, 0, W, H);
+
+    var xt = niceTicks(state.xmin, state.xmax, Math.max(3, Math.round(p.w / 90)));
+    var yt = niceTicks(state.ymin, state.ymax, Math.max(3, Math.round(p.h / 70)));
+
+    ctx.lineWidth = 1;
+    ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+    ctx.fillStyle = th.muted;
+    ctx.strokeStyle = th.grid;
+
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    xt.ticks.forEach(function (v) {
+      var x = Math.round(toPx(v)) + 0.5;
+      ctx.strokeStyle = (v === 0) ? th.line : th.grid;
+      ctx.beginPath(); ctx.moveTo(x, p.y); ctx.lineTo(x, p.y + p.h); ctx.stroke();
+      ctx.strokeStyle = th.muted;
+      ctx.beginPath(); ctx.moveTo(x, p.y + p.h); ctx.lineTo(x, p.y + p.h + 4); ctx.stroke();
+      ctx.fillText(tickText(v, xt.step), x, p.y + p.h + 7);
+    });
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    yt.ticks.forEach(function (v) {
+      var y = Math.round(toPy(v)) + 0.5;
+      ctx.strokeStyle = (v === 0) ? th.line : th.grid;
+      ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); ctx.stroke();
+      ctx.strokeStyle = th.muted;
+      ctx.beginPath(); ctx.moveTo(p.x - 4, y); ctx.lineTo(p.x, y); ctx.stroke();
+      ctx.fillText(tickText(v, yt.step), p.x - 8, y);
+    });
+
+    ctx.strokeStyle = th.muted;
+    ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w, p.h);
+
+    ctx.font = '12px "Instrument Sans", system-ui, sans-serif';
+    ctx.fillStyle = th.fg;
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText("x", p.x + p.w / 2, H - 6);
+    ctx.save();
+    ctx.translate(13, p.y + p.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textBaseline = "middle";
+    ctx.fillText("y", 0, 0);
+    ctx.restore();
+
+    // points, clipped to the plot area
+    ctx.save();
+    ctx.beginPath(); ctx.rect(p.x, p.y, p.w, p.h); ctx.clip();
+    var r = state.r;
+    for (var i = 0; i < state.points.length; i++) {
+      var pt = state.points[i];
+      if (!visible(pt)) continue;
+      var px = toPx(pt.x), py = toPy(pt.y);
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = pt.c === "red" ? th.red : th.green;
+      ctx.fill();
+      ctx.lineWidth = 1; ctx.strokeStyle = th.surface; ctx.stroke();
+      if (inSel(pt)) {
+        ctx.beginPath(); ctx.arc(px, py, r + 2.5, 0, Math.PI * 2);
+        ctx.lineWidth = 2; ctx.strokeStyle = th.fg; ctx.stroke();
+      }
+    }
+    // selection box
+    if (state.sel) {
+      var s = state.sel;
+      var x0 = toPx(Math.min(s.xa, s.xb)), x1 = toPx(Math.max(s.xa, s.xb));
+      var y0 = toPy(Math.max(s.ya, s.yb)), y1 = toPy(Math.min(s.ya, s.yb));
+      ctx.globalAlpha = 0.12; ctx.fillStyle = th.accent; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.globalAlpha = 1; ctx.lineWidth = 1.5; ctx.strokeStyle = th.accent; ctx.setLineDash([5, 4]);
+      ctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0, y1 - y0); ctx.setLineDash([]);
+    }
+    // ghost point under the cursor
+    if (state.mode === "add" && hover && !drag && inPlot(hover)) {
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.arc(hover.x, hover.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = state.cls === "red" ? th.red : th.green; ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  function resize() {
+    var wrap = $("plotwrap");
+    var rect = wrap.getBoundingClientRect();
+    W = Math.max(Math.floor(rect.width) - 2, 0);
+    H = Math.max(Math.floor(rect.height) - 2, 0);
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    draw();
+  }
+
+  /* ---------- UI sync ---------- */
+  var csvOpen = false;
+  function ui() {
+    var nr = 0, ng = 0, hid = 0;
+    state.points.forEach(function (p) { if (p.c === "red") nr++; else ng++; if (!visible(p)) hid++; });
+    $("n-red").textContent = nr;
+    $("n-green").textContent = ng;
+    $("cls-red").setAttribute("aria-pressed", String(state.cls === "red"));
+    $("cls-green").setAttribute("aria-pressed", String(state.cls === "green"));
+    $("tool-add").setAttribute("aria-pressed", String(state.mode === "add"));
+    $("tool-select").setAttribute("aria-pressed", String(state.mode === "select"));
+    var sc = selectedCount();
+    $("delete-sel").disabled = sc === 0;
+    $("delete-sel").textContent = sc ? "Delete selected (" + sc + ")" : "Delete selected";
+    $("radius").value = state.r;
+    $("radius-val").textContent = state.r + " px";
+    $("undo").disabled = undoStack.length === 0;
+    var empty = state.points.length === 0;
+    $("clear").disabled = empty;
+    $("download").disabled = empty;
+    $("copy").disabled = empty;
+    $("example-note").hidden = !state.example;
+    var hn = $("hidden-note");
+    hn.hidden = hid === 0;
+    if (hid) hn.textContent = hid + (hid === 1 ? " point is" : " points are") + " outside the current axes. Kept in the data and CSV, not shown.";
+    $("hint").textContent = state.mode === "add"
+      ? "Click to add a " + state.cls + " point"
+      : "Drag across the plot to select, then delete";
+    canvas.setAttribute("aria-label", "Scatter plot of " + nr + " red and " + ng + " green points. " +
+      (state.mode === "add" ? "Click to add a " + state.cls + " point." : "Drag to select an area."));
+    if (csvOpen) $("csv-text").value = csv();
+  }
+  function syncAxisInputs() {
+    $("xmin").value = state.xmin; $("xmax").value = state.xmax;
+    $("ymin").value = state.ymin; $("ymax").value = state.ymax;
+  }
+  function changed() { state.example = false; ui(); draw(); save(); }
+
+  /* ---------- editing ---------- */
+  function pushUndo() {
+    undoStack.push(JSON.stringify(state.points));
+    if (undoStack.length > 100) undoStack.shift();
+  }
+  function undo() {
+    if (!undoStack.length) return;
+    state.points = JSON.parse(undoStack.pop());
+    state.sel = null;
+    ui(); draw(); save();
+  }
+  function deleteSelected() {
+    var sc = selectedCount();
+    if (!sc) return;
+    pushUndo();
+    state.points = state.points.filter(function (p) { return !inSel(p); });
+    state.sel = null;
+    changed();
+    say("Deleted " + sc + (sc === 1 ? " point." : " points."));
+  }
+  function setMode(m) {
+    state.mode = m;
+    if (m === "add") state.sel = null;
+    ui(); draw();
+  }
+  function setClass(c) { state.cls = c; ui(); draw(); save(); }
+
+  /* ---------- pointer input ---------- */
+  function local(e) {
+    var r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function clampToPlot(pt) {
+    var p = plotRect();
+    return { x: Math.min(Math.max(pt.x, p.x), p.x + p.w), y: Math.min(Math.max(pt.y, p.y), p.y + p.h) };
+  }
+  function readout(pt) {
+    var xs = state.xmax - state.xmin, ys = state.ymax - state.ymin;
+    $("readout").textContent = pt && inPlot(pt)
+      ? "x " + fmt(toDx(pt.x), xs) + "    y " + fmt(toDy(pt.y), ys)
+      : "x —    y —";
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    var pt = local(e);
+    hover = pt;
+    if (!inPlot(pt)) return;
+    if (state.mode === "add") {
+      var xs = state.xmax - state.xmin, ys = state.ymax - state.ymin;
+      pushUndo();
+      state.points.push({ x: rnd(toDx(pt.x), xs), y: rnd(toDy(pt.y), ys), c: state.cls });
+      changed();
+    } else {
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      drag = { x: toDx(pt.x), y: toDy(pt.y), px: pt.x, py: pt.y };
+      state.sel = { xa: drag.x, xb: drag.x, ya: drag.y, yb: drag.y };
+      ui(); draw();
+    }
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    var pt = local(e);
+    hover = pt;
+    readout(pt);
+    if (drag) {
+      var c = clampToPlot(pt);
+      state.sel = { xa: drag.x, ya: drag.y, xb: toDx(c.x), yb: toDy(c.y) };
+      ui();
+    }
+    draw();
+  });
+  function endDrag(e) {
+    if (!drag) return;
+    var c = clampToPlot(local(e));
+    if (Math.abs(c.x - drag.px) < 4 && Math.abs(c.y - drag.py) < 4) state.sel = null;
+    drag = null;
+    ui(); draw();
+  }
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointerleave", function () { hover = null; readout(null); draw(); });
+
+  /* ---------- controls ---------- */
+  $("cls-red").addEventListener("click", function () { setClass("red"); });
+  $("cls-green").addEventListener("click", function () { setClass("green"); });
+  $("tool-add").addEventListener("click", function () { setMode("add"); });
+  $("tool-select").addEventListener("click", function () { setMode("select"); });
+  $("delete-sel").addEventListener("click", deleteSelected);
+  $("undo").addEventListener("click", undo);
+  $("radius").addEventListener("input", function (e) {
+    state.r = parseInt(e.target.value, 10) || 6;
+    ui(); draw(); save();
+  });
+
+  var clearTimer = null;
+  $("clear").addEventListener("click", function () {
+    var b = $("clear");
+    if (!b.dataset.armed) {
+      b.dataset.armed = "1";
+      b.textContent = "Confirm clear";
+      clearTimer = setTimeout(disarm, 3000);
+      return;
+    }
+    disarm();
+    pushUndo();
+    state.points = []; state.sel = null;
+    changed();
+    say("Cleared. Undo brings the points back.");
+  });
+  function disarm() {
+    clearTimeout(clearTimer);
+    var b = $("clear");
+    delete b.dataset.armed;
+    b.textContent = "Clear all";
+  }
+
+  function applyAxes() {
+    var vals = {
+      xmin: parseFloat($("xmin").value), xmax: parseFloat($("xmax").value),
+      ymin: parseFloat($("ymin").value), ymax: parseFloat($("ymax").value)
+    };
+    var bad = [], err = "";
+    ["xmin", "xmax", "ymin", "ymax"].forEach(function (k) { if (!isFinite(vals[k])) bad.push(k); });
+    if (bad.length) {
+      err = "Enter a number for each axis limit.";
+    } else if (!(vals.xmin < vals.xmax)) {
+      bad = ["xmin", "xmax"]; err = "X max must be greater than X min.";
+    } else if (!(vals.ymin < vals.ymax)) {
+      bad = ["ymin", "ymax"]; err = "Y max must be greater than Y min.";
+    }
+    ["xmin", "xmax", "ymin", "ymax"].forEach(function (k) {
+      $(k).setAttribute("aria-invalid", String(bad.indexOf(k) !== -1));
+    });
+    var box = $("axis-err");
+    box.hidden = !err;
+    box.textContent = err;
+    if (err) return;
+    state.xmin = vals.xmin; state.xmax = vals.xmax; state.ymin = vals.ymin; state.ymax = vals.ymax;
+    state.sel = null;
+    ui(); draw(); save();
+  }
+  ["xmin", "xmax", "ymin", "ymax"].forEach(function (k) { $(k).addEventListener("input", applyAxes); });
+  $("fit").addEventListener("click", function () {
+    if (!state.points.length) return;
+    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    state.points.forEach(function (p) {
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+    });
+    var dx = (x1 - x0) || 1, dy = (y1 - y0) || 1;
+    var nx = niceTicks(x0 - dx * 0.05, x1 + dx * 0.05, 6), ny = niceTicks(y0 - dy * 0.05, y1 + dy * 0.05, 6);
+    state.xmin = +(x0 - dx * 0.05).toFixed(6); state.xmax = +(x1 + dx * 0.05).toFixed(6);
+    state.ymin = +(y0 - dy * 0.05).toFixed(6); state.ymax = +(y1 + dy * 0.05).toFixed(6);
+    state.sel = null;
+    syncAxisInputs(); applyAxes();
+  });
+
+  /* ---------- CSV export ---------- */
+  function csv() {
+    var lines = ["x,y,label"];
+    state.points.forEach(function (p) { lines.push(p.x + "," + p.y + "," + p.c); });
+    return lines.join("\n") + "\n";
+  }
+  var msgTimer = null;
+  function say(t) {
+    $("msg").textContent = t;
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(function () { $("msg").textContent = ""; }, 5000);
+  }
+  var dl;  // undefined: unresolved, null: not offered here, "browser": plain browser, else capability
+  function resolveDownloads() {
+    try {
+      if (window.claude && typeof window.claude.use === "function") {
+        window.claude.use("downloads").then(function (d) { dl = d || null; afterResolve(); },
+          function () { dl = null; afterResolve(); });
+      } else { dl = "browser"; }
+    } catch (e) { dl = null; afterResolve(); }
+  }
+  function afterResolve() {
+    if (dl === null) {
+      $("download").hidden = true;
+      $("preview").open = true; csvOpen = true; $("csv-text").value = csv();
+      say("Direct download is not available in this view. Copy the CSV instead.");
+    }
+  }
+  $("preview").addEventListener("toggle", function () {
+    csvOpen = $("preview").open;
+    if (csvOpen) $("csv-text").value = csv();
+  });
+  $("download").addEventListener("click", function () {
+    if (!state.points.length) return;
+    var text = csv();
+    if (dl === "browser" || dl === undefined) {
+      try {
+        var url = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
+        var a = document.createElement("a");
+        a.href = url; a.download = "dataset.csv";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        say("Downloaded dataset.csv (" + state.points.length + " rows).");
+      } catch (e) { say("Download failed. Use Copy CSV instead."); }
+      return;
+    }
+    if (!dl) return;
+    dl.save({ filename: "dataset.csv", data: text }).then(function () {
+      say("Saved dataset.csv (" + state.points.length + " rows).");
+    }, function (err) {
+      var code = err && err.code;
+      if (code === "declined") say("Download cancelled.");
+      else if (code === "rate_limited") say("A save prompt is already open. Answer it, then try again.");
+      else say("Download is not available here. Use Copy CSV instead.");
+    });
+  });
+  $("copy").addEventListener("click", function () {
+    var text = csv();
+    var fallback = function () {
+      $("preview").open = true; csvOpen = true;
+      var ta = $("csv-text"); ta.value = text; ta.focus(); ta.select();
+      say("Press Ctrl+C (or Cmd+C) to copy the selected CSV.");
+    };
+    try {
+      navigator.clipboard.writeText(text).then(function () {
+        say("Copied " + state.points.length + " rows.");
+      }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  /* ---------- keyboard ---------- */
+  document.addEventListener("keydown", function (e) {
+    var t = e.target, tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    var k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && k === "z") { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (k === "r") setClass("red");
+    else if (k === "g") setClass("green");
+    else if (k === "a") setMode("add");
+    else if (k === "s") setMode("select");
+    else if (k === "delete" || k === "backspace") { if (selectedCount()) { e.preventDefault(); deleteSelected(); } }
+    else if (k === "escape") { state.sel = null; ui(); draw(); }
+  });
+
+  /* ---------- boot ---------- */
+  if (!load()) { state.points = exampleData(); state.example = true; }
+  syncAxisInputs();
+  ui();
+  resolveDownloads();
+  if (window.ResizeObserver) new ResizeObserver(resize).observe($("plotwrap"));
+  window.addEventListener("resize", resize);
+  resize();
+  try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw); } catch (e) {}
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (document.fonts) {
+    document.fonts.load('11px "JetBrains Mono"').then(draw, function () {});
+    document.fonts.ready.then(draw, function () {});
+  }
+})();
+</script>
+
+</body></html>
