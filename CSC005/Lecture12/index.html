@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lecture12</title>
+<script src="jspdf.umd.min.js"></script><script src="slides.js"></script>
+<style>
+:root{--bg:#f1efe8;--panel:#fff;--fg:#22232b;--muted:#6b6b76;--line:#d9d6cc;--accent:#d0603f;--sel:rgba(208,96,63,.3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}}
+:root[data-theme="dark"]{--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);height:100vh;overflow:hidden}
+header{display:flex;gap:6px;align-items:center;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.grp{display:flex;gap:4px;align-items:center;padding-right:8px;margin-right:4px;border-right:1px solid var(--line)}
+.grp:last-child{border:0}
+button{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font:inherit;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=color]{width:30px;height:28px;border:1px solid var(--line);border-radius:6px;padding:1px;background:transparent}
+#count{min-width:62px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+#zoomv{min-width:44px;text-align:center;color:var(--muted)}
+#status{margin-left:auto;color:var(--muted);font-size:12px}
+#bar{height:3px;background:var(--accent);width:0;transition:width .2s}
+main{display:flex;min-height:0;min-width:0;overflow:hidden}
+#stage{flex:1;overflow:auto;display:flex;padding:16px;min-width:0}
+#frame{margin:auto;flex:none;position:relative;box-shadow:0 6px 30px #0005;border-radius:3px;overflow:hidden;background:#fff}
+#inner{position:absolute;left:0;top:0;width:720px;height:405px;transform-origin:0 0}
+#inner>*{position:absolute;inset:0}
+#img{width:720px;height:405px;user-select:none;-webkit-user-drag:none}
+#txt span{position:absolute;color:transparent;white-space:pre;transform-origin:0 0;line-height:1;cursor:text;font-family:sans-serif}
+#txt span::selection{background:var(--sel);color:transparent}
+#ink{width:720px;height:405px;pointer-events:none}
+#stk,#fld{pointer-events:none}
+.fill{position:absolute;pointer-events:auto;margin:0;border:0;border-bottom:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;text-align:center;resize:none;outline:none;overflow:hidden;line-height:1.15;padding:0 2px;border-radius:2px}
+.fill.round{border:1.5px dashed #c8553a;border-radius:40%/50%}
+.fill:focus{background:rgba(255,244,190,.95);border-color:#c8553a;border-style:solid;box-shadow:0 0 0 2px rgba(200,85,58,.25)}
+.fill::placeholder{color:#c8553a;opacity:.55;font-weight:400}
+body.draw #ink{pointer-events:auto;cursor:crosshair}body.erase #ink{pointer-events:auto;cursor:cell}
+body.sticky #ink{pointer-events:auto;cursor:copy}
+body:not(.select) #txt{pointer-events:none}
+.note{position:absolute;pointer-events:auto;background:#fff6a8;border:1px solid #d8c64a;border-radius:3px;box-shadow:0 2px 6px #0003;display:flex;flex-direction:column;min-width:60px}
+.note .h{height:9px;background:#f0dc5a;cursor:move;display:flex;justify-content:flex-end}
+.note .h b{font:bold 8px/9px sans-serif;padding:0 3px;cursor:pointer;color:#6b5d00}
+.note textarea{border:0;background:transparent;resize:both;font:9px/1.25 system-ui,sans-serif;color:#222;padding:3px;width:120px;height:50px;outline:none}
+aside{width:300px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;padding:12px;gap:8px}
+body.nonotes aside{display:none}
+aside h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
+#notes{flex:1;resize:none;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:10px}
+#thumbs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+#thumbs div{position:relative;flex:none}
+#thumbs img{height:50px;display:block;border:2px solid transparent;border-radius:3px;cursor:pointer;opacity:.6;background:#fff}
+#thumbs .on img{border-color:var(--accent);opacity:1}
+#thumbs .dot::after{content:"";position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+body.nothumbs #thumbs{display:none}
+@media (max-width:700px){aside{position:fixed;inset:auto 0 0 0;width:auto;height:40vh;border-left:0;border-top:1px solid var(--line);z-index:5}}
+</style></head><body class="select">
+<header>
+ <div class="grp"><button id="prev" title="Previous (←)">◀</button><span id="count"></span><button id="next" title="Next (→)">▶</button></div>
+ <div class="grp"><button id="zout" title="Zoom out (−)">−</button><span id="zoomv">Fit</span><button id="zin" title="Zoom in (+)">+</button><button id="zfit" title="Fit to window (0)">Fit</button><button id="fs" title="Fullscreen (F)">⛶</button></div>
+ <div class="grp" id="tools">
+  <button data-t="select" class="on" title="Select text (V)">Select</button>
+  <button data-t="pen" title="Pen (P)">Pen</button>
+  <button data-t="hi" title="Highlighter (H)">Highlight</button>
+  <button data-t="sticky" title="Sticky note (N)">Sticky</button>
+  <button data-t="erase" title="Eraser (E)">Erase</button>
+  <input type="color" id="color" value="#d0303f" title="Ink color">
+  <button id="undo" title="Undo (Ctrl+Z)">Undo</button><button id="clear" title="Clear this slide's ink and stickies">Clear</button>
+ </div>
+ <div class="grp"><button id="tnotes" class="on">Notes</button><button id="tthumbs" class="on">Thumbs</button></div>
+ <div class="grp"><button id="pdf" title="PDF of all slides with your annotations and notes">PDF: all</button><button id="pdfa" title="PDF of only the slides you annotated">PDF: annotated</button><button id="exp" title="Back up annotations to a file">Backup</button><button id="imp" title="Restore annotations from a backup file">Restore</button><input type="file" id="impf" accept=".json" hidden></div>
+ <span id="status"></span>
+</header>
+<div id="bar"></div>
+<main>
+ <div id="stage"><div id="frame"><div id="inner"><img id="img" alt=""><div id="txt"></div><canvas id="ink"></canvas><div id="stk"></div><div id="fld"></div></div></div></div>
+ <aside><h2 id="nh">Notes</h2><textarea id="notes" placeholder="Type notes for this slide…"></textarea></aside>
+</main>
+<div id="thumbs"></div>
+<script>
+const TEXT=[[[87.5,69.0,39.5,14.7,12.0,"CSC 005"],[65.7,108.5,306.3,32.9,29.0,"Decision Tree Depth"],[65.7,189.2,60.3,17.1,14.0,"Lecture 12"],[65.7,231.2,166.0,17.1,14.0,"Fit, explanation, and fairness"]],[[64.2,34.4,40.6,9.8,8.0,"RECONNECT"],[64.2,56.4,279.3,26.1,23.0,"Decision Tree AI Model"],[160.2,107.1,76.5,9.8,8.0,"late_payments_2y ≤ 1?"],[73.5,158.2,78.2,9.8,8.0,"annual_income_k ≤ 52?"],[248.0,158.2,72.5,9.8,8.0,"zip_risk_score ≤ 0.55?"],[55.2,209.1,18.3,9.8,8.0,"DENY"],[145.1,209.1,31.9,9.8,8.0,"APPROVE"],[220.0,209.1,31.9,9.8,8.0,"APPROVE"],[323.5,209.1,18.3,9.8,8.0,"DENY"],[129.2,306.1,244.0,22.0,18.0,"A model to predict if a bank will "],[129.2,327.3,204.8,22.0,18.0,"approve a loan application"]],[[64.2,34.4,40.6,9.8,8.0,"RECONNECT"],[64.2,56.4,231.5,26.1,23.0,"Terminology Check"],[160.2,107.1,76.5,9.8,8.0,"late_payments_2y ≤ 1?"],[73.5,158.2,78.2,9.8,8.0,"annual_income_k ≤ 52?"],[248.0,158.2,72.5,9.8,8.0,"zip_risk_score ≤ 0.55?"],[55.2,209.1,18.3,9.8,8.0,"DENY"],[145.1,209.1,31.9,9.8,8.0,"APPROVE"],[220.0,209.1,31.9,9.8,8.0,"APPROVE"],[323.5,209.1,18.3,9.8,8.0,"DENY"],[129.2,306.1,244.0,22.0,18.0,"A model to predict if a bank will "],[129.2,327.3,204.8,22.0,18.0,"approve a loan application"]],[[64.2,34.4,40.6,9.8,8.0,"RECONNECT"],[64.2,56.4,445.0,26.1,23.0,"What made last class’s tree readable?"],[407.1,113.4,205.7,17.0,15.0,"One path is an if–then rule"],[464.2,164.7,91.6,13.4,11.0,"IF late payments ≤ 1"],[451.2,174.6,117.6,13.4,11.0,"AND annual income > 52k"],[474.2,185.6,71.6,13.4,11.0,"THEN APPROVE"],[247.9,361.5,224.0,9.8,8.0,"Every root-to-leaf path can be read as one if–then prediction rule."],[160.2,107.1,76.5,9.8,8.0,"late_payments_2y ≤ 1?"],[73.5,158.2,78.2,9.8,8.0,"annual_income_k ≤ 52?"],[248.0,158.2,72.5,9.8,8.0,"zip_risk_score ≤ 0.55?"],[55.2,209.1,18.3,9.8,8.0,"DENY"],[145.1,209.1,31.9,9.8,8.0,"APPROVE"],[220.0,209.1,31.9,9.8,8.0,"APPROVE"],[323.5,209.1,18.3,9.8,8.0,"DENY"],[148.5,180.0,13.2,14.7,12.0,"no"],[122.7,126.3,17.5,14.7,12.0,"yes"]],[[64.2,34.4,40.6,9.8,8.0,"RECONNECT"],[64.2,56.4,445.0,26.1,23.0,"What made last class’s tree readable?"],[160.2,107.1,76.5,9.8,8.0,"late_payments_2y ≤ 1?"],[73.5,158.2,78.2,9.8,8.0,"annual_income_k ≤ 52?"],[248.0,158.2,72.5,9.8,8.0,"zip_risk_score ≤ 0.55?"],[55.2,209.1,18.3,9.8,8.0,"DENY"],[145.1,209.1,31.9,9.8,8.0,"APPROVE"],[220.0,209.1,31.9,9.8,8.0,"APPROVE"],[323.5,209.1,18.3,9.8,8.0,"DENY"],[407.1,113.4,205.7,17.0,15.0,"One path is an if–then rule"],[404.7,243.2,8.8,14.7,12.0,"IF"],[404.7,272.3,22.7,14.7,12.0,"AND"],[404.7,301.1,57.7,14.7,12.0,"THEN DENY"],[247.9,361.5,224.0,9.8,8.0,"Every root-to-leaf path can be read as one if–then prediction rule."],[251.9,126.0,13.2,14.7,12.0,"no"],[321.8,179.8,13.2,14.7,12.0,"no"]],[[64.2,34.4,23.4,9.8,8.0,"TODAY"],[64.2,56.4,444.0,26.1,23.0,"Three questions about a growing tree"],[92.8,129.9,3.5,8.5,7.0,"1"],[139.2,131.1,380.4,19.3,17.0,"What changes when max_depth increases?"],[92.8,191.3,3.5,8.5,7.0,"2"],[139.2,192.5,393.3,19.3,17.0,"When does added detail become overfitting?"],[92.8,252.8,3.5,8.5,7.0,"3"],[139.2,253.9,379.4,19.3,17.0,"Can visible logic still be difficult to defend?"],[247.6,361.5,224.7,9.8,8.0,"The goal is a defensible tradeoff, not the deepest or simplest tree."]],[[64.2,34.4,63.5,9.8,8.0,"HYPERPARAMETER"],[64.2,53.2,539.6,22.7,20.0,"max_depth limits how many levels the tree can grow"],[124.3,140.0,61.8,12.2,10.0,"max_depth = 1"],[132.4,184.2,38.0,12.2,10.0,"Question"],[128.2,287.6,54.0,11.0,9.0,"Few questions"],[329.1,140.0,61.8,12.2,10.0,"max_depth = 2"],[330.4,287.6,59.1,11.0,9.0,"More questions"],[527.9,140.0,73.6,12.2,10.0,"larger max_depth"],[290.9,236.0,38.0,12.2,10.0,"Question"],[337.6,176.2,38.0,12.2,10.0,"Question"],[389.8,235.5,38.0,12.2,10.0,"Question"]],[[64.2,34.4,63.5,9.8,8.0,"HYPERPARAMETER"],[64.2,56.4,420.3,26.1,23.0,"max_depth plays a role similar to k"],[181.4,134.5,16.7,11.0,9.0,"KNN"],[180.6,165.4,18.3,32.9,29.0,"k"],[116.2,219.2,147.1,15.9,13.0,"How many neighbors vote?"],[103.2,257.1,175.6,13.4,11.0,"Smaller k usually makes the boundary "],[158.1,269.1,63.3,13.4,11.0,"more flexible."],[488.7,134.5,56.1,11.0,9.0,"DECISION TREE"],[448.6,169.0,136.3,26.1,23.0,"max_depth"],[414.6,221.1,204.4,14.7,12.0,"How many question to get to prediction?"],[422.4,257.1,191.2,13.4,11.0,"Larger max_depth usually makes the tree "],[485.1,269.1,63.3,13.4,11.0,"more flexible."],[211.4,361.5,297.0,9.8,8.0,"Both are hyperparameters: settings chosen before training that shape model flexibility."]],[[64.2,34.4,63.5,9.8,8.0,"HYPERPARAMETER"],[64.2,56.4,431.1,26.1,23.0,"k controls how many neighbors vote"]],[[64.2,34.4,75.0,9.8,8.0,"SAME TRAINING DATA"],[64.2,56.4,540.5,26.1,23.0,"Extra depth divides cases into smaller groups"],[326.4,115.5,67.2,8.5,7.0,"late_payments_2y ≤ 1?"],[269.9,201.5,151.7,22.7,20.0,"max_depth = 1"]],[[64.2,34.4,75.0,9.8,8.0,"SAME TRAINING DATA"],[64.2,56.4,540.5,26.1,23.0,"Extra depth divides cases into smaller groups"],[326.4,115.5,67.2,8.5,7.0,"late_payments_2y ≤ 1?"],[150.1,217.5,68.7,8.5,7.0,"annual_income_k ≤ 52?"],[503.8,217.5,63.4,8.5,7.0,"zip_risk_score ≤ 0.55?"],[273.1,202.2,154.4,22.7,20.0,"max_depth = 2"]],[[64.2,34.4,75.0,9.8,8.0,"SAME TRAINING DATA"],[64.2,56.4,540.5,26.1,23.0,"Extra depth divides cases into smaller groups"],[326.4,115.5,67.2,8.5,7.0,"late_payments_2y ≤ 1?"],[150.1,217.5,68.7,8.5,7.0,"annual_income_k ≤ 52?"],[503.8,217.5,63.4,8.5,7.0,"zip_risk_score ≤ 0.55?"],[273.1,202.2,154.4,22.7,20.0,"max_depth = 3"]],[[64.2,34.4,34.9,9.8,8.0,"TRADEOFF"],[64.2,56.4,430.9,26.1,23.0,"A one-question tree can be too blunt"],[312.0,122.0,96.0,12.2,10.0,"late_payments_2y ≤ 1?"],[163.4,200.9,54.3,8.5,7.0,"PREDICT APPROVE"],[508.4,200.9,42.2,8.5,7.0,"PREDICT DENY"],[148.9,291.7,83.3,12.2,10.0,"IF late payments ≤ 1"],[158.1,302.5,64.9,12.2,10.0,"THEN APPROVE"],[487.9,291.7,83.3,12.2,10.0,"IF late payments > 1"],[505.5,302.5,47.9,12.2,10.0,"THEN DENY"],[162.6,260.0,55.8,8.5,7.0,"one denial remains"],[497.8,260.0,63.5,8.5,7.0,"one approval remains"],[218.4,361.5,283.3,9.8,8.0,"Underfitting occurs when the model remains too simple to capture useful patterns."]],[[64.2,34.4,72.4,9.8,8.0,"DECISION BOUNDARY"],[64.2,56.4,585.5,26.1,23.0,"A tree divides the feature plane with straight cuts"],[231.8,315.9,55.5,11.0,9.0,"annual income"],[86.7,134.9,47.2,9.8,8.0,"late payments"],[518.9,153.2,117.3,13.6,12.0,"Each question uses"],[542.2,164.2,73.6,13.6,12.0,"one feature "],[547.5,176.2,60.0,13.6,12.0,"threshold"],[533.8,228.1,89.8,13.4,11.0,"The cuts form boxy "],[533.6,241.0,90.4,13.4,11.0,"regions rather than "],[521.7,255.2,111.5,13.4,11.0,"diagonal or curved lines."],[228.8,361.5,262.3,9.8,8.0,"The two-feature picture is for visualization; trees can train on many features."]],[[64.2,34.4,78.7,9.8,8.0,"DEPTH AND GEOMETRY"],[64.2,56.4,544.1,26.1,23.0,"More depth creates a more detailed boundary"],[125.6,117.7,41.3,12.2,10.0,"SHALLOW"],[120.2,311.6,51.9,11.0,9.0,"broad regions"],[244.1,361.5,231.8,9.8,8.0,"Detail helps until the boundary begins fitting isolated training cases."]],[[64.2,34.4,78.7,9.8,8.0,"DEPTH AND GEOMETRY"],[64.2,56.4,544.1,26.1,23.0,"More depth creates a more detailed boundary"],[125.6,117.7,41.3,12.2,10.0,"SHALLOW"],[335.9,117.7,48.1,12.2,10.0,"MODERATE"],[120.2,311.6,51.9,11.0,9.0,"broad regions"],[330.3,311.6,59.4,11.0,9.0,"useful structure"],[244.1,361.5,231.8,9.8,8.0,"Detail helps until the boundary begins fitting isolated training cases."]],[[64.2,34.4,78.7,9.8,8.0,"DEPTH AND GEOMETRY"],[64.2,56.4,544.1,26.1,23.0,"More depth creates a more detailed boundary"],[125.6,117.7,41.3,12.2,10.0,"SHALLOW"],[335.9,117.7,48.1,12.2,10.0,"MODERATE"],[563.1,117.7,21.3,12.2,10.0,"DEEP"],[120.2,311.6,51.9,11.0,9.0,"broad regions"],[330.3,311.6,59.4,11.0,9.0,"useful structure"],[548.2,311.6,51.1,11.0,9.0,"small pockets"],[244.1,361.5,231.8,9.8,8.0,"Detail helps until the boundary begins fitting isolated training cases."]],[[64.2,34.4,44.7,9.8,8.0,"OVERFITTING"],[64.2,56.4,538.7,26.1,23.0,"A deep tree can learn isolated training quirks"],[156.2,117.7,88.1,12.2,10.0,"TRAINING EXAMPLES"],[486.1,117.7,67.2,12.2,10.0,"NEW EXAMPLES"],[140.5,313.0,119.5,11.0,9.0,"Small pockets fit unusual points"],[460.6,313.0,118.2,11.0,9.0,"Rings mark errors on new cases"],[189.8,361.5,340.1,9.8,8.0,"Overfitting appears when extra detail improves training fit but weakens performance on new cases."]],[[64.2,34.4,33.0,9.8,8.0,"EVIDENCE"],[64.2,51.3,496.0,22.7,20.0,"Training and test performance answer different "],[64.2,70.2,100.0,22.7,20.0,"questions"],[175.6,144.1,53.7,9.8,8.0,"TRAINING DATA"],[103.6,181.4,197.7,18.2,16.0,"How well did the tree fit"],[106.7,198.4,195.6,18.2,16.0,"the examples it learned "],[177.6,215.5,49.8,18.2,16.0,"from?"],[134.1,263.1,136.8,12.2,10.0,"Usually improves as depth grows"],[499.4,144.1,36.1,9.8,8.0,"TEST DATA"],[429.8,181.4,179.4,18.2,16.0,"How well did the tree "],[496.3,198.4,42.5,18.2,16.0,"work"],[429.9,215.5,175.2,18.2,16.0,"on unseen examples?"],[455.6,263.1,123.8,12.2,10.0,"Can stop improving or decline"],[228.9,361.5,262.1,9.8,8.0,"A widening training–test gap is evidence that extra depth may be overfitting."]],[[64.2,55.4,400.3,25.0,22.0,"Recall: Overfitting and underfitting"],[79.7,139.1,248.0,22.0,18.0,"Overfitting: Model does well on "],[400.0,139.1,151.2,22.0,18.0,"  data but poorly on "],[623.6,139.1,43.8,22.0,18.0," data."],[79.7,214.9,276.5,22.0,18.0,"Underfitting: Model does poorly on "],[428.5,214.9,102.5,22.0,18.0,"  data and on "],[603.4,214.9,43.8,22.0,18.0," data."]],[[64.2,34.4,45.0,9.8,8.0,"CONNECTION"],[64.2,56.4,387.6,26.1,23.0,"Overfitting appeared in KNN too"],[187.1,140.0,18.7,12.2,10.0,"KNN"],[139.1,180.5,114.9,20.4,18.0,"Very small k"],[140.1,235.8,115.9,17.1,14.0,"A few neighbors can "],[134.6,251.9,124.1,17.1,14.0,"reproduce local quirks"],[492.3,140.0,62.4,12.2,10.0,"DECISION TREE"],[446.9,180.5,153.1,20.4,18.0,"Very large depth"],[464.5,235.8,121.2,17.1,14.0,"Narrow branches can "],[453.0,251.9,141.3,17.1,14.0,"reproduce training quirks"],[192.2,361.5,335.5,9.8,8.0,"Different models overfit in different ways, but the warning sign is weak performance on new data."]],[[64.2,34.4,21.5,9.8,8.0,"SCOPE"],[64.2,56.4,402.3,26.1,23.0,"One tree hyperparameter for now"],[153.1,119.6,413.9,20.4,18.0,"DecisionTreeClassifier offers many controls."],[304.2,189.7,111.6,21.6,19.0,"max_depth"],[276.4,228.1,167.2,13.4,11.0,"How far may the tree keep splitting?"],[147.8,295.8,424.4,15.9,13.0,"Other controls exist. Lab 6 keeps them fixed so we can see this tradeoff clearly."],[220.9,361.5,278.3,9.8,8.0,"Change one important control, observe what it changes, and explain the tradeoff."]],[[64.2,34.4,31.2,9.8,8.0,"CONCEPT"],[64.2,56.4,418.6,26.1,23.0,"Pruning stops weak extra branches"],[211.4,106.6,76.5,9.8,8.0,"late_payments_2y ≤ 1?"],[79.9,180.3,88.6,11.0,9.0,"annual_income_k ≤ 52?"],[334.1,180.3,81.8,11.0,9.0,"zip_risk_score ≤ 0.55?"],[45.5,256.6,16.0,8.5,7.0,"DENY"],[180.9,256.6,28.0,8.5,7.0,"APPROVE"],[290.3,256.6,28.0,8.5,7.0,"APPROVE"],[437.7,256.6,16.0,8.5,7.0,"DENY"],[171.8,308.7,46.2,7.3,6.0,"another question?"],[572.1,151.5,36.4,9.8,8.0,"STOP HERE"],[552.0,185.1,79.5,15.9,13.0,"The extra split "],[552.8,199.3,77.9,15.9,13.0,"adds too little "],[553.9,213.2,72.7,15.9,13.0,"reliable value"],[222.0,361.5,275.8,9.8,8.0,"Limiting max_depth is one way to prevent the tree from growing weak branches."]],[[64.2,34.4,61.5,9.8,8.0,"INTERPRETABILITY"],[64.2,56.4,389.0,26.1,23.0,"Long paths weaken explanations"],[173.0,142.4,42.5,9.8,8.0,"SHORT PATH"],[138.3,176.3,111.9,21.6,19.0,"2 questions"],[129.2,231.2,133.2,15.9,13.0,"A person can follow and "],[124.6,247.3,139.2,15.9,13.0,"challenge the explanation"],[506.2,142.4,39.0,9.8,8.0,"LONG PATH"],[466.5,176.3,118.5,21.6,19.0,"11 questions"],[452.3,223.8,149.9,15.9,13.0,"The route is visible, but the "],[448.7,239.6,157.0,15.9,13.0,"explanation becomes harder "],[487.7,254.7,76.1,15.9,13.0,"to understand"],[280.7,361.5,158.6,9.8,8.0,"Visible does not always mean understandable."]],[[64.2,34.4,58.4,9.8,8.0,"ACCOUNTABILITY"],[64.2,56.4,534.9,26.1,23.0,"A readable path answers only part of “Why?”"],[165.8,140.9,72.0,9.8,8.0,"THE PATH CAN SHOW"],[98.9,179.9,205.7,17.0,15.0,"Which questions appeared"],[129.2,195.8,149.0,17.0,15.0,"Which values were "],[162.8,211.8,77.8,17.0,15.0,"compared"],[110.8,227.9,185.7,17.0,15.0,"Which leaf supplied the "],[161.4,244.7,80.6,17.0,15.0,"prediction"],[474.2,140.9,88.1,9.8,8.0,"THE PATH CANNOT SETTLE"],[436.1,181.8,167.8,15.9,14.0,"Whether the data were "],[496.1,197.6,44.4,15.9,14.0,"sound"],[415.7,214.7,205.2,15.9,14.0,"Whether the feature belongs"],[425.6,231.7,188.8,15.9,14.0,"Whether the decision was "],[505.2,248.8,26.1,15.9,14.0,"fair"],[199.1,361.5,321.8,9.8,8.0,"Interpretability supports accountability because it gives people something concrete to inspect."]],[[64.2,34.4,55.6,9.8,8.0,"HUMAN IMPACT"],[64.2,50.3,529.9,23.9,21.0,"A useful explanation should support response or "],[64.2,70.3,103.0,23.9,21.0,"challenge"],[141.1,115.9,437.7,19.3,17.0,"Imagine explaining a loan denial to the applicant."],[82.2,163.5,46.8,9.8,8.0,"UNDERSTAND"],[184.2,160.7,329.7,17.1,14.0,"Can the person understand the rule that affected them?"],[82.2,211.5,35.1,9.8,8.0,"QUESTION"],[184.2,208.7,367.5,17.1,14.0,"Can they challenge incorrect data or an inappropriate feature?"],[82.2,259.5,32.0,9.8,8.0,"RESPOND"],[184.2,256.7,332.7,17.1,14.0,"Does the explanation identify any meaningful next step?"],[209.4,361.5,301.1,9.8,8.0,"Recourse asks whether the affected person can do anything useful with the explanation."]],[[64.2,34.4,66.3,9.8,8.0,"FAIRNESS CONCERN"],[64.2,56.4,552.8,26.1,23.0,"ZIP risk score may carry more than geography"],[120.4,148.4,50.3,9.8,8.0,"ZIP RISK SCORE"],[114.6,183.4,61.9,31.8,28.0,"0.72"],[117.6,235.0,55.9,11.0,9.0,"looks technical"],[384.8,132.1,196.5,13.4,11.0,"It may also reflect patterns connected with"],[395.6,172.1,174.7,20.4,18.0,"income and wealth"],[389.6,194.0,186.9,20.4,18.0,"housing segregation"],[412.4,216.1,141.3,20.4,18.0,"access to credit"],[231.1,361.5,257.6,9.8,8.0,"A proxy variable indirectly carries information about another characteristic."]],[[64.2,34.4,61.7,9.8,8.0,"IMPORTANT LIMIT"],[64.2,53.2,544.4,22.7,20.0,"Protected characteristics can persist through proxies"],[203.5,122.7,313.1,21.6,19.0,"The training table excludes race."],[204.0,228.6,42.1,14.7,12.0,"ZIP code"],[325.2,228.6,69.6,14.7,12.0,"school history"],[453.8,229.5,82.5,13.4,11.0,"purchase patterns"],[156.4,291.2,407.4,14.7,12.0,"Other features may still correlate with protected characteristics or past inequality."],[217.2,361.5,285.6,9.8,8.0,"Fairness review examines what features capture and how the model affects people."]],[[64.2,34.4,60.1,9.8,8.0,"INSPECTION TOOL"],[64.2,50.3,550.6,23.9,21.0,"Feature importance points to where the tree relied "],[64.2,70.3,53.8,23.9,21.0,"most"],[405.5,286.4,17.7,12.2,10.0,"0.34"],[360.0,250.2,17.7,12.2,10.0,"0.28"],[299.3,214.2,12.7,12.2,10.0,"0.2"],[238.7,177.9,17.7,12.2,10.0,"0.12"],[193.2,141.9,17.7,12.2,10.0,"0.06"],[74.7,285.4,57.9,12.2,10.0,"late payments"],[79.4,249.4,53.0,12.2,10.0,"ZIP risk score"],[72.5,213.4,60.0,12.2,10.0,"annual income"],[78.5,177.2,53.5,12.2,10.0,"credit history"],[80.6,141.2,51.4,12.2,10.0,"loan amount"],[525.6,144.6,91.9,12.2,10.0,"Importance can tell us"],[520.8,175.5,101.4,13.6,12.0,"where to inspect"],[522.0,223.5,101.5,13.4,11.0,"It cannot prove that a "],[522.6,236.7,100.2,13.4,11.0,"feature is fair, causal, "],[536.8,250.6,69.3,13.4,11.0,"or appropriate."],[208.9,361.5,302.0,9.8,8.0,"This illustrative pattern shows model reliance, not moral importance or causal influence."]],[[64.2,34.4,30.3,9.8,8.0,"ACTIVITY"],[64.2,56.4,485.8,26.1,23.0,"Depth comparison in the Lab 6 notebook"],[89.8,120.8,3.5,8.5,7.0,"1"],[134.7,121.8,246.7,17.1,14.0,"Run only through the depth-comparison cell"],[89.8,167.3,3.5,8.5,7.0,"2"],[134.7,168.4,147.6,17.1,14.0,"Compare depth 2, 4, and 8"],[89.8,213.9,3.5,8.5,7.0,"3"],[134.7,214.7,375.4,17.1,14.0,"Use training accuracy, test accuracy, leaf count, and the tree images"],[89.8,260.5,3.5,8.5,7.0,"4"],[134.7,261.2,330.6,17.1,14.0,"Choose the tree you could most reasonably defend publicly"],[213.8,361.5,292.2,9.8,8.0,"Make a prediction before running the comparison. Record evidence, not just a choice."]],[[64.2,34.4,39.0,9.8,8.0,"PAIR WORK"],[64.2,56.4,383.3,26.1,23.0,"Which depth would you defend?"],[135.4,141.7,35.1,12.2,10.0,"DEPTH 2"],[103.9,188.4,102.2,18.2,16.0,"What useful "],[96.9,207.3,116.2,18.2,16.0,"pattern might "],[121.8,226.5,62.5,18.2,16.0,"it miss?"],[342.4,141.7,35.1,12.2,10.0,"DEPTH 4"],[314.9,188.4,94.3,18.2,16.0,"What extra "],[308.2,207.3,107.7,18.2,16.0,"detail does it "],[340.5,226.5,39.1,18.2,16.0,"add?"],[549.4,141.7,35.1,12.2,10.0,"DEPTH 8"],[511.5,187.4,114.8,17.0,15.0,"What suggests "],[515.6,203.4,106.6,17.0,15.0,"overfitting or "],[547.0,219.3,43.8,17.0,15.0,"weak "],[521.0,235.4,92.0,17.0,15.0,"readability?"],[94.2,307.5,35.1,9.8,8.0,"Your claim"],[179.7,301.8,421.0,14.7,12.0,"I would choose depth ___ because the output shows ___, while the main cost is ___."]],[[64.2,34.4,27.6,9.8,8.0,"DEBRIEF"],[64.2,56.4,586.8,26.1,23.0,"A defensible choice needs more than one number"],[76.2,115.5,9.7,9.8,8.0,"FIT"],[223.2,112.0,267.3,18.3,15.0,"How close were training and test accuracy?"],[76.2,164.9,42.8,9.8,8.0,"COMPLEXITY"],[223.2,161.6,299.9,18.3,15.0,"How many leaves and how long were the paths?"],[76.2,214.4,47.7,9.8,8.0,"EXPLANATION"],[223.2,211.1,306.0,18.3,15.0,"Could you explain the tree to an affected person?"],[76.2,264.1,33.3,9.8,8.0,"SCRUTINY"],[223.2,260.5,285.7,18.3,15.0,"Which feature or split deserves closer review?"],[210.2,361.5,299.3,9.8,8.0,"Reasonable groups may choose different depths if their evidence and tradeoff are clear."]],[[64.2,34.4,38.7,9.8,8.0,"EXIT TICKET"],[64.2,56.4,452.9,26.1,23.0,"Readable logic still requires judgment"],[307.2,135.0,105.6,12.2,10.0,"Complete both sentences"],[181.2,175.0,357.6,20.4,18.0,"Increasing tree depth can help when …"],[131.8,248.7,456.4,20.4,18.0,"Even a readable tree can be unacceptable when …"],[118.8,360.5,482.4,9.8,8.0,"This afternoon: trace one case, inspect feature importance, and examine a possible proxy. Next week: scores and thresholds in logistic regression."]]];
+const FIELDS=[[],[],[[390.0,70.7,52.3,18.7,11.4,0],[479.5,119.0,52.3,18.7,11.4,0],[503.7,176.8,52.3,18.7,11.4,0],[556.0,70.7,52.3,18.7,11.4,0]],[],[[446.3,242.8,52.3,18.7,11.4,0],[446.3,271.1,52.3,18.7,11.4,0]],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[[325.7,137.1,76.4,26.0,17.1,0],[549.2,137.1,76.4,26.0,17.1,0],[354.1,212.9,76.4,26.0,17.1,0],[529.0,212.9,76.4,26.0,17.1,0]],[],[],[],[],[],[],[],[],[],[],[],[],[]];
+const N=33,W=720,H=405,KEY='slides-annot:lecture12-0b2c7fce',URLS=SLIDES.map(s=>URL.createObjectURL(new Blob([s],{type:'image/svg+xml'}))),src=i=>URLS[i];
+const $=id=>document.getElementById(id);
+let i=0,zoom=0/*0=fit*/,scale=1,tool='select';
+// ---------- storage ----------
+let store={slides:{}},canSave=true;
+try{const s=localStorage.getItem(KEY);if(s)store=JSON.parse(s)}catch(e){canSave=false}
+const S=k=>{const s=store.slides[k]||(store.slides[k]={strokes:[],stickies:[],notes:''});s.fills||(s.fills={});return s};
+const has=k=>{const s=store.slides[k];return s&&(s.strokes.length||s.stickies.length||s.notes.trim()||Object.values(s.fills||{}).some(v=>v.trim()))};
+let saveT;function flush(){if(saveT){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}}
+addEventListener('pagehide',flush);addEventListener('beforeunload',flush);document.addEventListener('visibilitychange',()=>document.hidden&&flush());
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store));$('status').textContent='Saved in this browser'}catch(e){$('status').textContent='⚠ Browser storage unavailable — use Backup'}markThumb(i)},300)}
+$('status').textContent=canSave?'Saved in this browser':'⚠ Browser storage unavailable — use Backup';
+// ---------- layout / zoom ----------
+function layout(){const st=$('stage'),aw=st.clientWidth-32,ah=st.clientHeight-32;
+ const fit=Math.max(.1,Math.min(aw/W,ah/H));scale=zoom?fit*zoom:fit;
+ $('frame').style.width=W*scale+'px';$('frame').style.height=H*scale+'px';
+ $('inner').style.transform=`scale(${scale})`;
+ $('zoomv').textContent=zoom?Math.round(zoom*100)+'%':'Fit';
+ const c=$('ink'),d=devicePixelRatio||1;c.width=Math.round(W*scale*d);c.height=Math.round(H*scale*d);redraw()}
+new ResizeObserver(layout).observe($('stage'));
+const setZoom=z=>{zoom=z&&Math.abs(z-1)<.01?0:z;layout()};
+$('zin').onclick=()=>setZoom(Math.min(5,(zoom||1)*1.25));$('zout').onclick=()=>setZoom(Math.max(.4,(zoom||1)/1.25));$('zfit').onclick=()=>setZoom(0);
+$('stage').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(Math.min(5,Math.max(.4,(zoom||1)*(e.deltaY<0?1.1:1/1.1))))}},{passive:false});
+$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+// ---------- text layer ----------
+const mctx=document.createElement('canvas').getContext('2d');
+function buildText(){const t=$('txt');t.innerHTML='';for(const[x,y,w,h,fs,s]of TEXT[i]){const e=document.createElement('span');
+ e.textContent=s;e.style.left=x+'px';e.style.top=y+'px';e.style.fontSize=h+'px';mctx.font=`${h}px sans-serif`;
+ const m=mctx.measureText(s).width;if(m>0)e.style.transform=`scaleX(${w/m})`;t.appendChild(e);t.appendChild(document.createTextNode('\n'))}}
+// ---------- ink ----------
+const ctx=$('ink').getContext('2d');
+function drawStroke(c,s,k){c.save();c.globalAlpha=s.a;c.strokeStyle=s.c;c.lineWidth=s.w*k;c.lineCap=c.lineJoin='round';
+ if(s.a<1)c.globalCompositeOperation='multiply';c.beginPath();s.p.forEach(([x,y],j)=>j?c.lineTo(x*k,y*k):c.moveTo(x*k,y*k));
+ if(s.p.length==1)c.lineTo(s.p[0][0]*k+.01,s.p[0][1]*k);c.stroke();c.restore()}
+function redraw(){const k=$('ink').width/W;ctx.clearRect(0,0,$('ink').width,$('ink').height);S(i).strokes.forEach(s=>drawStroke(ctx,s,k))}
+const pt=e=>{const r=$('ink').getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]};
+let cur=null;const hist=[];
+$('ink').addEventListener('pointerdown',e=>{const p=pt(e);
+ if(tool=='sticky'){e.preventDefault();addSticky(p[0],p[1]);return}
+ $('ink').setPointerCapture(e.pointerId);
+ if(tool=='erase'){cur='erase';eraseAt(p);return}
+ const hi=tool=='hi';cur={c:$('color').value,w:hi?12:1.6,a:hi?.35:1,p:[p]};if(hi&&cur.c=='#d0303f')cur.c='#ffe14d';});
+$('ink').addEventListener('pointermove',e=>{if(!cur)return;const p=pt(e);if(cur=='erase')return eraseAt(p);
+ cur.p.push(p.map(v=>Math.round(v*10)/10));redraw();drawStroke(ctx,cur,$('ink').width/W)});
+addEventListener('pointerup',()=>{if(cur&&cur!='erase'){S(i).strokes.push(cur);hist.push({k:i,t:'s'});save()}cur=null;redraw()});
+function eraseAt([x,y]){const a=S(i).strokes,n=a.length;S(i).strokes=a.filter(s=>!s.p.some(([u,v])=>Math.hypot(u-x,v-y)<Math.max(5,s.w)));if(S(i).strokes.length!=n){redraw();save()}}
+$('undo').onclick=()=>{for(let j=hist.length-1;j>=0;j--)if(hist[j].k==i){const h=hist.splice(j,1)[0];if(h.t=='s')S(i).strokes.pop();else{S(i).stickies.pop();renderStickies()}redraw();save();return}
+ if(S(i).strokes.length){S(i).strokes.pop();redraw();save()}};
+$('clear').onclick=()=>arm($('clear'),()=>{{S(i).strokes=[];S(i).stickies=[];redraw();renderStickies();save()}});
+// ---------- stickies ----------
+function addSticky(x,y){S(i).stickies.push({x:Math.min(x,W-125),y:Math.min(y,H-60),w:120,h:50,t:''});hist.push({k:i,t:'n'});renderStickies();save();
+ const ta=$('stk').lastChild.querySelector('textarea');setTool('select');setTimeout(()=>ta.focus(),0)}
+function renderStickies(){const L=$('stk');L.innerHTML='';S(i).stickies.forEach((n,j)=>{const d=document.createElement('div');d.className='note';d.style.left=n.x+'px';d.style.top=n.y+'px';
+ d.innerHTML='<div class="h"><b title="Delete">✕</b></div><textarea></textarea>';const ta=d.querySelector('textarea');ta.value=n.t;ta.style.width=n.w+'px';ta.style.height=n.h+'px';
+ ta.oninput=()=>{n.t=ta.value;save()};new ResizeObserver(()=>{const w=ta.offsetWidth,h=ta.offsetHeight;if(w&&(w!=n.w||h!=n.h)){n.w=w;n.h=h;save()}}).observe(ta);
+ d.querySelector('b').onclick=()=>{S(i).stickies.splice(j,1);renderStickies();save()};
+ d.querySelector('.h').onpointerdown=e=>{if(e.target.tagName=='B')return;e.preventDefault();const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;
+  const mv=ev=>{n.x=ox+(ev.clientX-sx)/scale;n.y=oy+(ev.clientY-sy)/scale;d.style.left=n.x+'px';d.style.top=n.y+'px'};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);save()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
+ L.appendChild(d)})}
+// ---------- fill-in blanks ----------
+function renderFields(){const L=$('fld');L.innerHTML='';const f=S(i).fills;
+ FIELDS[i].forEach(([x,y,w,h,fs,rnd],j)=>{const t=document.createElement('textarea');t.className='fill'+(rnd?' round':'');t.rows=1;t.spellcheck=false;
+  Object.assign(t.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px',fontSize:fs+'px'});t.placeholder='?';t.title='Fill in the blank';
+  t.setAttribute('aria-label',`Blank ${j+1} on slide ${i+1}`);t.value=f[j]||'';
+  const pad=()=>{t.style.paddingTop='0';let z=fs;t.style.fontSize=z+'px';while(z>fs*.45&&(t.scrollHeight>h+1||t.scrollWidth>w+1)){z*=.92;t.style.fontSize=z+'px'}
+   const sh=t.scrollHeight;t.style.paddingTop=Math.max(0,(h-Math.min(sh,h))/2)+'px'};
+  t.oninput=()=>{f[j]=t.value;pad();save()};
+  t.onkeydown=e=>{if(e.key=='Enter'&&!e.shiftKey){e.preventDefault();const n=L.children[j+1];n?n.focus():t.blur()}};
+  L.appendChild(t);pad()})}
+// ---------- tools ----------
+function setTool(t){tool=t;document.querySelectorAll('#tools [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));
+ document.body.classList.remove('select','draw','erase','sticky');document.body.classList.add(t=='pen'||t=='hi'?'draw':t)}
+document.querySelectorAll('#tools [data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+// ---------- notes panel / thumbs ----------
+$('notes').oninput=()=>{S(i).notes=$('notes').value;save()};
+$('tnotes').onclick=()=>{$('tnotes').classList.toggle('on',!document.body.classList.toggle('nonotes'))};
+$('tthumbs').onclick=()=>{$('tthumbs').classList.toggle('on',!document.body.classList.toggle('nothumbs'))};
+for(let k=0;k<N;k++){const d=document.createElement('div'),t=new Image();t.src=src(k);t.alt='Slide '+(k+1);t.title='Slide '+(k+1);t.onclick=()=>go(k);d.appendChild(t);$('thumbs').appendChild(d);markThumb(k)}
+function markThumb(k){$('thumbs').children[k].classList.toggle('dot',!!has(k))}
+// ---------- navigation ----------
+function go(k){i=Math.max(0,Math.min(N-1,k));$('img').src=src(i);$('img').alt='Slide '+(i+1);
+ $('count').textContent=`${i+1} / ${N}`;$('bar').style.width=((i+1)/N*100)+'%';$('nh').textContent=`Notes — slide ${i+1}`;
+ [...$('thumbs').children].forEach((t,j)=>t.classList.toggle('on',j==i));$('thumbs').children[i].scrollIntoView({block:'nearest',inline:'center'});
+ $('notes').value=S(i).notes;buildText();renderFields();redraw();renderStickies();$('stage').scrollTo(0,0);history.replaceState(null,'','#'+(i+1))}
+$('prev').onclick=()=>go(i-1);$('next').onclick=()=>go(i+1);
+addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg=='TEXTAREA'||tg=='INPUT')return;
+ if((e.ctrlKey||e.metaKey)&&e.key=='z'){e.preventDefault();$('undo').click();return}if(e.ctrlKey||e.metaKey)return;
+ const m={ArrowRight:()=>go(i+1),PageDown:()=>go(i+1),' ':()=>go(i+1),ArrowLeft:()=>go(i-1),PageUp:()=>go(i-1),Home:()=>go(0),End:()=>go(N-1),
+ '+':()=>$('zin').click(),'=':()=>$('zin').click(),'-':()=>$('zout').click(),'0':()=>setZoom(0),f:()=>$('fs').click(),
+ v:()=>setTool('select'),p:()=>setTool('pen'),h:()=>setTool('hi'),n:()=>setTool('sticky'),e:()=>setTool('erase')}[e.key];if(m){e.preventDefault();m()}});
+let x0;$('stage').addEventListener('touchstart',e=>x0=tool=='select'&&!zoom?e.touches[0].clientX:null,{passive:true});
+$('stage').addEventListener('touchend',e=>{if(x0==null)return;const d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>60)go(i+(d<0?1:-1))});
+// ---------- backup / restore ----------
+let dlr=null;try{claude.use('downloads').then(d=>dlr=d)}catch(_){}
+function msg(t){$('status').textContent=t}
+function arm(b,f){if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl;f()}else{b.dataset.lbl=b.textContent;b.dataset.arm=1;b.textContent='Click again to confirm';setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl}},3000)}}
+async function dl(blob,name){if(dlr){try{await dlr.save({filename:name,data:blob});msg('Downloaded '+name)}catch(e){msg(e.code=='declined'?'Download cancelled':'Download unavailable here')}return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('exp').onclick=()=>dl(new Blob([JSON.stringify({deck:KEY,...store})],{type:'application/json'}),'lecture12-annotations.json');
+$('imp').onclick=()=>$('impf').click();
+$('impf').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!d.slides)throw 0;
+ store={slides:d.slides};save();for(let k=0;k<N;k++)markThumb(k);go(i)}catch(_){msg('⚠ Not a valid annotations backup')}e.target.value=''};
+// ---------- PDF export ----------
+const loadImg=s=>new Promise((r,j)=>{const m=new Image();m.onload=()=>r(m);m.onerror=j;m.src=s});
+$('pdf').onclick=()=>makePdf($('pdf'),false);$('pdfa').onclick=()=>makePdf($('pdfa'),true);
+async function makePdf(b,only){const lbl=b.textContent;
+ b.disabled=true;const list=[...Array(N).keys()].filter(k=>!only||has(k));if(!list.length){msg('No annotated slides yet');b.disabled=false;return}
+ const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'landscape',unit:'pt',format:[W,H]}),R=3;
+ for(const[n,k]of list.entries()){b.textContent=`Saving ${n+1}/${list.length}…`;
+  const c=document.createElement('canvas');c.width=W*R;c.height=H*R;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+  g.drawImage(await loadImg(src(k)),0,0,c.width,c.height);S(k).strokes.forEach(s=>drawStroke(g,s,R));
+  if(n)doc.addPage([W,H],'landscape');doc.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,W,H);
+  for(const[x,y,w,hh,fs,s]of TEXT[k]){doc.setFontSize(hh);doc.text(s,x,y+hh*.8,{renderingMode:'invisible',maxWidth:w+20})}
+  FIELDS[k].forEach(([x,y,w,h,fs,rnd],j)=>{const v=(S(k).fills[j]||'').trim();doc.setDrawColor(200,85,58);doc.setLineWidth(.8);doc.setLineDashPattern([2,2],0);
+   if(rnd)doc.ellipse(x+w/2,y+h/2,w/2,h/2,'S');else doc.line(x,y+h,x+w,y+h);doc.setLineDashPattern([],0);
+   if(v){let z=fs,ls;do{doc.setFontSize(z);ls=doc.splitTextToSize(v,w-4);if(ls.length*z*1.15<=h||z<fs*.45)break;z*=.92}while(1);
+    doc.setTextColor(29,63,138);doc.text(ls,x+w/2,y+h/2-(ls.length-1)*z*1.15/2,{align:'center',baseline:'middle',lineHeightFactor:1.15})}});
+  for(const s of S(k).stickies){doc.setFillColor(255,246,168);doc.setDrawColor(216,198,74);doc.rect(s.x,s.y,s.w,s.h+9,'FD');doc.setFillColor(240,220,90);doc.rect(s.x,s.y,s.w,9,'F');
+   doc.setFontSize(9);doc.setTextColor(34);doc.text(doc.splitTextToSize(s.t,s.w-6),s.x+3,s.y+19)}
+  if(S(k).notes.trim()){doc.addPage([W,H],'landscape');doc.setFontSize(16);doc.setTextColor(34);doc.text(`Notes — slide ${k+1}`,36,44);
+   doc.setFontSize(11);let y=72;for(const ln of doc.splitTextToSize(S(k).notes,W-72)){if(y>H-30){doc.addPage([W,H],'landscape');y=44}doc.text(ln,36,y);y+=15}}}
+ await dl(doc.output('blob'),'lecture12-annotated.pdf');b.textContent=lbl;b.disabled=false}
+go((parseInt(location.hash.slice(1))||1)-1);layout();
+</script></body></html>
