@@ -1,0 +1,323 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lecture14</title>
+<script src="jspdf.umd.min.js"></script><script src="slides.js"></script>
+<style>
+:root{--bg:#f1efe8;--panel:#fff;--fg:#22232b;--muted:#6b6b76;--line:#d9d6cc;--accent:#d0603f;--sel:rgba(208,96,63,.3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}}
+:root[data-theme="dark"]{--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);height:100vh;overflow:hidden}
+header{display:flex;gap:6px;align-items:center;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.grp{display:flex;gap:4px;align-items:center;padding-right:8px;margin-right:4px;border-right:1px solid var(--line)}
+.grp:last-child{border:0}
+button{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font:inherit;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=color]{width:30px;height:28px;border:1px solid var(--line);border-radius:6px;padding:1px;background:transparent}
+#count{min-width:62px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+#zoomv{min-width:44px;text-align:center;color:var(--muted)}
+
+.lbl{color:var(--muted);font-size:12px;margin-right:2px}
+#status{margin-left:auto;color:var(--muted);font-size:12px}
+#bar{height:3px;background:var(--accent);width:0;transition:width .2s}
+main{display:flex;min-height:0;min-width:0;overflow:hidden}
+#stage{flex:1;overflow:auto;display:flex;padding:16px;min-width:0}
+#frame{margin:auto;flex:none;position:relative;box-shadow:0 6px 30px #0005;border-radius:3px;overflow:hidden;background:#fff}
+#inner{position:absolute;left:0;top:0;width:720px;height:405px;transform-origin:0 0}
+#inner>*{position:absolute;inset:0}
+#img{width:720px;height:405px;user-select:none;-webkit-user-drag:none}
+#lnk,#emb{pointer-events:none}
+.embed{position:absolute;pointer-events:auto;background:#f6f4ee;border:1px solid #c9c4b6;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;font-family:system-ui,sans-serif;color:#33343c}
+.embed .bar{flex:none;display:flex;align-items:center;gap:4px;height:12px;padding:0 4px;background:#3d4058;color:#eceae4;font-size:6.5px}
+.embed .bar b{font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.embed .bar a,.embed .bar button{color:#eceae4;font:inherit;background:none;border:0;padding:0 3px;cursor:pointer;text-decoration:none;border-radius:2px}
+.embed .bar a:hover,.embed .bar button:hover{background:#ffffff26}
+.embed .card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:6px}
+.embed .card .go{font:600 9px system-ui,sans-serif;color:#fff;background:#c8553a;border:0;border-radius:4px;padding:4px 12px;cursor:pointer}
+.embed .card .go:hover{background:#a9442d}
+.embed .card small{font-size:6px;color:#6b6b76;max-width:90%;overflow-wrap:anywhere}
+.embed .vp{flex:1;position:relative;overflow:hidden}
+.embed iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#fff}
+.embed.active{outline:2px solid #c8553a;outline-offset:1px}
+.embed .hint{position:absolute;right:4px;bottom:4px;background:#3d4058e6;color:#fff;font-size:6px;padding:2px 5px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .2s}
+.embed.active .hint{opacity:1}
+body:not(.select) .embed{pointer-events:none}
+.embed .grip{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize;z-index:2;touch-action:none;
+ background:linear-gradient(135deg,transparent 0 45%,#3d4058 45% 52%,transparent 52% 64%,#3d4058 64% 71%,transparent 71% 83%,#3d4058 83% 90%,transparent 90%);opacity:.75}
+.embed .grip:hover{opacity:1}
+.embed.resizing iframe{pointer-events:none}
+#lnk a{position:absolute;pointer-events:auto;border-radius:2px;cursor:pointer}
+#lnk a:hover,#lnk a:focus-visible{background:rgba(29,63,138,.12);outline:1px solid rgba(29,63,138,.45);outline-offset:1px}
+body:not(.select) #lnk a{pointer-events:none}
+#txt span{position:absolute;color:transparent;white-space:pre;transform-origin:0 0;line-height:1;cursor:text;font-family:sans-serif}
+#txt span::selection{background:var(--sel);color:transparent}
+#ink{width:720px;height:405px;pointer-events:none}
+#stk,#fld{pointer-events:none}
+.fill{position:absolute;pointer-events:auto;margin:0;border:0;border-bottom:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;text-align:center;resize:none;outline:none;overflow:hidden;line-height:1.15;padding:0 2px;border-radius:2px}
+.fill.round{border:1.5px dashed #c8553a;border-radius:40%/50%}
+.fill:focus{background:rgba(255,244,190,.95);border-color:#c8553a;border-style:solid;box-shadow:0 0 0 2px rgba(200,85,58,.25)}
+.ctl{position:absolute;pointer-events:auto;margin:0;accent-color:#c8553a;cursor:pointer}
+select.ctl{border:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;border-radius:3px;padding:0 2px;outline:none}
+select.ctl:focus{border-style:solid;background:rgba(255,244,190,.95)}
+.ok{outline:2px solid #2e8b57!important;outline-offset:1px;box-shadow:0 0 0 3px rgba(46,139,87,.25)}
+.bad{outline:2px solid #d0303f!important;outline-offset:1px;box-shadow:0 0 0 3px rgba(208,48,63,.25)}
+#chk.on{background:#2e8b57;border-color:#2e8b57}
+.fill::placeholder{color:#c8553a;opacity:.55;font-weight:400}
+body.draw #ink{pointer-events:auto;cursor:crosshair}body.erase #ink{pointer-events:auto;cursor:cell}
+body.sticky #ink{pointer-events:auto;cursor:copy}
+body:not(.select) #txt{pointer-events:none}
+.note{position:absolute;pointer-events:auto;background:#fff6a8;border:1px solid #d8c64a;border-radius:3px;box-shadow:0 2px 6px #0003;display:flex;flex-direction:column;min-width:60px}
+.note .h{height:11px;background:#f0dc5a;cursor:move;display:flex;justify-content:flex-end;align-items:center;gap:1px}
+.note .h b{font:bold 8px/11px sans-serif;padding:0 3px;cursor:pointer;color:#6b5d00;border-radius:2px;user-select:none}.note .h b:hover{background:#e2cb3c}.note .h i{flex:1}
+.note textarea{border:0;background:transparent;resize:both;font:9px/1.25 system-ui,sans-serif;color:#222;padding:3px;width:120px;height:50px;outline:none}
+aside{width:300px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;padding:12px;gap:8px}
+body.nonotes aside{display:none}
+aside h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
+#notes{flex:1;resize:none;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:10px}
+#thumbs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+#thumbs div{position:relative;flex:none}
+#thumbs img{height:50px;display:block;border:2px solid transparent;border-radius:3px;cursor:pointer;opacity:.6;background:#fff}
+#thumbs .on img{border-color:var(--accent);opacity:1}
+#thumbs .dot::after{content:"";position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+body.nothumbs #thumbs{display:none}
+@media (max-width:700px){aside{position:fixed;inset:auto 0 0 0;width:auto;height:40vh;border-left:0;border-top:1px solid var(--line);z-index:5}}
+</style></head><body class="select">
+<header>
+ <div class="grp"><button id="prev" title="Previous (←)">◀</button><span id="count"></span><button id="next" title="Next (→)">▶</button></div>
+ <div class="grp"><button id="zout" title="Zoom out (−)">−</button><span id="zoomv">Fit</span><button id="zin" title="Zoom in (+)">+</button><button id="zfit" title="Fit to window (0)">Fit</button><button id="fs" title="Fullscreen (F)">⛶</button></div>
+ <div class="grp" id="tools">
+  <button data-t="select" class="on" title="Select text (V)">Select</button>
+  <button data-t="pen" title="Pen (P)">Pen</button>
+  <button data-t="hi" title="Highlighter (H)">Highlight</button>
+  <button data-t="sticky" title="Sticky note (N)">Sticky</button>
+  <button data-t="erase" title="Eraser (E)">Erase</button>
+  <input type="color" id="color" value="#d0303f" title="Ink color">
+  <button id="undo" title="Undo (Ctrl+Z)">Undo</button><button id="clear" title="Clear this slide's ink and stickies">Clear</button>
+ </div>
+ <div class="grp" id="chkg"><button id="chk" title="Mark this slide's answers right or wrong">Check answers</button></div>
+ <div class="grp"><span class="lbl">Panels</span><button id="tthumbs" class="on" title="Show/hide slide strip (T)" aria-pressed="true">▤ Strip</button><button id="tnotes" class="on" title="Show/hide notes panel (])" aria-pressed="true">▥ Notes</button><button id="tfocus" title="Hide both panels for the largest slide (\\)">⤢ Focus</button></div>
+ <div class="grp"><button id="pdf" title="PDF of all slides with your annotations and notes">PDF: all</button><button id="pdfa" title="PDF of only the slides you annotated">PDF: annotated</button><button id="exp" title="Back up annotations to a file">Backup</button><button id="imp" title="Restore annotations from a backup file">Restore</button><input type="file" id="impf" accept=".json" hidden></div>
+ <span id="status"></span>
+</header>
+<div id="bar"></div>
+<main>
+ <div id="stage"><div id="frame"><div id="inner"><img id="img" alt=""><div id="txt"></div><div id="lnk"></div><div id="emb"></div><canvas id="ink"></canvas><div id="stk"></div><div id="fld"></div></div></div></div>
+ <aside><h2 id="nh">Notes</h2><textarea id="notes" placeholder="Type notes for this slide…"></textarea></aside>
+</main>
+<div id="thumbs"></div>
+<script>
+const TEXT=[[[87.5,71.6,39.4,12.0,12.0,"CSC 005"],[65.7,111.5,380.7,28.0,24.7,"The model gives a probability."],[65.7,163.2,337.2,28.0,24.7,"What should the clinic do?"],[65.7,231.0,56.1,13.0,13.0,"Lecture 14"],[65.7,270.1,305.1,13.6,13.6,"Logistic regression: from estimates to justified decisions"]],[[64.2,35.6,21.9,8.0,8.0,"RECAP"],[64.2,55.8,472.0,26.4,23.3,"A clinic wants help prioritizing samples"],[120.2,136.1,55.0,8.0,8.0,"CURRENT WORK"],[89.0,245.9,120.4,13.6,12.0,"Clinicians examine "],[61.6,257.5,172.3,13.6,12.0,"measurements from breast-"],[105.1,269.0,85.2,13.6,12.0,"mass samples"],[535.3,136.1,81.6,8.0,8.0,"ORGANIZATIONAL GOAL"],[489.1,170.5,177.4,15.9,14.0,"Estimate which samples "],[511.9,183.9,128.2,15.9,14.0,"may be malignant"],[503.4,242.9,147.9,12.0,12.0,"Use the estimate to prioritize "],[492.9,257.4,166.1,12.0,12.0,"review, not to replace a diagnosis"]],[[152.2,55.8,415.5,26.4,23.3,"Don’t deal directly with image data"]],[[64.2,35.6,53.8,8.0,8.0,"TRAINING DATA"],[64.2,50.6,555.8,23.8,21.0,"Historical data connect measurements with known "],[64.2,70.8,107.4,23.8,21.0,"diagnoses"],[80.4,129.5,29.7,9.7,9.7,"Sample"],[147.9,129.5,50.7,9.7,9.7,"Mean radius"],[240.0,129.5,55.4,9.7,9.7,"Mean texture"],[336.2,129.5,64.1,9.7,9.7,"Mean concavity"],[439.4,129.5,66.4,9.7,9.7,"Mean symmetry"],[560.6,129.5,38.4,9.7,9.7,"Diagnosis"],[91.0,163.7,8.5,14.0,14.0,"A"],[157.3,163.7,32.0,14.0,14.0,"17.99"],[251.8,163.7,32.0,14.0,14.0,"10.38"],[352.3,163.7,32.0,14.0,14.0,"0.300"],[456.5,163.7,32.0,14.0,14.0,"0.242"],[550.9,163.7,57.9,14.0,14.0,"Malignant"],[91.3,199.7,7.9,14.0,14.0,"B"],[157.3,199.7,32.0,14.0,14.0,"19.69"],[251.8,199.7,32.0,14.0,14.0,"21.25"],[352.3,199.7,32.0,14.0,14.0,"0.197"],[456.5,199.7,32.0,14.0,14.0,"0.207"],[550.9,199.7,57.9,14.0,14.0,"Malignant"],[91.6,235.7,7.4,14.1,14.1,"C"],[157.3,235.7,31.9,14.1,14.1,"13.54"],[251.8,235.7,31.9,14.1,14.1,"14.36"],[352.3,235.7,31.9,14.1,14.1,"0.067"],[456.5,235.7,31.9,14.1,14.1,"0.189"],[560.2,235.7,39.2,14.1,14.1,"Benign"],[90.8,271.7,8.8,14.0,14.0,"D"],[157.3,271.7,32.0,14.0,14.0,"13.08"],[251.8,271.7,32.0,14.0,14.0,"15.71"],[352.3,271.7,32.0,14.0,14.0,"0.046"],[456.5,271.7,32.0,14.0,14.0,"0.197"],[560.2,271.7,39.2,14.0,14.0,"Benign"]],[[123.5,141.1,17.4,11.0,11.0,"-2.5"],[165.1,141.1,14.0,11.0,11.0,"8.3"],[204.7,141.1,19.6,11.0,11.0,"12.1"],[247.1,141.1,23.0,11.0,11.0,"-16.0"],[20.3,125.1,69.6,22.0,18.0,"Random "],[20.3,146.7,59.7,22.0,18.0,"weights"],[374.3,119.1,104.7,22.0,18.0,"Model Trainer"],[537.4,61.4,98.2,22.0,18.0,"Training data"],[507.5,184.9,60.3,17.1,14.0,"Sample A"],[507.7,209.1,60.3,17.1,14.0,"Sample B"],[507.0,233.4,61.5,17.1,14.0,"Sample C"],[507.0,257.6,61.6,17.1,14.0,"Sample D"],[69.7,61.9,41.6,8.0,8.0,"Mean radius"],[131.0,61.9,45.5,8.0,8.0,"Mean texture"],[194.9,61.9,52.6,8.0,8.0,"Mean concavity"],[281.3,57.1,21.2,8.0,8.0,"Mean "],[274.2,66.7,33.8,8.0,8.0,"symmetry"]],[[294.6,128.8,19.2,12.0,12.0,"-2.2"],[336.5,128.8,15.5,12.0,12.0,"7.6"],[375.8,128.8,21.6,12.0,12.0,"10.4"],[418.1,128.8,25.3,12.0,12.0,"-18.5"],[317.1,97.1,101.0,22.0,18.0,"Final weights"],[64.2,55.8,588.9,26.4,23.3,"Eventually … a trained Logistic Regression model"]],[[64.2,35.6,35.0,8.0,8.0,"NEW CASE"],[64.2,55.8,525.8,26.4,23.3,"A new sample arrives without a known label"],[73.7,145.7,43.1,14.1,14.1,"Sample"],[136.8,145.7,72.9,14.1,14.1,"Mean radius"],[227.9,145.7,79.8,14.1,14.1,"Mean texture"],[322.3,145.7,92.2,14.1,14.1,"Mean concavity"],[455.6,137.3,37.0,14.0,14.0,"Mean "],[443.2,154.1,58.7,14.1,14.1,"symmetry"],[552.0,145.7,55.7,14.1,14.1,"Diagnosis"],[81.8,193.7,26.8,14.0,14.0,"New"],[157.3,193.7,32.0,14.0,14.0,"13.61"],[251.8,193.7,32.0,14.0,14.0,"24.98"],[352.3,193.7,32.0,14.0,14.0,"0.086"],[456.5,193.7,32.0,14.0,14.0,"0.161"],[576.5,193.7,6.5,14.0,14.0,"?"]],[[64.2,35.6,35.0,8.0,8.0,"NEW CASE"],[64.2,55.8,525.8,26.4,23.3,"A new sample arrives without a known label"],[73.7,145.7,43.1,14.1,14.1,"Sample"],[136.8,145.7,72.9,14.1,14.1,"Mean radius"],[227.9,145.7,79.8,14.1,14.1,"Mean texture"],[322.3,145.7,92.2,14.1,14.1,"Mean concavity"],[455.6,137.3,37.0,14.0,14.0,"Mean "],[443.2,154.1,58.7,14.1,14.1,"symmetry"],[552.0,145.7,55.7,14.1,14.1,"Diagnosis"],[81.8,193.7,26.8,14.0,14.0,"New"],[157.3,193.7,32.0,14.0,14.0,"13.61"],[251.8,193.7,32.0,14.0,14.0,"24.98"],[352.3,193.7,32.0,14.0,14.0,"0.086"],[456.5,193.7,32.0,14.0,14.0,"0.161"],[576.5,193.7,6.5,14.0,14.0,"?"],[286.4,244.9,19.2,12.0,12.0,"-2.2"],[328.3,244.9,15.4,12.0,12.0,"7.6"],[367.6,244.9,21.6,12.0,12.0,"10.4"],[409.9,244.9,25.3,12.0,12.0,"-18.5"],[609.5,299.9,79.4,22.0,18.0,"Prediction"]],[[64.2,35.6,67.9,8.0,8.0,"USEFUL PREDICTION"],[64.2,53.2,554.9,22.7,20.0,"A probability preserves more information than a label"],[173.3,146.6,41.9,8.0,8.0,"CLASS LABEL"],[114.6,193.9,159.3,26.4,23.3,"MALIGNANT"],[483.6,146.6,84.3,8.0,8.0,"ESTIMATED PROBABILITY"],[489.4,179.9,72.9,37.4,33.0,"0.72"],[478.3,253.2,97.5,11.0,11.0,"Can support ranking, "],[460.6,266.4,130.5,11.0,11.0,"review, and different cutoffs"]],[[64.2,35.6,55.1,8.0,8.0,"USEFUL OUTPUT"],[64.2,53.2,554.9,22.7,20.0,"A probability preserves more information than a label"],[73.7,150.5,43.1,14.1,14.1,"Sample"],[136.8,150.5,72.9,14.1,14.1,"Mean radius"],[227.9,150.5,79.8,14.1,14.1,"Mean texture"],[322.3,150.5,92.2,14.1,14.1,"Mean concavity"],[455.6,142.1,37.0,14.1,14.1,"Mean "],[443.2,158.9,58.7,14.0,14.0,"symmetry"],[547.8,133.7,64.1,14.0,14.0,"Probability"],[572.8,150.5,13.9,14.1,14.1,"Of"],[546.2,167.3,67.3,14.0,14.0,"Malignancy"],[76.8,203.3,36.9,14.0,14.0,"New 1"],[157.3,203.3,32.0,14.0,14.0,"13.61"],[251.8,203.3,32.0,14.0,14.0,"24.98"],[352.3,203.3,32.0,14.0,14.0,"0.086"],[456.5,203.3,32.0,14.0,14.0,"0.161"],[567.4,203.3,24.9,14.0,14.0,"0.72"],[76.8,251.3,36.9,14.0,14.0,"New 2"],[157.3,251.3,32.0,14.0,14.0,"12.54"],[251.8,251.3,32.0,14.0,14.0,"12.36"],[352.3,251.3,32.0,14.0,14.0,"0.047"],[456.5,251.3,32.0,14.0,14.0,"0.169"],[567.4,251.3,24.9,14.0,14.0,"0.48"],[76.8,299.3,36.9,14.0,14.0,"New 3"],[157.3,299.3,32.0,14.0,14.0,"17.99"],[251.8,299.3,32.0,14.0,14.0,"10.38"],[352.3,299.3,32.0,14.0,14.0,"0.300"],[456.5,299.3,32.0,14.0,14.0,"0.242"],[567.4,299.3,24.9,14.0,14.0,"0.88"]],[[64.2,35.6,55.1,8.0,8.0,"USEFUL OUTPUT"],[64.2,55.8,410.8,26.4,23.3,"Prioritized list with urgency cutoff"],[73.7,145.7,43.1,14.1,14.1,"Sample"],[136.8,145.7,72.9,14.1,14.1,"Mean radius"],[227.9,145.7,79.8,14.1,14.1,"Mean texture"],[322.3,145.7,92.2,14.1,14.1,"Mean concavity"],[455.6,137.3,37.0,14.0,14.0,"Mean "],[443.2,154.1,58.7,14.1,14.1,"symmetry"],[547.8,145.7,64.1,14.1,14.1,"Probability"],[76.8,193.7,36.9,14.0,14.0,"New 3"],[157.3,193.7,32.0,14.0,14.0,"17.99"],[251.8,193.7,32.0,14.0,14.0,"10.38"],[352.3,193.7,32.0,14.0,14.0,"0.300"],[456.5,193.7,32.0,14.0,14.0,"0.242"],[567.4,193.7,24.9,14.0,14.0,"0.88"],[76.8,241.7,36.9,14.0,14.0,"New 1"],[157.3,241.7,32.0,14.0,14.0,"13.61"],[251.8,241.7,32.0,14.0,14.0,"24.98"],[352.3,241.7,32.0,14.0,14.0,"0.086"],[456.5,241.7,32.0,14.0,14.0,"0.161"],[567.4,241.7,24.9,14.0,14.0,"0.72"],[76.8,289.7,36.9,14.0,14.0,"New 2"],[157.3,289.7,32.0,14.0,14.0,"12.54"],[251.8,289.7,32.0,14.0,14.0,"12.36"],[352.3,289.7,32.0,14.0,14.0,"0.047"],[456.5,289.7,32.0,14.0,14.0,"0.169"],[567.4,289.7,24.9,14.0,14.0,"0.48"],[520.7,347.8,177.9,22.0,18.0,"Threshold: Cutoff mark"],[670.3,259.4,34.1,22.0,18.0,"50%"],[11.4,259.4,34.1,22.0,18.0,"50%"],[71.7,100.8,51.7,22.0,18.0,"Urgent"],[71.7,323.3,60.4,22.0,18.0,"Routine"]],[[64.2,35.6,36.2,8.0,8.0,"RETRIEVAL"],[64.2,55.8,332.9,26.4,23.3,"One probability, two cutoffs"],[222.9,115.6,274.2,17.0,17.0,"Estimated malignancy probability: 0.47"],[160.6,169.0,25.1,9.7,9.7,"Cutoff"],[384.3,169.0,94.0,9.7,9.7,"Urgent review (yes/no)"],[167.0,197.1,12.5,9.7,9.7,"0.3"],[167.0,225.1,12.5,9.7,9.7,"0.5"],[91.2,265.8,230.6,13.0,13.0,"When the cutoff changes, the probability..."],[225.0,362.6,269.9,8.3,8.3,"We know how to change a cutoff. Today we ask what would justify changing it."]],[[64.2,35.6,64.6,8.0,8.0,"CLINIC WORKFLOW"],[64.2,55.8,550.7,26.4,23.3,"Every sample still receives clinical assessment"],[132.1,164.2,131.5,12.0,12.0,"AT OR ABOVE THE CUTOFF"],[101.7,193.6,192.4,20.4,18.0,"Urgent review queue"],[462.8,164.2,100.6,12.0,12.0,"BELOW THE CUTOFF"],[412.0,193.6,202.0,20.4,18.0,"Routine review queue"],[259.1,319.4,201.6,10.0,10.0,"Hypothetical workflow for this classroom decision"],[226.4,362.6,267.1,8.3,8.3,"No urgent flag does not mean a confirmed benign diagnosis or no further care."]],[[64.2,35.6,65.4,8.0,8.0,"LAB 7 CONNECTION"],[64.2,55.8,342.7,24.9,22.0,"Eight Features instead of Four"],[118.5,101.5,95.9,12.0,12.0,"mean compactness"],[113.9,130.3,104.9,12.0,12.0,"mean concave points"],[127.4,159.1,78.1,12.0,12.0,"mean concavity"],[135.7,187.8,61.5,12.0,12.0,"mean radius"],[120.9,216.1,91.0,12.0,12.0,"mean smoothness"],[132.9,244.3,67.1,12.0,12.0,"mean texture"],[140.0,272.6,53.1,12.0,12.0,"worst area"],[126.1,300.9,80.9,12.0,12.0,"worst symmetry"],[77.7,330.2,213.7,22.0,18.0,"Previously seen are in green"],[344.2,330.2,176.4,22.0,18.0,"New ones are in yellow"],[284.8,95.8,20.0,20.7,18.0,"𝑤1"],[284.6,124.6,20.4,20.7,18.0,"𝑤2"],[284.6,153.4,20.4,20.7,18.0,"𝑤3"],[285.0,182.3,19.8,20.7,18.0,"𝑤4"],[284.6,211.1,20.4,20.7,18.0,"𝑤5"],[284.6,239.9,20.4,20.7,18.0,"𝑤6"],[284.6,268.7,20.4,20.7,18.0,"𝑤7"],[284.6,297.5,20.4,20.7,18.0,"𝑤8"]],[[64.2,35.6,96.4,8.0,8.0,"READING THE FITTED MODEL"],[64.2,55.8,547.1,26.4,23.3,"Coefficient (weight) signs describe a direction"],[162.9,195.8,74.6,8.0,8.0,"POSITIVE COEFFICIENT"],[100.2,230.1,204.7,20.4,18.0,"Higher feature values "],[118.3,249.6,168.7,20.4,18.0,"push the estimate "],[117.6,269.0,165.5,20.4,18.0,"toward malignant"],[480.7,195.8,78.3,8.0,8.0,"NEGATIVE COEFFICIENT"],[419.8,230.1,204.7,20.4,18.0,"Higher feature values "],[437.9,249.6,168.4,20.4,18.0,"push the estimate "],[452.8,269.0,134.2,20.4,18.0,"toward benign"],[177.2,352.1,365.4,13.0,13.0,"Interpret each direction with the other included features held fixed."],[138.6,103.6,22.1,20.7,18.0,"𝒘𝟏"],[198.6,103.6,22.1,20.7,18.0,"𝒘𝟐"],[258.6,103.6,22.1,20.7,18.0,"𝒘𝟑"],[318.6,103.6,22.1,20.7,18.0,"𝒘𝟒"],[378.6,103.6,22.1,20.7,18.0,"𝒘𝟓"],[438.7,103.6,22.1,20.7,18.0,"𝒘𝟔"],[498.7,103.6,22.1,20.7,18.0,"𝒘𝟕"],[558.7,103.6,22.1,20.7,18.0,"𝒘𝟖"],[127.2,132.8,467.3,18.0,18.0,"−0.56 +1.77 +0.77 +1.25 +0.61 +1.12 +3.04 +1.03"]],[[64.2,35.6,96.4,8.0,8.0,"READING THE FITTED MODEL"],[64.2,55.8,497.3,26.4,23.3,"Will the probability increase or decrease?"],[138.6,103.6,22.1,20.7,18.0,"𝒘𝟏"],[198.6,103.6,22.1,20.7,18.0,"𝒘𝟐"],[258.6,103.6,22.1,20.7,18.0,"𝒘𝟑"],[318.6,103.6,22.1,20.7,18.0,"𝒘𝟒"],[378.6,103.6,22.1,20.7,18.0,"𝒘𝟓"],[438.7,103.6,22.1,20.7,18.0,"𝒘𝟔"],[498.7,103.6,22.1,20.7,18.0,"𝒘𝟕"],[558.7,103.6,22.1,20.7,18.0,"𝒘𝟖"],[127.2,132.8,467.3,18.0,18.0,"−0.56 +1.77 +0.77 +1.25 +0.61 +1.12 +3.04 +1.03"],[137.2,210.9,27.0,20.7,18.0,"𝑭𝒕𝟏"],[197.3,210.9,27.0,20.7,18.0,"𝑭𝒕𝟐"],[258.4,210.9,27.0,20.7,18.0,"𝑭𝒕𝟑"],[318.4,210.9,27.0,20.7,18.0,"𝑭𝒕𝟒"],[377.6,210.9,27.0,20.7,18.0,"𝑭𝒕𝟓"],[436.8,210.9,27.0,20.7,18.0,"𝑭𝒕𝟔"],[495.7,210.9,27.0,20.7,18.0,"𝑭𝒕𝟕"],[556.8,210.9,27.0,20.7,18.0,"𝑭𝒕𝟖"],[608.9,207.9,38.4,22.0,18.0,"Prob"],[69.1,237.2,42.9,19.5,16.0,"New 1"],[128.0,237.1,24.4,22.0,18.0,"2.3"],[188.3,237.1,24.4,22.0,18.0,"1.2"],[248.3,237.1,24.4,22.0,18.0,"5.3"],[310.6,237.1,24.4,22.0,18.0,"2.5"],[368.4,237.1,24.4,22.0,18.0,"0.1"],[428.9,237.1,24.4,22.0,18.0,"1.7"],[486.7,237.1,34.0,22.0,18.0,"0.05"],[546.7,237.1,24.4,22.0,18.0,"1.5"],[608.9,237.1,24.4,22.0,18.0,"0.4"],[69.1,266.4,42.9,19.5,16.0,"New 2"],[128.0,266.3,24.4,22.0,18.0,"3.1"],[188.3,266.3,24.4,22.0,18.0,"1.2"],[248.3,266.3,24.4,22.0,18.0,"5.3"],[310.6,266.3,24.4,22.0,18.0,"2.5"],[368.4,266.3,24.4,22.0,18.0,"0.1"],[428.9,266.3,24.4,22.0,18.0,"1.7"],[486.7,266.3,34.0,22.0,18.0,"0.05"],[546.7,266.3,24.4,22.0,18.0,"1.5"]],[[64.2,35.6,96.4,8.0,8.0,"READING THE FITTED MODEL"],[64.2,55.8,497.3,26.4,23.3,"Will the probability increase or decrease?"],[138.6,103.6,22.1,20.7,18.0,"𝒘𝟏"],[198.6,103.6,22.1,20.7,18.0,"𝒘𝟐"],[258.6,103.6,22.1,20.7,18.0,"𝒘𝟑"],[318.6,103.6,22.1,20.7,18.0,"𝒘𝟒"],[378.6,103.6,22.1,20.7,18.0,"𝒘𝟓"],[438.7,103.6,22.1,20.7,18.0,"𝒘𝟔"],[498.7,103.6,22.1,20.7,18.0,"𝒘𝟕"],[558.7,103.6,22.1,20.7,18.0,"𝒘𝟖"],[127.2,132.8,467.3,18.0,18.0,"−0.56 +1.77 +0.77 +1.25 +0.61 +1.12 +3.04 +1.03"],[137.2,210.9,27.0,20.7,18.0,"𝑭𝒕𝟏"],[197.3,210.9,27.0,20.7,18.0,"𝑭𝒕𝟐"],[258.4,210.9,27.0,20.7,18.0,"𝑭𝒕𝟑"],[318.4,210.9,27.0,20.7,18.0,"𝑭𝒕𝟒"],[377.6,210.9,27.0,20.7,18.0,"𝑭𝒕𝟓"],[436.8,210.9,27.0,20.7,18.0,"𝑭𝒕𝟔"],[495.7,210.9,27.0,20.7,18.0,"𝑭𝒕𝟕"],[556.8,210.9,27.0,20.7,18.0,"𝑭𝒕𝟖"],[608.9,207.9,38.4,22.0,18.0,"Prob"],[69.1,237.2,42.9,19.5,16.0,"New 1"],[128.0,237.1,24.4,22.0,18.0,"2.3"],[188.3,237.1,24.4,22.0,18.0,"1.2"],[248.3,237.1,24.4,22.0,18.0,"5.3"],[310.6,237.1,24.4,22.0,18.0,"2.5"],[368.4,237.1,24.4,22.0,18.0,"0.1"],[428.9,237.1,24.4,22.0,18.0,"1.7"],[486.7,237.1,34.0,22.0,18.0,"0.05"],[546.7,237.1,24.4,22.0,18.0,"1.5"],[608.9,237.1,24.4,22.0,18.0,"0.4"],[69.1,266.4,42.9,19.5,16.0,"New 2"],[128.0,266.3,24.4,22.0,18.0,"2.3"],[188.3,266.3,24.4,22.0,18.0,"1.8"],[248.3,266.3,24.4,22.0,18.0,"5.3"],[310.6,266.3,24.4,22.0,18.0,"2.5"],[368.4,266.3,24.4,22.0,18.0,"0.1"],[428.9,266.3,24.4,22.0,18.0,"1.7"],[486.7,266.3,34.0,22.0,18.0,"0.05"],[546.7,266.3,24.4,22.0,18.0,"1.5"]],[[64.2,35.6,65.4,8.0,8.0,"LAB 7 CONNECTION"],[64.2,50.6,526.8,23.8,21.0,"worst area has the largest absolute standardized "],[64.2,70.8,113.9,23.8,21.0,"coefficient"],[183.4,119.6,40.3,9.0,9.0,"worst area"],[560.8,119.6,18.3,8.0,8.0,"+3.04"],[144.6,143.6,79.0,9.0,9.0,"mean concave points"],[469.9,143.6,18.3,8.0,8.0,"+1.77"],[177.4,167.6,46.3,9.0,9.0,"mean radius"],[432.7,167.6,18.3,8.0,8.0,"+1.25"],[172.9,191.6,50.7,9.0,9.0,"mean texture"],[423.4,191.6,18.3,8.0,8.0,"+1.12"],[162.3,215.6,61.4,9.0,9.0,"worst symmetry"],[417.0,215.6,18.3,8.0,8.0,"+1.03"],[165.1,239.7,58.5,9.0,9.0,"mean concavity"],[398.4,239.6,18.4,8.1,8.1,"+0.77"],[155.4,263.7,68.2,9.0,9.0,"mean smoothness"],[386.9,263.6,18.3,8.0,8.0,"+0.61"],[151.9,287.7,71.7,9.0,9.0,"mean compactness"],[261.2,287.6,16.9,8.0,8.0,"-0.56"],[268.1,320.6,48.7,8.1,8.1,"toward benign"],[476.6,320.6,59.5,8.1,8.1,"toward malignant"]],[[64.2,35.6,119.0,8.0,8.0,"A RECOMMENDATION TO EXAMINE"],[64.2,55.8,526.1,26.4,23.3,"“Use 0.5. It has the highest accuracy (95%).”"],[134.5,141.1,451.8,23.8,21.0,"Is that enough justification for this clinic?"],[91.2,223.8,260.2,13.0,13.0,"What would you want to know before agreeing?"],[228.8,362.6,262.2,8.3,8.3,"Record an initial reaction. We will return to this recommendation at the end."]],[[64.2,35.6,104.7,8.0,8.0,"CONSEQUENCES AT CUTOFF 0.5"],[64.2,55.8,347.7,26.4,23.3,"In the hold-out set (test data)"],[120.8,137.7,67.1,7.0,7.0,"MALIGNANT, FLAGGED"],[140.2,163.9,28.5,24.9,22.0,"46"],[103.8,205.1,101.6,10.6,10.6,"enter the urgent queue"],[319.2,137.7,81.6,7.0,7.0,"MALIGNANT, NOT FLAGGED"],[353.9,163.9,12.2,24.9,22.0,"7"],[298.6,205.1,122.8,10.6,10.6,"remain in the routine queue"],[538.9,137.7,53.3,7.0,7.0,"BENIGN, FLAGGED"],[557.9,163.9,15.4,24.9,22.0,"0"],[508.3,205.1,116.7,10.6,10.6,"no false alarms in this test "],[549.7,217.7,31.6,10.6,10.6,"sample"],[219.9,317.9,280.0,11.1,11.1,"Test sample: 143 cases, including 53 malignant and 90 benign"],[235.5,362.6,248.9,8.3,8.3,"Accuracy is 136 / 143 = 95.1%. The seven errors still need an explanation."]],[[64.2,35.6,101.8,8.0,8.0,"ACCOUNTING FOR OUTCOMES"],[64.2,55.8,578.2,24.9,22.0,"A confusion matrix keeps the four outcomes visible"],[113.0,109.3,229.9,10.0,10.0,"Cutoff 0.5: Above = positive class = Predicted malignant"],[246.4,131.0,27.6,6.0,6.0,"PREDICTED"],[185.3,149.0,17.0,6.0,6.0,"benign"],[314.0,149.0,25.2,6.0,6.0,"malignant"],[79.4,188.0,19.8,6.0,6.0,"ACTUAL"],[83.7,212.0,17.0,6.0,6.0,"benign"],[79.6,282.5,25.2,6.0,6.0,"malignant"],[182.3,178.9,23.0,19.3,17.0,"90"],[320.6,178.9,11.9,19.3,17.0,"0"],[189.1,249.4,9.4,19.3,17.0,"7"],[315.5,249.4,22.1,19.3,17.0,"46"],[443.8,128.3,109.0,17.0,15.0,"False negative"],[443.8,163.7,174.4,14.0,14.0,"Actually malignant, predicted "],[443.8,180.5,127.5,14.0,14.0,"benign: no urgent flag"],[443.8,227.3,105.0,17.0,15.0,"False positive"],[443.8,262.8,158.2,14.3,14.3,"Actually benign, predicted "],[443.8,280.0,130.6,14.3,14.3,"malignant: urgent flag"],[200.9,362.6,317.9,8.3,8.3,"Rows show the historical diagnosis. Columns show the model prediction at the chosen cutoff."]],[[64.2,35.6,113.5,8.0,8.0,"THE EVIDENCE FOR OUR DECISION"],[64.2,55.8,580.6,26.4,23.3,"What changes when the clinic changes its cutoff?"],[84.8,141.0,25.1,9.7,9.7,"Cutoff"],[189.6,135.1,76.7,9.7,9.7,"Malignant samples"],[205.2,146.8,45.6,9.7,9.7,"not flagged"],[375.8,135.1,63.0,9.7,9.7,"Benign samples"],[392.6,146.8,29.6,9.7,9.7,"flagged"],[550.5,135.1,49.6,9.7,9.7,"Total urgent"],[559.7,146.8,31.4,9.7,9.7,"reviews"],[91.2,184.9,12.5,9.7,9.7,"0.3"],[225.5,184.9,4.9,9.7,9.7,"5"],[404.8,184.9,4.9,9.7,9.7,"3"],[570.4,184.9,9.8,9.7,9.7,"51"],[91.2,228.7,12.5,9.7,9.7,"0.5"],[225.5,228.7,4.9,9.7,9.7,"7"],[404.8,228.7,4.9,9.7,9.7,"0"],[570.4,228.7,9.9,9.7,9.7,"46"],[91.2,272.6,12.5,9.7,9.7,"0.7"],[225.5,272.6,4.9,9.7,9.7,"9"],[404.8,272.6,4.9,9.7,9.7,"0"],[570.4,272.6,9.8,9.7,9.7,"44"],[207.4,319.8,305.1,13.0,13.0,"Same model. Same 143 test cases. Different action rules."],[220.8,362.6,278.4,8.3,8.3,"Start with the counts. Which change would you want the clinic director to notice?"]],[[64.2,35.6,101.8,8.0,8.0,"ACCOUNTING FOR OUTCOMES"],[64.2,55.8,399.5,26.4,23.3,"Updated confusion matrix for 0.3"],[131.0,109.3,193.9,10.0,10.0,"Cutoff 0.5: positive class = predicted malignant"],[246.4,131.0,27.6,6.0,6.0,"PREDICTED"],[185.3,149.0,17.0,6.0,6.0,"benign"],[314.0,149.0,25.2,6.0,6.0,"malignant"],[80.1,183.1,19.8,6.0,6.0,"ACTUAL"],[84.4,207.1,17.0,6.0,6.0,"benign"],[80.3,277.6,25.2,6.0,6.0,"malignant"],[472.7,180.0,23.0,19.3,17.0,"88"],[611.7,180.0,10.7,19.3,17.0,"3"],[479.1,250.5,10.2,19.3,17.0,"5"],[605.7,250.5,22.6,19.3,17.0,"48"],[182.3,178.9,23.0,19.3,17.0,"90"],[320.6,178.9,11.9,19.3,17.0,"0"],[189.1,249.4,9.4,19.3,17.0,"7"],[315.5,249.4,22.1,19.3,17.0,"46"],[427.0,107.4,195.9,10.0,10.0,"Cutoff 0.3: positive class  = predicted malignant"],[536.7,128.7,27.6,6.0,6.0,"PREDICTED"],[475.7,146.7,17.0,6.0,6.0,"benign"],[604.3,146.7,25.2,6.0,6.0,"malignant"]],[[64.2,35.6,51.5,8.0,8.0,"THE EXCHANGE"],[64.2,55.6,584.1,22.7,20.0,"Five extra urgent reviews include two malignant samples"],[256.2,114.0,207.6,14.0,14.0,"Moving from cutoff 0.5 to cutoff 0.3"],[117.9,230.9,46.2,11.0,11.0,"malignant"],[227.4,230.9,46.2,11.0,11.0,"malignant"],[344.4,230.9,31.2,11.0,11.0,"benign"],[453.9,230.9,31.2,11.0,11.0,"benign"],[563.4,230.9,31.2,11.0,11.0,"benign"],[238.4,274.7,243.0,15.0,15.0,"2 additional malignant samples flagged"],[214.4,307.6,291.7,14.0,14.0,"3 additional benign samples receive urgent review"],[207.4,362.6,305.0,8.3,8.3,"The clinic must weigh the benefit of earlier attention against the burden of extra reviews."]],[[64.2,35.6,99.3,8.0,8.0,"NAMES FOR TWO QUESTIONS"],[64.2,55.6,585.2,22.7,20.0,"Recall and precision name what we have already counted"],[186.6,138.4,27.3,9.0,9.0,"RECALL"],[112.1,170.2,180.5,18.1,16.0,"Of all truly malignant "],[97.3,185.5,210.0,18.1,16.0,"samples, how many were "],[166.2,200.9,68.1,18.1,16.0,"flagged?"],[139.4,265.8,121.5,13.0,13.0,"At 0.3: 48 / 53 = 90.6%"],[499.8,138.4,40.1,9.0,9.0,"PRECISION"],[427.8,170.2,188.0,18.1,16.0,"Of all flagged samples, "],[455.2,185.5,133.3,18.1,16.0,"how many were "],[473.4,200.9,92.7,18.1,16.0,"malignant?"],[458.9,265.8,121.7,13.0,13.0,"At 0.3: 48 / 51 = 94.1%"],[205.9,362.6,308.0,8.3,8.3,"Recall focuses on missed positives. Precision focuses on how many flags are true positives."]],[[64.2,35.6,82.7,8.0,8.0,"A BORDERLINE EXAMPLE"],[64.2,53.2,544.3,22.7,20.0,"A 0.468 estimate stays fixed while the action changes"],[271.1,117.0,177.8,14.0,14.0,"Historical diagnosis: malignant"],[131.7,176.6,38.1,8.0,8.0,"CUTOFF 0.3"],[96.1,214.6,109.4,22.2,19.6,"urgent flag"],[115.4,262.4,70.6,10.0,10.0,"probability 0.468"],[346.2,176.6,38.1,8.0,8.0,"CUTOFF 0.5"],[294.5,214.6,141.5,22.2,19.6,"routine queue"],[330.0,262.4,70.6,10.0,10.0,"probability 0.468"],[560.8,176.6,38.1,8.0,8.0,"CUTOFF 0.7"],[509.0,214.6,141.5,22.2,19.6,"routine queue"],[544.5,262.4,70.6,10.0,10.0,"probability 0.468"],[202.6,362.6,314.5,8.3,8.3,"One case makes the consequence tangible. It cannot establish the best policy for every case."]],[[64.2,35.6,133.4,8.0,8.0,"COMMITTEE: FIRST RECOMMENDATION"],[64.2,55.8,579.4,24.9,22.0,"Which policy would you provisionally recommend?"],[85.2,114.2,374.4,14.0,14.0,"Use the outcome table. Name a benefit and an accepted burden."],[85.2,151.8,55.2,13.0,13.0,"Our cutoff"],[85.2,196.8,101.7,12.0,12.0,"Benefit we prioritize"],[85.2,270.3,219.8,12.0,12.0,"Burden we accept / information still needed"],[203.9,362.6,312.1,8.3,8.3,"No cutoff receives an automatic correct-answer mark. Your evidence and reasoning matter."]],[[64.2,35.6,113.5,8.0,8.0,"COMMITTEE: NEW INFORMATION"],[64.2,55.6,585.0,23.8,21.0,"Would review capacity change your recommendation?"],[85.2,112.4,269.2,12.0,12.0,"Two hypothetical updates, not facts about the dataset"],[190.0,161.6,33.9,8.0,8.0,"UPDATE A"],[95.5,194.2,226.4,16.0,16.0,"51 urgent reviews can be handled "],[98.8,213.4,216.3,16.0,16.0,"without delaying any other case."],[496.2,161.6,33.5,8.0,8.0,"UPDATE B"],[399.3,194.2,231.2,16.6,16.6,"Only 46 urgent slots are available "],[446.7,214.0,133.0,16.6,16.6,"in the same period."],[85.2,273.0,341.7,13.0,13.0,"Consider A, then B. Keep or revise your policy, and explain why."],[295.7,362.6,130.6,8.3,8.3,"A capacity limit changes the problem. "]],[[64.2,35.6,42.8,8.0,8.0,"REPORT OUT"],[64.2,55.8,449.7,26.4,23.3,"Different values still require evidence"],[217.5,129.2,93.0,9.7,9.7,"Moving from 0.5 to 0.7"],[526.6,129.2,29.7,9.7,9.7,"Change"],[233.2,158.4,61.5,9.7,9.7,"Urgent reviews"],[526.5,158.4,30.1,9.7,9.7,"2 fewer"],[201.6,187.7,124.7,9.7,9.7,"Malignant samples not flagged"],[527.3,187.7,28.3,9.7,9.7,"2 more"],[216.5,216.9,94.9,9.7,9.7,"Benign samples flagged"],[508.0,216.9,66.9,9.7,9.7,"no change: still 0"],[110.1,264.0,499.7,19.3,17.0,"A choice of 0.7 needs a workload or capacity justification."],[194.4,313.8,330.8,12.0,12.0,"It does not reduce false alarms compared with 0.5 in these results."],[208.6,362.6,302.6,8.3,8.3,"There is no universal cutoff. That does not make every argument equally well supported."]],[[64.2,35.6,84.7,8.0,8.0,"LIMITS OF THIS EVIDENCE"],[64.2,50.6,546.7,23.8,21.0,"A classroom recommendation is not a deployment "],[64.2,70.8,90.6,23.8,21.0,"decision"],[94.2,134.5,53.0,9.7,9.7,"ONE SAMPLE"],[239.7,135.2,334.2,14.0,14.0,"These counts come from one held-out group of 143 cases."],[94.2,203.5,67.9,9.7,9.7,"MODEL QUALITY"],[239.7,202.5,319.7,13.0,13.0,"A cutoff cannot repair weak scores, biased data, or missing "],[239.7,216.6,67.3,13.0,13.0,"information."],[94.2,272.5,70.9,9.7,9.7,"FURTHER CHECKS"],[239.7,271.5,368.1,13.0,13.0,"Real use needs additional validation and evidence about the clinical "],[239.7,285.6,53.8,13.0,13.0,"workflow."],[194.2,362.6,331.4,8.3,8.3,"Choose settings using development evidence, then check them on separate, untouched test data."]],[[64.2,35.6,18.6,8.0,8.0,"LAB 7"],[64.2,55.8,506.6,26.4,23.3,"Generate the outputs we interpreted today"],[86.8,122.4,3.5,7.0,7.0,"1"],[130.2,123.4,217.5,15.0,15.0,"Fit a model using the training cases"],[86.8,171.9,3.5,7.0,7.0,"2"],[130.2,172.9,242.2,15.0,15.0,"Read the standardized coefficient table"],[86.8,221.4,3.5,7.0,7.0,"3"],[130.2,222.5,348.7,15.0,15.0,"Get probabilities for held-out cases and compare cutoffs"],[86.8,270.9,3.5,7.0,7.0,"4"],[130.2,272.0,355.0,15.0,15.0,"Explain a borderline case and defend a conditional choice"],[234.1,362.6,251.8,8.3,8.3,"The notebook repeats the same model-output and action-rule distinction."]],[[64.2,35.6,57.8,8.0,8.0,"WEEK 8 PREVIEW"],[64.2,55.8,389.4,26.4,23.3,"Next we compare model families"],[107.7,134.1,18.6,10.0,10.0,"KNN"],[401.3,133.5,103.5,14.0,14.0,"nearby cases vote"],[107.7,197.1,62.2,10.0,10.0,"DECISION TREE"],[385.2,196.5,136.0,14.1,14.1,"questions create a path"],[107.7,260.1,92.4,10.0,10.0,"LOGISTIC REGRESSION"],[367.5,259.5,171.3,14.0,14.0,"features contribute to a score"],[209.8,362.6,300.2,8.3,8.3,"Today: how should this model be used? Week 8: which model should be used, and why?"]],[[64.2,35.6,44.4,8.0,8.0,"CONCLUSION"],[64.2,55.8,555.2,26.4,23.3,"The clinic must justify how it uses the estimate"],[164.0,120.1,392.0,23.0,20.3,"“Use 0.5. It has the highest accuracy.”"],[245.1,195.4,229.7,15.0,15.0,"A stronger recommendation explains"],[263.4,232.7,193.1,15.0,15.0,"the benefit the clinic prioritizes"],[271.2,264.2,177.7,15.0,15.0,"the burden the clinic accepts"],[224.4,295.7,271.2,15.0,15.0,"the evidence that would change its decision"],[214.5,362.6,291.0,8.3,8.3,"The model supplies an estimate. People must justify the action and its consequences."]],[[64.2,35.6,84.2,8.0,8.0,"EXIT RECOMMENDATION"],[64.2,55.8,470.5,26.4,23.3,"What would you tell the clinic director?"],[85.2,115.8,120.7,12.0,12.0,"We recommend cutoff..."],[85.2,157.8,50.2,12.0,12.0,"because..."],[85.2,228.3,157.2,12.0,12.0,"This accepts... in exchange for..."],[85.2,298.8,124.4,12.0,12.0,"We would reconsider if..."],[206.1,362.6,307.8,8.3,8.3,"A justified recommendation is conditional, evidence-based, and explicit about its tradeoff."]]];
+const LINKS=[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
+const FIELDS=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("W1tdLFtdLFtdLFtdLFtdLFtdLFtdLFtdLFtdLFtdLFtdLFt7InQiOiJjaG9pY2UiLCJ4Ijo5MS4yLCJ5IjoyOTguNSwidyI6Mjc1LjIsImgiOjIwLjAsImZzIjoxNC4wLCJvIjpbInN0YXlzIHRoZSBzYW1lIiwiY2hhbmdlcyJdLCJhIjowfSx7InQiOiJ0ZXh0IiwieCI6MzkwLjQsInkiOjE4Ni4yLCJ3Ijo4OS41LCJoIjoyNi4wLCJmcyI6MTcuMSwiciI6MH0seyJ0IjoidGV4dCIsIngiOjM5MC40LCJ5IjoyMTYuOCwidyI6ODkuNSwiaCI6MjYuMCwiZnMiOjE3LjEsInIiOjB9XSxbXSxbXSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6NTI2LjAsInkiOjMyMy45LCJ3IjoxNDAuNSwiaCI6MTUuNiwiZnMiOjEwLjYsIm8iOlsibG93ZXIiLCJoaWdoZXIiXX1dLFt7InQiOiJjaG9pY2UiLCJ4Ijo1MjYuMCwieSI6MzIzLjksInciOjE0MC41LCJoIjoxNS42LCJmcyI6MTAuNiwibyI6WyJsb3dlciIsImhpZ2hlciJdfV0sW10sW3sidCI6InRleHQiLCJ4Ijo4OS4yLCJ5IjoyNTUuNSwidyI6NDE0LjAsImgiOjIyLjAsImZzIjoxNC4wLCJyIjowfV0sW10sW10sW10sW10sW10sW10sW10sW3sidCI6ImNob2ljZSIsIngiOjI1Ny43LCJ5IjoxNTAuNywidyI6MTgzLjksImgiOjIwLjAsImZzIjoxNC4wLCJvIjpbIjAuMyIsIjAuNSIsIjAuNyJdfSx7InQiOiJ0ZXh0IiwieCI6ODMuMiwieSI6MjI0LjAsInciOjQxNC4wLCJoIjoyMi4wLCJmcyI6MTQuMCwiciI6MH0seyJ0IjoidGV4dCIsIngiOjgzLjIsInkiOjI5Ny41LCJ3Ijo0MTQuMCwiaCI6MjIuMCwiZnMiOjE0LjAsInIiOjB9XSxbeyJ0IjoidGV4dCIsIngiOjgzLjIsInkiOjMwMy41LCJ3Ijo0MTQuMCwiaCI6MjIuMCwiZnMiOjE0LjAsInIiOjB9XSxbXSxbXSxbXSxbXSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6Mjg3LjcsInkiOjExMy4zLCJ3IjoxNDUuNywiaCI6MTYuMywiZnMiOjExLjEsIm8iOlsiMC4zIiwiMC41IiwiMC43Il19LHsidCI6InRleHQiLCJ4Ijo4My4yLCJ5IjoxODQuNCwidyI6MzQ3LjMsImgiOjE5LjAsImZzIjoxMS43LCJyIjowfSx7InQiOiJ0ZXh0IiwieCI6ODMuMiwieSI6MjU1LjAsInciOjM0Ny4zLCJoIjoxOS4wLCJmcyI6MTEuNywiciI6MH0seyJ0IjoidGV4dCIsIngiOjIyMi4zLCJ5IjoyOTUuNSwidyI6MzQ3LjMsImgiOjE5LjAsImZzIjoxMS43LCJyIjowfV1d"),c=>c.charCodeAt(0))));
+const HASKEY=FIELDS.some(fl=>fl.some(f=>'a' in f));
+const N=34,W=720,H=405,KEY='slides-annot:lecture14-8b161665',URLS=SLIDES.map(s=>URL.createObjectURL(new Blob([s],{type:'image/svg+xml'}))),src=i=>URLS[i];
+const $=id=>document.getElementById(id);
+let i=0,zoom=0/*0=fit*/,scale=1,tool='select';
+// ---------- storage ----------
+let store={slides:{}},canSave=true;
+try{const s=localStorage.getItem(KEY);if(s)store=JSON.parse(s)}catch(e){canSave=false}
+const S=k=>{const s=store.slides[k]||(store.slides[k]={strokes:[],stickies:[],notes:''});s.fills||(s.fills={});s.emb||(s.emb={});return s};
+const esize=(k,j)=>{const f=FIELDS[k][j],z=S(k).emb[j];return z?[Math.min(z[0],W-f.x),Math.min(z[1],H-f.y)]:[f.w,f.h]};
+const has=k=>{const s=store.slides[k];return s&&(s.strokes.length||s.stickies.length||s.notes.trim()||Object.values(s.fills||{}).some(v=>v===true||(typeof v=='string'&&v.trim())))};
+let saveT;function flush(){if(saveT){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}}
+addEventListener('pagehide',flush);addEventListener('beforeunload',flush);document.addEventListener('visibilitychange',()=>document.hidden&&flush());
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store));$('status').textContent='Saved in this browser'}catch(e){$('status').textContent='⚠ Browser storage unavailable — use Backup'}markThumb(i)},300)}
+$('status').textContent=canSave?'Saved in this browser':'⚠ Browser storage unavailable — use Backup';
+// ---------- layout / zoom ----------
+function layout(){const st=$('stage'),aw=st.clientWidth-32,ah=st.clientHeight-32;
+ const fit=Math.max(.1,Math.min(aw/W,ah/H));scale=zoom?fit*zoom:fit;
+ $('frame').style.width=W*scale+'px';$('frame').style.height=H*scale+'px';
+ $('inner').style.transform=`scale(${scale})`;
+ $('zoomv').textContent=zoom?Math.round(zoom*100)+'%':'Fit';
+ const c=$('ink'),d=devicePixelRatio||1;c.width=Math.round(W*scale*d);c.height=Math.round(H*scale*d);redraw();sizeEmbeds()}
+new ResizeObserver(layout).observe($('stage'));
+const setZoom=z=>{zoom=z&&Math.abs(z-1)<.01?0:z;layout()};
+$('zin').onclick=()=>setZoom(Math.min(5,(zoom||1)*1.25));$('zout').onclick=()=>setZoom(Math.max(.4,(zoom||1)/1.25));$('zfit').onclick=()=>setZoom(0);
+$('stage').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(Math.min(5,Math.max(.4,(zoom||1)*(e.deltaY<0?1.1:1/1.1))))}},{passive:false});
+$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+// ---------- text layer ----------
+const mctx=document.createElement('canvas').getContext('2d');
+function buildText(){const t=$('txt');t.innerHTML='';for(const[x,y,w,h,fs,s]of TEXT[i]){const e=document.createElement('span');
+ e.textContent=s;e.style.left=x+'px';e.style.top=y+'px';e.style.fontSize=h+'px';mctx.font=`${h}px sans-serif`;
+ const m=mctx.measureText(s).width;if(m>0)e.style.transform=`scaleX(${w/m})`;t.appendChild(e);t.appendChild(document.createTextNode('\n'))}}
+// ---------- ink ----------
+const ctx=$('ink').getContext('2d');
+function drawStroke(c,s,k){c.save();c.globalAlpha=s.a;c.strokeStyle=s.c;c.lineWidth=s.w*k;c.lineCap=c.lineJoin='round';
+ if(s.a<1)c.globalCompositeOperation='multiply';c.beginPath();s.p.forEach(([x,y],j)=>j?c.lineTo(x*k,y*k):c.moveTo(x*k,y*k));
+ if(s.p.length==1)c.lineTo(s.p[0][0]*k+.01,s.p[0][1]*k);c.stroke();c.restore()}
+function redraw(){const k=$('ink').width/W;ctx.clearRect(0,0,$('ink').width,$('ink').height);S(i).strokes.forEach(s=>drawStroke(ctx,s,k))}
+const pt=e=>{const r=$('ink').getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]};
+let cur=null;const hist=[];
+$('ink').addEventListener('pointerdown',e=>{const p=pt(e);
+ if(tool=='sticky'){e.preventDefault();addSticky(p[0],p[1]);return}
+ $('ink').setPointerCapture(e.pointerId);
+ if(tool=='erase'){cur='erase';eraseAt(p);return}
+ const hi=tool=='hi';cur={c:$('color').value,w:hi?12:1.6,a:hi?.35:1,p:[p]};if(hi&&cur.c=='#d0303f')cur.c='#ffe14d';});
+$('ink').addEventListener('pointermove',e=>{if(!cur)return;const p=pt(e);if(cur=='erase')return eraseAt(p);
+ cur.p.push(p.map(v=>Math.round(v*10)/10));redraw();drawStroke(ctx,cur,$('ink').width/W)});
+addEventListener('pointerup',()=>{if(cur&&cur!='erase'){S(i).strokes.push(cur);hist.push({k:i,t:'s'});save()}cur=null;redraw()});
+function eraseAt([x,y]){const a=S(i).strokes,n=a.length;S(i).strokes=a.filter(s=>!s.p.some(([u,v])=>Math.hypot(u-x,v-y)<Math.max(5,s.w)));if(S(i).strokes.length!=n){redraw();save()}}
+$('undo').onclick=()=>{for(let j=hist.length-1;j>=0;j--)if(hist[j].k==i){const h=hist.splice(j,1)[0];if(h.t=='s')S(i).strokes.pop();else{S(i).stickies.pop();renderStickies()}redraw();save();return}
+ if(S(i).strokes.length){S(i).strokes.pop();redraw();save()}};
+$('clear').onclick=()=>arm($('clear'),()=>{{S(i).strokes=[];S(i).stickies=[];redraw();renderStickies();save()}});
+// ---------- stickies ----------
+function addSticky(x,y){S(i).stickies.push({x:Math.min(x,W-125),y:Math.min(y,H-60),w:120,h:50,t:''});hist.push({k:i,t:'n'});renderStickies();save();
+ const ta=$('stk').lastChild.querySelector('textarea');setTool('select');setTimeout(()=>ta.focus(),0)}
+function renderStickies(){const L=$('stk');L.innerHTML='';S(i).stickies.forEach((n,j)=>{const d=document.createElement('div');d.className='note';d.style.left=n.x+'px';d.style.top=n.y+'px';
+ d.innerHTML='<div class="h"><b class="dn" title="Smaller text">A−</b><b class="up" title="Larger text">A+</b><i></i><b class="x" title="Delete">✕</b></div><textarea></textarea>';const ta=d.querySelector('textarea');ta.value=n.t;
+ const sz=()=>ta.style.fontSize=(n.fs||9)+'px';sz();
+ d.querySelector('.dn').onclick=()=>{n.fs=Math.max(4,(n.fs||9)-1);sz();save()};d.querySelector('.up').onclick=()=>{n.fs=Math.min(40,(n.fs||9)+1);sz();save()};ta.style.width=n.w+'px';ta.style.height=n.h+'px';
+ ta.oninput=()=>{n.t=ta.value;save()};new ResizeObserver(()=>{const w=ta.offsetWidth,h=ta.offsetHeight;if(w&&(w!=n.w||h!=n.h)){n.w=w;n.h=h;save()}}).observe(ta);
+ d.querySelector('.x').onclick=()=>{S(i).stickies.splice(j,1);renderStickies();save()};
+ d.querySelector('.h').onpointerdown=e=>{if(e.target.tagName=='B')return;e.preventDefault();const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;
+  const mv=ev=>{n.x=ox+(ev.clientX-sx)/scale;n.y=oy+(ev.clientY-sy)/scale;d.style.left=n.x+'px';d.style.top=n.y+'px'};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);save()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
+ L.appendChild(d)})}
+// ---------- interactive fields: blanks, checkboxes, radios, dropdowns ----------
+let checking=false;
+const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+const val=(k,j)=>{const f=FIELDS[k][j],v=S(k).fills[j];return v===undefined&&f.t!='text'&&f.t!='choice'?!!f.i:v};
+function correct(k,j){const f=FIELDS[k][j],v=val(k,j);if(!('a' in f))return null;
+ if(f.t=='text')return f.a.some(a=>norm(a)==norm(v));
+ if(f.t=='choice')return v===f.o[f.a];
+ return !!v===f.a}
+function renderFields(){const L=$('fld');L.innerHTML='';const fl=S(i).fills;
+ FIELDS[i].forEach((f,j)=>{let e;
+  if(f.t=='embed'){e=document.createElement('span');e.hidden=true;L.appendChild(e);return}
+  if(f.t=='text'){e=document.createElement('textarea');e.className='fill'+(f.r?' round':'');e.rows=1;e.spellcheck=false;
+   Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px',fontSize:f.fs+'px'});e.placeholder='?';e.title='Fill in the blank';e.value=fl[j]||'';
+   const pad=()=>{e.style.paddingTop='0';let z=f.fs;e.style.fontSize=z+'px';while(z>f.fs*.45&&(e.scrollHeight>f.h+1||e.scrollWidth>f.w+1)){z*=.92;e.style.fontSize=z+'px'}
+    e.style.paddingTop=Math.max(0,(f.h-Math.min(e.scrollHeight,f.h))/2)+'px'};
+   e.oninput=()=>{fl[j]=e.value;pad();changed()};
+   e.onkeydown=ev=>{if(ev.key=='Enter'&&!ev.shiftKey){ev.preventDefault();const n=L.children[j+1];n?n.focus():e.blur()}};
+   L.appendChild(e);pad();return}
+  if(f.t=='choice'){e=document.createElement('select');e.className='ctl';
+   Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px',fontSize:f.fs+'px'});
+   e.innerHTML='<option value="">—</option>'+f.o.map(o=>`<option>${o.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+   e.value=fl[j]||'';e.onchange=()=>{fl[j]=e.value;changed()}}
+  else{e=document.createElement('input');e.type=f.t=='check'?'checkbox':'radio';e.className='ctl';
+   if(f.t=='radio')e.name=`s${i}g${f.g}`;Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.s+'px',height:f.s+'px'});
+   e.checked=!!val(i,j);
+   e.onchange=()=>{if(f.t=='radio')FIELDS[i].forEach((g,k)=>{if(g.t=='radio'&&g.g==f.g)fl[k]=k==j});else fl[j]=e.checked;changed()}}
+  e.setAttribute('aria-label',`${{text:'Blank',choice:'Choice',check:'Checkbox',radio:'Option'}[f.t]} ${j+1} on slide ${i+1}`);
+  L.appendChild(e)});
+ markAnswers()}
+function changed(){save();if(checking)markAnswers()}
+function markAnswers(){const els=$('fld').children;let ok=0,n=0;const seen=new Set();
+ FIELDS[i].forEach((f,j)=>{const e=els[j];e.classList.remove('ok','bad');if(!checking||!('a' in f))return;
+  if(f.t=='radio'){if(seen.has(f.g))return;seen.add(f.g);const grp=FIELDS[i].map((g,k)=>[g,k]).filter(([g])=>g.t=='radio'&&g.g==f.g);
+   const good=grp.every(([g,k])=>correct(i,k));n++;ok+=good;
+   const sel=grp.find(([g,k])=>val(i,k));(sel?[sel]:grp).forEach(([g,k])=>els[k].classList.add(good?'ok':'bad'));return}
+  const c=correct(i,j);n++;ok+=c;e.classList.add(c?'ok':'bad')});
+ if(checking)msg(n?`Slide ${i+1}: ${ok} of ${n} correct`:'No answer key on this slide')}
+$('chk').onclick=()=>{checking=!checking;$('chk').classList.toggle('on',checking);if(!checking)msg('Saved in this browser');markAnswers()};
+if(!HASKEY)$('chkg').style.display='none';
+// ---------- tools ----------
+function setTool(t){tool=t;document.querySelectorAll('#tools [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));
+ document.body.classList.remove('select','draw','erase','sticky');document.body.classList.add(t=='pen'||t=='hi'?'draw':t)}
+document.querySelectorAll('#tools [data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+// ---------- notes panel / thumbs ----------
+$('notes').oninput=()=>{S(i).notes=$('notes').value;save()};
+const UIK=KEY+':ui';let ui={notes:true,thumbs:true};try{Object.assign(ui,JSON.parse(localStorage.getItem(UIK)||'{}'))}catch(e){}
+function applyUI(){const B=document.body.classList;B.toggle('nonotes',!ui.notes);B.toggle('nothumbs',!ui.thumbs);
+ for(const[id,on]of[['tnotes',ui.notes],['tthumbs',ui.thumbs],['tfocus',!ui.notes&&!ui.thumbs]]){$(id).classList.toggle('on',on);$(id).setAttribute('aria-pressed',on)}
+ try{localStorage.setItem(UIK,JSON.stringify(ui))}catch(e){}}
+$('tnotes').onclick=()=>{ui.notes=!ui.notes;applyUI()};$('tthumbs').onclick=()=>{ui.thumbs=!ui.thumbs;applyUI()};
+$('tfocus').onclick=()=>{const f=!(ui.notes||ui.thumbs);ui.notes=ui.thumbs=f;applyUI()};applyUI();
+for(let k=0;k<N;k++){const d=document.createElement('div'),t=new Image();t.src=src(k);t.alt='Slide '+(k+1);t.title='Slide '+(k+1);t.onclick=()=>go(k);d.appendChild(t);$('thumbs').appendChild(d);markThumb(k)}
+function markThumb(k){$('thumbs').children[k].classList.toggle('dot',!!has(k))}
+// ---------- embeds (click to load, sandboxed) ----------
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function renderEmbeds(){const L=$('emb');L.innerHTML='';
+ FIELDS[i].forEach((f,j)=>{if(f.t!='embed')return;let host='';try{host=new URL(f.u).hostname}catch(_){return}
+  const [ew,eh]=esize(i,j);
+  const d=document.createElement('div');d.className='embed';Object.assign(d.style,{left:f.x+'px',top:f.y+'px',width:ew+'px',height:eh+'px'});
+  d.innerHTML=`<div class="bar"><b>${esc(host)}</b><a href="${esc(f.u)}" target="_blank" rel="noopener noreferrer" title="Open in a new tab">Open ↗</a></div>
+   <div class="card"><button class="go">Load ${esc(host)}</button><small>${navigator.onLine?'Loads an external page. Some sites refuse to appear inside other pages — use “Open ↗” then.':'You appear to be offline. This content needs an internet connection.'}</small></div>`;
+  d.querySelector('.go').onclick=()=>loadEmbed(d,f);
+  const g=document.createElement('div');g.className='grip';g.title='Drag to resize · double-click to reset';d.appendChild(g);
+  g.onpointerdown=e=>{e.preventDefault();e.stopPropagation();g.setPointerCapture(e.pointerId);d.classList.add('resizing');
+   const sx=e.clientX,sy=e.clientY,ow=d.offsetWidth,oh=d.offsetHeight;
+   g.onpointermove=ev=>{const w=Math.max(80,Math.min(W-f.x,ow+(ev.clientX-sx)/scale)),h=Math.max(50,Math.min(H-f.y,oh+(ev.clientY-sy)/scale));
+    d.style.width=w+'px';d.style.height=h+'px';sizeEmbeds()};
+   g.onpointerup=()=>{g.onpointermove=g.onpointerup=null;d.classList.remove('resizing');S(i).emb[j]=[Math.round(d.offsetWidth*10)/10,Math.round(d.offsetHeight*10)/10];save()}};
+  g.ondblclick=()=>{delete S(i).emb[j];d.style.width=f.w+'px';d.style.height=f.h+'px';sizeEmbeds();save()};
+  L.appendChild(d)})}
+function loadEmbed(d,f){const same=(()=>{try{return new URL(f.u).origin===location.origin}catch(_){return true}})();
+ const fr=document.createElement('iframe');
+ // No allow-same-origin unless the author trusted this domain AND it isn't our own origin:
+ // the embedded page can then never read this page or students' saved work.
+ fr.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation'+(f.tr&&!same?' allow-same-origin':''));
+ fr.setAttribute('allow',f.tr&&!same?'fullscreen; autoplay; encrypted-media; picture-in-picture':'fullscreen');
+ fr.referrerPolicy='no-referrer';fr.setAttribute('credentialless','');fr.title='Embedded page: '+f.u;fr.src=f.u;
+ const vp=document.createElement('div');vp.className='vp';vp.appendChild(fr);
+ const hint=document.createElement('div');hint.className='hint';hint.textContent='Click outside this frame to use slide keys again';vp.appendChild(hint);
+ d.querySelector('.card').replaceWith(vp);
+ const un=document.createElement('button');un.textContent='Close ✕';un.title='Unload this page';un.onclick=()=>renderEmbeds();d.querySelector('.bar').appendChild(un);
+ sizeEmbeds()}
+// Lay the frame out in real screen pixels (so sites don't get their phone layout), then scale it back down to slide size.
+function sizeEmbeds(){document.querySelectorAll('#emb .vp').forEach(vp=>{const fr=vp.firstChild,w=vp.offsetWidth,h=vp.offsetHeight;
+ Object.assign(fr.style,{width:w*scale+'px',height:h*scale+'px',transform:`scale(${1/scale})`})})}
+addEventListener('blur',()=>setTimeout(()=>{const a=document.activeElement;document.querySelectorAll('.embed').forEach(e=>e.classList.toggle('active',!!a&&e.contains(a)))}));
+addEventListener('focus',()=>document.querySelectorAll('.embed.active').forEach(e=>e.classList.remove('active')));
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.embed'))document.querySelectorAll('.embed.active').forEach(x=>x.classList.remove('active'))});
+// ---------- links ----------
+function renderLinks(){const L=$('lnk');L.innerHTML='';for(const[x,y,w,h,kind,t]of LINKS[i]){const a=document.createElement('a');
+ Object.assign(a.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+ if(kind=='u'){a.href=t;a.target='_blank';a.rel='noopener noreferrer';a.title=t}
+ else{a.href='#'+(t+1);a.title='Go to slide '+(t+1);a.onclick=e=>{e.preventDefault();go(t)}}
+ a.setAttribute('aria-label',a.title);L.appendChild(a)}}
+// ---------- navigation ----------
+function go(k){i=Math.max(0,Math.min(N-1,k));$('img').src=src(i);$('img').alt='Slide '+(i+1);
+ $('count').textContent=`${i+1} / ${N}`;$('bar').style.width=((i+1)/N*100)+'%';$('nh').textContent=`Notes — slide ${i+1}`;
+ [...$('thumbs').children].forEach((t,j)=>t.classList.toggle('on',j==i));$('thumbs').children[i].scrollIntoView({block:'nearest',inline:'center'});
+ $('notes').value=S(i).notes;checking=false;$('chk').classList.remove('on');buildText();renderLinks();renderEmbeds();renderFields();redraw();renderStickies();$('stage').scrollTo(0,0);history.replaceState(null,'','#'+(i+1))}
+$('prev').onclick=()=>go(i-1);$('next').onclick=()=>go(i+1);
+addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg=='TEXTAREA'||tg=='INPUT')return;
+ if((e.ctrlKey||e.metaKey)&&e.key=='z'){e.preventDefault();$('undo').click();return}if(e.ctrlKey||e.metaKey)return;
+ const m={ArrowRight:()=>go(i+1),PageDown:()=>go(i+1),' ':()=>go(i+1),ArrowLeft:()=>go(i-1),PageUp:()=>go(i-1),Home:()=>go(0),End:()=>go(N-1),
+ '+':()=>$('zin').click(),'=':()=>$('zin').click(),'-':()=>$('zout').click(),'0':()=>setZoom(0),f:()=>$('fs').click(),
+ v:()=>setTool('select'),t:()=>$('tthumbs').click(),']':()=>$('tnotes').click(),'\\':()=>$('tfocus').click(),p:()=>setTool('pen'),h:()=>setTool('hi'),n:()=>setTool('sticky'),e:()=>setTool('erase')}[e.key];if(m){e.preventDefault();m()}});
+let x0;$('stage').addEventListener('touchstart',e=>x0=tool=='select'&&!zoom?e.touches[0].clientX:null,{passive:true});
+$('stage').addEventListener('touchend',e=>{if(x0==null)return;const d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>60)go(i+(d<0?1:-1))});
+// ---------- backup / restore ----------
+let dlr=null;try{claude.use('downloads').then(d=>dlr=d)}catch(_){}
+function msg(t){$('status').textContent=t}
+function arm(b,f){if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl;f()}else{b.dataset.lbl=b.textContent;b.dataset.arm=1;b.textContent='Click again to confirm';setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl}},3000)}}
+async function dl(blob,name){if(dlr){try{await dlr.save({filename:name,data:blob});msg('Downloaded '+name)}catch(e){msg(e.code=='declined'?'Download cancelled':'Download unavailable here')}return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('exp').onclick=()=>dl(new Blob([JSON.stringify({deck:KEY,...store})],{type:'application/json'}),'lecture14-annotations.json');
+$('imp').onclick=()=>$('impf').click();
+$('impf').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!d.slides)throw 0;
+ store={slides:d.slides};save();for(let k=0;k<N;k++)markThumb(k);go(i)}catch(_){msg('⚠ Not a valid annotations backup')}e.target.value=''};
+// ---------- PDF export ----------
+const loadImg=s=>new Promise((r,j)=>{const m=new Image();m.onload=()=>r(m);m.onerror=j;m.src=s});
+$('pdf').onclick=()=>makePdf($('pdf'),false);$('pdfa').onclick=()=>makePdf($('pdfa'),true);
+async function makePdf(b,only){const lbl=b.textContent;
+ b.disabled=true;const list=[...Array(N).keys()].filter(k=>!only||has(k));if(!list.length){msg('No annotated slides yet');b.disabled=false;return}
+ const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'landscape',unit:'pt',format:[W,H]}),R=3;
+ const pageOf={},jumps=[];
+ for(const[n,k]of list.entries()){b.textContent=`Saving ${n+1}/${list.length}…`;
+  const c=document.createElement('canvas');c.width=W*R;c.height=H*R;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+  g.drawImage(await loadImg(src(k)),0,0,c.width,c.height);S(k).strokes.forEach(s=>drawStroke(g,s,R));
+  if(n)doc.addPage([W,H],'landscape');doc.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,W,H);pageOf[k]=doc.getNumberOfPages();
+  for(const[x,y,w,hh,kind,t]of LINKS[k]){if(kind=='u')doc.link(x,y,w,hh,{url:t});else jumps.push([pageOf[k],x,y,w,hh,t])}
+  for(const[x,y,w,hh,fs,s]of TEXT[k]){doc.setFontSize(hh);doc.text(s,x,y+hh*.8,{renderingMode:'invisible',maxWidth:w+20})}
+  FIELDS[k].forEach((f0,j)=>{if(f0.t!='embed')return;const [ew,eh]=esize(k,j),f={...f0,w:ew,h:eh};doc.setFillColor(246,244,238);doc.setDrawColor(201,196,182);doc.setLineWidth(.6);doc.rect(f.x,f.y,f.w,f.h,'FD');
+   doc.setFillColor(61,64,88);doc.rect(f.x,f.y,f.w,12,'F');doc.setFontSize(7);doc.setTextColor(236,234,228);let host=f.u;try{host=new URL(f.u).hostname}catch(_){}doc.text('Embedded: '+host,f.x+4,f.y+8.2);
+   doc.setFontSize(8);doc.setTextColor(29,63,138);doc.text(doc.splitTextToSize(f.u,f.w-16),f.x+f.w/2,f.y+12+(f.h-12)/2,{align:'center',baseline:'middle'});doc.link(f.x,f.y,f.w,f.h,{url:f.u})});
+  FIELDS[k].forEach((f,j)=>{if(f.t=='embed')return;const v=val(k,j);doc.setDrawColor(200,85,58);doc.setLineWidth(.8);doc.setTextColor(29,63,138);
+   if(f.t=='text'){const t=(v||'').trim();doc.setLineDashPattern([2,2],0);if(f.r)doc.ellipse(f.x+f.w/2,f.y+f.h/2,f.w/2,f.h/2,'S');else doc.line(f.x,f.y+f.h,f.x+f.w,f.y+f.h);doc.setLineDashPattern([],0);
+    if(t){let z=f.fs,ls;do{doc.setFontSize(z);ls=doc.splitTextToSize(t,f.w-4);if(ls.length*z*1.15<=f.h||z<f.fs*.45)break;z*=.92}while(1);
+     doc.text(ls,f.x+f.w/2,f.y+f.h/2-(ls.length-1)*z*1.15/2,{align:'center',baseline:'middle',lineHeightFactor:1.15})}}
+   else if(f.t=='choice'){doc.setLineDashPattern([2,2],0);doc.rect(f.x,f.y,f.w,f.h,'S');doc.setLineDashPattern([],0);
+    const a=f.x+f.w-f.h*.55,b=f.y+f.h*.4;doc.setFillColor(200,85,58);doc.triangle(a-f.h*.18,b,a+f.h*.18,b,a,b+f.h*.25,'F');
+    if(v){doc.setFontSize(f.fs);doc.text(String(v),f.x+3,f.y+f.h/2,{baseline:'middle',maxWidth:f.w-f.h})}}
+   else if(f.t=='check'){doc.rect(f.x,f.y,f.s,f.s,'S');if(v){doc.setDrawColor(29,63,138);doc.setLineWidth(1.4);doc.line(f.x+f.s*.2,f.y+f.s*.55,f.x+f.s*.42,f.y+f.s*.78);doc.line(f.x+f.s*.42,f.y+f.s*.78,f.x+f.s*.82,f.y+f.s*.22)}}
+   else{doc.circle(f.x+f.s/2,f.y+f.s/2,f.s/2,'S');if(v){doc.setFillColor(29,63,138);doc.circle(f.x+f.s/2,f.y+f.s/2,f.s*.25,'F')}}});
+  for(const s of S(k).stickies){doc.setFillColor(255,246,168);doc.setDrawColor(216,198,74);doc.rect(s.x,s.y,s.w,s.h+11,'FD');doc.setFillColor(240,220,90);doc.rect(s.x,s.y,s.w,11,'F');
+   const fz=s.fs||9;doc.setFontSize(fz);doc.setTextColor(34);doc.text(doc.splitTextToSize(s.t,s.w-6),s.x+3,s.y+11+3+fz*.85,{lineHeightFactor:1.25})}
+  if(S(k).notes.trim()){doc.addPage([W,H],'landscape');doc.setFontSize(16);doc.setTextColor(34);doc.text(`Notes — slide ${k+1}`,36,44);
+   doc.setFontSize(11);let y=72;for(const ln of doc.splitTextToSize(S(k).notes,W-72)){if(y>H-30){doc.addPage([W,H],'landscape');y=44}doc.text(ln,36,y);y+=15}}}
+ for(const[pg,x,y,w,hh,t]of jumps)if(pageOf[t]){doc.setPage(pg);doc.link(x,y,w,hh,{pageNumber:pageOf[t]})}
+ await dl(doc.output('blob'),'lecture14-annotated.pdf');b.textContent=lbl;b.disabled=false}
+go((parseInt(location.hash.slice(1))||1)-1);layout();
+</script></body></html>
