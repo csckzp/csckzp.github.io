@@ -1,0 +1,323 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lecture15</title>
+<script src="jspdf.umd.min.js"></script><script src="slides.js"></script>
+<style>
+:root{--bg:#f1efe8;--panel:#fff;--fg:#22232b;--muted:#6b6b76;--line:#d9d6cc;--accent:#d0603f;--sel:rgba(208,96,63,.3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}}
+:root[data-theme="dark"]{--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);height:100vh;overflow:hidden}
+header{display:flex;gap:6px;align-items:center;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.grp{display:flex;gap:4px;align-items:center;padding-right:8px;margin-right:4px;border-right:1px solid var(--line)}
+.grp:last-child{border:0}
+button{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font:inherit;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=color]{width:30px;height:28px;border:1px solid var(--line);border-radius:6px;padding:1px;background:transparent}
+#count{min-width:62px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+#zoomv{min-width:44px;text-align:center;color:var(--muted)}
+
+.lbl{color:var(--muted);font-size:12px;margin-right:2px}
+#status{margin-left:auto;color:var(--muted);font-size:12px}
+#bar{height:3px;background:var(--accent);width:0;transition:width .2s}
+main{display:flex;min-height:0;min-width:0;overflow:hidden}
+#stage{flex:1;overflow:auto;display:flex;padding:16px;min-width:0}
+#frame{margin:auto;flex:none;position:relative;box-shadow:0 6px 30px #0005;border-radius:3px;overflow:hidden;background:#fff}
+#inner{position:absolute;left:0;top:0;width:720px;height:405px;transform-origin:0 0}
+#inner>*{position:absolute;inset:0}
+#img{width:720px;height:405px;user-select:none;-webkit-user-drag:none}
+#lnk,#emb{pointer-events:none}
+.embed{position:absolute;pointer-events:auto;background:#f6f4ee;border:1px solid #c9c4b6;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;font-family:system-ui,sans-serif;color:#33343c}
+.embed .bar{flex:none;display:flex;align-items:center;gap:4px;height:12px;padding:0 4px;background:#3d4058;color:#eceae4;font-size:6.5px}
+.embed .bar b{font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.embed .bar a,.embed .bar button{color:#eceae4;font:inherit;background:none;border:0;padding:0 3px;cursor:pointer;text-decoration:none;border-radius:2px}
+.embed .bar a:hover,.embed .bar button:hover{background:#ffffff26}
+.embed .card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:6px}
+.embed .card .go{font:600 9px system-ui,sans-serif;color:#fff;background:#c8553a;border:0;border-radius:4px;padding:4px 12px;cursor:pointer}
+.embed .card .go:hover{background:#a9442d}
+.embed .card small{font-size:6px;color:#6b6b76;max-width:90%;overflow-wrap:anywhere}
+.embed .vp{flex:1;position:relative;overflow:hidden}
+.embed iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#fff}
+.embed.active{outline:2px solid #c8553a;outline-offset:1px}
+.embed .hint{position:absolute;right:4px;bottom:4px;background:#3d4058e6;color:#fff;font-size:6px;padding:2px 5px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .2s}
+.embed.active .hint{opacity:1}
+body:not(.select) .embed{pointer-events:none}
+.embed .grip{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize;z-index:2;touch-action:none;
+ background:linear-gradient(135deg,transparent 0 45%,#3d4058 45% 52%,transparent 52% 64%,#3d4058 64% 71%,transparent 71% 83%,#3d4058 83% 90%,transparent 90%);opacity:.75}
+.embed .grip:hover{opacity:1}
+.embed.resizing iframe{pointer-events:none}
+#lnk a{position:absolute;pointer-events:auto;border-radius:2px;cursor:pointer}
+#lnk a:hover,#lnk a:focus-visible{background:rgba(29,63,138,.12);outline:1px solid rgba(29,63,138,.45);outline-offset:1px}
+body:not(.select) #lnk a{pointer-events:none}
+#txt span{position:absolute;color:transparent;white-space:pre;transform-origin:0 0;line-height:1;cursor:text;font-family:sans-serif}
+#txt span::selection{background:var(--sel);color:transparent}
+#ink{width:720px;height:405px;pointer-events:none}
+#stk,#fld{pointer-events:none}
+.fill{position:absolute;pointer-events:auto;margin:0;border:0;border-bottom:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;text-align:center;resize:none;outline:none;overflow:hidden;line-height:1.15;padding:0 2px;border-radius:2px}
+.fill.round{border:1.5px dashed #c8553a;border-radius:40%/50%}
+.fill:focus{background:rgba(255,244,190,.95);border-color:#c8553a;border-style:solid;box-shadow:0 0 0 2px rgba(200,85,58,.25)}
+.ctl{position:absolute;pointer-events:auto;margin:0;accent-color:#c8553a;cursor:pointer}
+select.ctl{border:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;border-radius:3px;padding:0 2px;outline:none}
+select.ctl:focus{border-style:solid;background:rgba(255,244,190,.95)}
+.ok{outline:2px solid #2e8b57!important;outline-offset:1px;box-shadow:0 0 0 3px rgba(46,139,87,.25)}
+.bad{outline:2px solid #d0303f!important;outline-offset:1px;box-shadow:0 0 0 3px rgba(208,48,63,.25)}
+#chk.on{background:#2e8b57;border-color:#2e8b57}
+.fill::placeholder{color:#c8553a;opacity:.55;font-weight:400}
+body.draw #ink{pointer-events:auto;cursor:crosshair}body.erase #ink{pointer-events:auto;cursor:cell}
+body.sticky #ink{pointer-events:auto;cursor:copy}
+body:not(.select) #txt{pointer-events:none}
+.note{position:absolute;pointer-events:auto;background:#fff6a8;border:1px solid #d8c64a;border-radius:3px;box-shadow:0 2px 6px #0003;display:flex;flex-direction:column;min-width:60px}
+.note .h{height:11px;background:#f0dc5a;cursor:move;display:flex;justify-content:flex-end;align-items:center;gap:1px}
+.note .h b{font:bold 8px/11px sans-serif;padding:0 3px;cursor:pointer;color:#6b5d00;border-radius:2px;user-select:none}.note .h b:hover{background:#e2cb3c}.note .h i{flex:1}
+.note textarea{border:0;background:transparent;resize:both;font:9px/1.25 system-ui,sans-serif;color:#222;padding:3px;width:120px;height:50px;outline:none}
+aside{width:300px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;padding:12px;gap:8px}
+body.nonotes aside{display:none}
+aside h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
+#notes{flex:1;resize:none;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:10px}
+#thumbs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+#thumbs div{position:relative;flex:none}
+#thumbs img{height:50px;display:block;border:2px solid transparent;border-radius:3px;cursor:pointer;opacity:.6;background:#fff}
+#thumbs .on img{border-color:var(--accent);opacity:1}
+#thumbs .dot::after{content:"";position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+body.nothumbs #thumbs{display:none}
+@media (max-width:700px){aside{position:fixed;inset:auto 0 0 0;width:auto;height:40vh;border-left:0;border-top:1px solid var(--line);z-index:5}}
+</style></head><body class="select">
+<header>
+ <div class="grp"><button id="prev" title="Previous (←)">◀</button><span id="count"></span><button id="next" title="Next (→)">▶</button></div>
+ <div class="grp"><button id="zout" title="Zoom out (−)">−</button><span id="zoomv">Fit</span><button id="zin" title="Zoom in (+)">+</button><button id="zfit" title="Fit to window (0)">Fit</button><button id="fs" title="Fullscreen (F)">⛶</button></div>
+ <div class="grp" id="tools">
+  <button data-t="select" class="on" title="Select text (V)">Select</button>
+  <button data-t="pen" title="Pen (P)">Pen</button>
+  <button data-t="hi" title="Highlighter (H)">Highlight</button>
+  <button data-t="sticky" title="Sticky note (N)">Sticky</button>
+  <button data-t="erase" title="Eraser (E)">Erase</button>
+  <input type="color" id="color" value="#d0303f" title="Ink color">
+  <button id="undo" title="Undo (Ctrl+Z)">Undo</button><button id="clear" title="Clear this slide's ink and stickies">Clear</button>
+ </div>
+ <div class="grp" id="chkg"><button id="chk" title="Mark this slide's answers right or wrong">Check answers</button></div>
+ <div class="grp"><span class="lbl">Panels</span><button id="tthumbs" class="on" title="Show/hide slide strip (T)" aria-pressed="true">▤ Strip</button><button id="tnotes" class="on" title="Show/hide notes panel (])" aria-pressed="true">▥ Notes</button><button id="tfocus" title="Hide both panels for the largest slide (\\)">⤢ Focus</button></div>
+ <div class="grp"><button id="pdf" title="PDF of all slides with your annotations and notes">PDF: all</button><button id="pdfa" title="PDF of only the slides you annotated">PDF: annotated</button><button id="exp" title="Back up annotations to a file">Backup</button><button id="imp" title="Restore annotations from a backup file">Restore</button><input type="file" id="impf" accept=".json" hidden></div>
+ <span id="status"></span>
+</header>
+<div id="bar"></div>
+<main>
+ <div id="stage"><div id="frame"><div id="inner"><img id="img" alt=""><div id="txt"></div><div id="lnk"></div><div id="emb"></div><canvas id="ink"></canvas><div id="stk"></div><div id="fld"></div></div></div></div>
+ <aside><h2 id="nh">Notes</h2><textarea id="notes" placeholder="Type notes for this slide…"></textarea></aside>
+</main>
+<div id="thumbs"></div>
+<script>
+const TEXT=[[[91.2,70.2,32.2,12.2,10.0,"CSC 005"],[65.7,116.9,371.5,31.8,28.0,"Comparing Three Models"],[65.7,193.8,60.3,17.1,14.0,"Lecture 15"],[58.5,235.3,370.5,20.8,17.0,"One student, three models, a decision about support"]],[[57.0,31.0,155.2,12.2,10.0,"THE PERSON BEHIND THE PREDICTION"],[57.0,52.8,215.7,26.1,23.0,"Remember Maya?"],[397.5,116.3,237.8,22.7,20.0,"“I want to be ready for "],[397.5,140.3,162.4,22.7,20.0,"the next exam.”"],[397.5,196.2,243.2,20.8,17.0,"Maya attends classes, works some "],[397.5,217.3,256.3,20.8,17.0,"evenings, and sometimes helps care "],[397.5,238.2,146.8,20.8,17.0,"for a younger sibling."],[206.5,360.8,307.0,11.0,9.0,"An advisor wants to offer timely help. What could a model tell them about Maya?"]],[[57.0,31.0,142.5,12.2,10.0,"THE ORGANIZATION AND ITS GOAL"],[57.0,52.7,528.3,22.7,20.0,"Maya’s advisor wants to offer help before the exam"],[167.2,126.3,72.2,12.2,10.0,"AVAILABLE EARLY"],[104.9,161.8,204.2,20.4,18.0,"1. Earlier exam grade"],[77.3,183.7,259.2,20.4,18.0,"2. Absences recorded so far"],[456.5,126.3,120.6,12.2,10.0,"LATER OUTCOME TO PREDICT"],[412.8,161.8,212.5,20.4,18.0,"Will the next score fall "],[471.6,183.7,90.4,20.4,18.0,"below 75?"]],[[57.0,31.0,62.8,12.2,10.0,"RECALL WEEK 4"],[57.0,52.7,376.3,22.7,20.0,"Maya’s two recorded measurements"],[117.9,142.7,97.5,17.1,14.0,"Recorded feature"],[293.9,142.7,73.9,17.1,14.0,"Maya’s value"],[115.0,186.6,103.2,17.1,14.0,"Earlier exam grade"],[323.9,186.6,14.0,17.1,14.0,"71"],[97.2,230.5,138.7,17.1,14.0,"Absences recorded so far"],[327.3,230.5,7.1,17.1,14.0,"2"],[430.5,132.3,118.5,12.2,10.0,"OUTSIDE THESE TWO INPUTS"],[430.5,172.2,153.8,20.8,17.0,"Maya’s work schedule"],[430.5,214.2,174.1,20.8,17.0,"Caregiving commitments"],[430.5,255.3,198.4,20.8,17.0,"Goals and preferred support"],[57.0,291.3,308.1,20.8,17.0,"Prediction target: next exam score below 75?"],[174.7,360.8,370.7,11.0,9.0,"The added story helps us discuss the person. The models still receive only grade 71 and absences 2."]],[[57.0,31.0,174.0,12.2,10.0,"TRAINING HISTORY AND A HELD-OUT CASE"],[57.0,52.7,514.2,22.7,20.0,"Past students supply labels; Maya’s later result is "],[57.0,76.7,119.9,22.7,20.0,"“unknown”"],[87.5,122.5,23.0,14.7,12.0,"Case"],[177.6,122.5,63.4,14.7,12.0,"Earlier grade"],[327.3,122.5,77.4,14.7,12.0,"Absences so far"],[526.6,122.5,55.3,14.7,12.0,"Later exam"],[89.1,154.7,19.8,14.7,12.0,"H72"],[203.1,154.7,12.2,14.7,12.0,"81"],[362.9,154.7,6.1,14.7,12.0,"3"],[528.9,154.7,50.7,14.7,12.0,"at least 75"],[89.1,187.1,19.8,14.7,12.0,"H96"],[203.1,187.1,12.2,14.7,12.0,"54"],[362.9,187.1,6.1,14.7,12.0,"2"],[528.9,187.1,50.7,14.7,12.0,"at least 75"],[89.1,219.2,19.8,14.7,12.0,"H26"],[203.1,219.2,12.2,14.7,12.0,"68"],[362.9,219.2,6.1,14.7,12.0,"0"],[528.9,219.2,50.7,14.7,12.0,"at least 75"],[89.1,251.6,19.8,14.7,12.0,"H83"],[203.1,251.6,12.2,14.7,12.0,"85"],[359.9,251.6,12.2,14.7,12.0,"12"],[531.8,251.6,44.9,14.7,12.0,"below 75"],[77.1,283.8,43.7,14.7,12.0,"Maya (S)"],[203.1,283.8,12.2,14.7,12.0,"71"],[362.9,283.8,6.1,14.7,12.0,"2"],[551.5,283.8,5.6,14.7,12.0,"?"],[266.0,320.7,188.0,13.4,11.0,"Data: 72 training cases, 24 held-out cases"],[175.4,360.8,369.3,11.0,9.0,"Maya is held out of training. The later outcome is hidden when the models make their predictions."]],[[57.0,31.0,83.0,12.2,10.0,"THE DISAGREEMENT"],[57.0,52.7,544.5,22.7,20.0,"Three models give Maya’s advisor conflicting signals"],[127.6,124.2,75.5,17.1,14.0,"Fitted model"],[310.1,124.2,117.7,17.1,14.0,"Prediction for Maya"],[152.1,159.5,26.4,17.1,14.0,"KNN"],[338.8,159.5,60.1,17.1,14.0,"at least 75"],[126.6,194.8,77.5,17.1,14.0,"Decision tree"],[342.3,194.8,53.1,17.1,14.0,"below 75"],[111.1,230.0,108.4,17.1,14.0,"Logistic regression"],[338.8,230.0,60.1,17.1,14.0,"at least 75"],[79.2,273.2,255.5,15.9,13.0,"What would you inspect before advising Maya?"],[181.8,360.8,356.4,11.0,9.0,"Maya is the same person. The models use the same two values and reach different predictions."]],[[57.0,31.0,43.9,12.2,10.0,"RETRIEVAL"],[57.0,52.7,478.3,22.7,20.0,"Which reasoning style belongs to each model?"],[75.0,119.5,226.0,18.2,16.0,"Nearby historical cases vote"],[75.0,194.6,252.0,18.2,16.0,"Feature questions lead to a leaf"],[75.0,269.5,329.5,18.2,16.0,"Learned feature weights produce a score"],[205.9,360.8,308.2,11.0,9.0,"These are familiar mechanisms. Our new task is to compare what they emphasize."]],[[57.0,31.0,130.1,12.2,10.0,"THE SAME TRAINING EXAMPLES"],[57.0,52.7,529.5,22.7,20.0,"Maya is the asterisk among the historical examples"],[94.2,104.5,58.0,11.0,9.0,"met benchmark"],[256.2,104.5,65.7,11.0,9.0,"below benchmark"],[440.7,104.5,20.4,11.0,9.0,"Maya"],[100.2,299.1,10.1,12.2,10.0,"48"],[178.9,299.1,10.1,12.2,10.0,"58"],[257.5,299.1,10.1,12.2,10.0,"68"],[336.1,299.1,10.1,12.2,10.0,"78"],[414.7,299.1,10.1,12.2,10.0,"88"],[493.4,299.1,10.1,12.2,10.0,"98"],[91.0,285.9,5.1,12.2,10.0,"0"],[91.0,250.4,5.1,12.2,10.0,"3"],[91.0,214.9,5.1,12.2,10.0,"6"],[91.0,179.4,5.1,12.2,10.0,"9"],[85.9,144.1,10.1,12.2,10.0,"12"],[276.7,313.3,50.5,12.2,10.0,"Earlier grade"],[70.5,184.4,12.2,61.9,10.0,"Absences so far"],[538.5,146.9,101.1,19.3,17.0,"72 training "],[538.5,166.8,46.8,19.3,17.0,"cases"],[538.5,207.5,114.2,17.1,14.0,"Maya is the asterisk"],[538.5,224.5,95.0,17.1,14.0,"Earlier grade: 71"],[538.5,242.5,68.9,17.1,14.0,"Absences: 2"],[178.3,360.8,363.4,11.0,9.0,"Two features let us draw the examples. All three model families can use more than two features."]],[[57.0,31.0,62.2,12.2,10.0,"KNN FOR Maya"],[57.0,52.7,526.7,22.7,20.0,"Three of Maya’s five neighbors met the benchmark"],[98.7,292.4,10.1,12.2,10.0,"48"],[158.5,292.4,10.1,12.2,10.0,"58"],[218.2,292.4,10.1,12.2,10.0,"68"],[277.9,292.4,10.1,12.2,10.0,"78"],[337.6,292.4,10.1,12.2,10.0,"88"],[397.4,292.4,10.1,12.2,10.0,"98"],[89.5,279.2,5.1,12.2,10.0,"0"],[89.5,242.0,5.1,12.2,10.0,"3"],[89.5,205.0,5.1,12.2,10.0,"6"],[89.5,168.1,5.1,12.2,10.0,"9"],[84.4,131.1,10.1,12.2,10.0,"12"],[227.9,306.6,50.5,12.2,10.0,"Earlier grade"],[69.0,174.3,12.2,61.9,10.0,"Absences so far"],[462.8,131.1,40.5,13.4,11.0,"Neighbor"],[560.9,131.1,63.5,13.4,11.0,"Later outcome"],[474.3,157.8,17.6,13.4,11.0,"H16"],[572.9,157.8,39.5,13.4,11.0,"below 75"],[474.3,184.6,17.6,13.4,11.0,"H88"],[570.4,184.6,44.5,13.4,11.0,"at least 75"],[474.3,211.3,17.6,13.4,11.0,"H91"],[570.4,211.3,44.5,13.4,11.0,"at least 75"],[474.3,238.2,17.6,13.4,11.0,"H39"],[572.9,238.2,39.5,13.4,11.0,"below 75"],[474.3,264.8,17.6,13.4,11.0,"H27"],[570.4,264.8,44.5,13.4,11.0,"at least 75"],[535.2,297.2,29.1,18.3,15.0,"k = 5"],[280.5,337.1,165.9,22.0,18.0,"KNN assign’s Maya to"],[484.8,337.1,69.8,22.0,18.0," below 75"],[493.1,358.2,80.1,22.0,18.0," at least 75"]],[[57.0,31.0,165.8,12.2,10.0,"THE DECISION TREE FOR TRAINING DATA"],[564.8,168.5,50.0,20.4,18.0,"Maya"],[564.8,210.9,66.7,22.0,18.0,"Grade 71"],[564.8,232.9,82.2,22.0,18.0,"Absences 2"]],[[57.0,31.0,123.1,12.2,10.0,"THE DECISION TREE FOR Maya"],[57.0,52.8,405.3,26.1,23.0,"Maya’s path ends at a below 75 leaf"],[169.8,123.2,125.3,18.3,15.0,"Absences so far ≤ 4?"],[253.2,156.1,10.9,9.8,8.0,"yes"],[169.2,181.1,126.5,18.3,15.0,"Earlier grade ≤ 74.5?"],[253.2,213.7,10.9,9.8,8.0,"yes"],[164.0,238.9,136.9,18.3,15.0,"Absences so far ≤ 2.5?"],[253.2,273.4,9.7,8.5,7.0,"yes"],[188.2,304.2,88.4,13.4,11.0,"PREDICT BELOW 75"],[442.5,131.8,50.0,20.4,18.0,"Maya"],[442.5,176.1,66.7,22.0,18.0,"Grade 71"],[442.5,197.2,82.2,22.0,18.0,"Absences 2"],[442.5,258.4,201.5,17.1,14.0,"A path through the fitted tree, not "],[442.5,275.4,85.0,17.1,14.0,"the whole tree"],[195.6,360.8,328.9,11.0,9.0,"The path is readable. Whether its learned thresholds are reliable is a separate question."]],[[57.0,31.0,134.8,12.2,10.0,"LOGISTIC REGRESSION FOR Maya"],[57.0,52.7,496.6,22.7,20.0,"Maya’s estimated probability is below the cutoff"],[100.2,293.8,10.1,12.2,10.0,"48"],[158.2,293.8,10.1,12.2,10.0,"58"],[216.1,293.8,10.1,12.2,10.0,"68"],[274.0,293.8,10.1,12.2,10.0,"78"],[331.9,293.8,10.1,12.2,10.0,"88"],[389.9,293.8,10.1,12.2,10.0,"98"],[91.0,280.6,5.1,12.2,10.0,"0"],[91.0,243.0,5.1,12.2,10.0,"3"],[91.0,205.3,5.1,12.2,10.0,"6"],[91.0,167.4,5.1,12.2,10.0,"9"],[85.9,129.7,10.1,12.2,10.0,"12"],[224.9,308.0,50.5,12.2,10.0,"Earlier grade"],[70.5,174.3,12.2,61.9,10.0,"Absences so far"],[475.6,130.9,136.3,19.5,16.0,"Estimated probability"],[506.2,150.1,75.3,19.5,16.0,"of below 75"],[494.6,189.3,98.3,37.5,33.0,"0.398"],[504.9,254.8,77.5,20.8,17.0,"0.398 < 0.5"],[481.0,275.9,125.4,20.8,17.0,"Predict at least 75"],[163.5,360.8,393.1,11.0,9.0,"The line marks probability 0.5. Changing the cutoff changes decisions without relearning the coefficients."]],[[57.0,31.0,95.6,12.2,10.0,"DECISION BOUNDARIES"],[57.0,52.7,553.3,22.7,20.0,"Different fitted boundaries divide the same examples"],[94.2,104.5,58.0,11.0,9.0,"met benchmark"],[256.2,104.5,65.7,11.0,9.0,"below benchmark"],[440.7,104.5,20.4,11.0,9.0,"Maya"],[139.6,133.1,22.4,14.7,12.0,"KNN"],[81.0,286.2,10.1,12.2,10.0,"48"],[111.0,286.2,10.1,12.2,10.0,"58"],[140.9,286.2,10.1,12.2,10.0,"68"],[170.9,286.2,10.1,12.2,10.0,"78"],[200.9,286.2,10.1,12.2,10.0,"88"],[230.9,286.2,10.1,12.2,10.0,"98"],[71.7,273.0,5.1,12.2,10.0,"0"],[71.7,247.8,5.1,12.2,10.0,"3"],[71.7,222.6,5.1,12.2,10.0,"6"],[71.7,197.4,5.1,12.2,10.0,"9"],[66.7,172.2,10.1,12.2,10.0,"12"],[141.6,300.3,39.0,9.8,8.0,"Earlier grade"],[53.9,200.7,9.8,47.7,8.0,"Absences so far"],[335.6,133.1,65.4,14.7,12.0,"Decision tree"],[298.5,286.2,10.1,12.2,10.0,"48"],[328.5,286.2,10.1,12.2,10.0,"58"],[358.4,286.2,10.1,12.2,10.0,"68"],[388.4,286.2,10.1,12.2,10.0,"78"],[418.4,286.2,10.1,12.2,10.0,"88"],[448.4,286.2,10.1,12.2,10.0,"98"],[289.2,273.0,5.1,12.2,10.0,"0"],[289.2,247.8,5.1,12.2,10.0,"3"],[289.2,222.6,5.1,12.2,10.0,"6"],[289.2,197.4,5.1,12.2,10.0,"9"],[284.1,172.2,10.1,12.2,10.0,"12"],[359.1,300.3,39.0,9.8,8.0,"Earlier grade"],[271.4,200.7,9.8,47.7,8.0,"Absences so far"],[540.1,133.1,91.3,14.7,12.0,"Logistic regression"],[516.0,286.2,10.1,12.2,10.0,"48"],[546.0,286.2,10.1,12.2,10.0,"58"],[575.9,286.2,10.1,12.2,10.0,"68"],[605.9,286.2,10.1,12.2,10.0,"78"],[635.9,286.2,10.1,12.2,10.0,"88"],[665.9,286.2,10.1,12.2,10.0,"98"],[506.7,273.0,5.1,12.2,10.0,"0"],[506.7,247.8,5.1,12.2,10.0,"3"],[506.7,222.6,5.1,12.2,10.0,"6"],[506.7,197.4,5.1,12.2,10.0,"9"],[501.6,172.2,10.1,12.2,10.0,"12"],[576.6,300.3,39.0,9.8,8.0,"Earlier grade"],[488.9,200.7,9.8,47.7,8.0,"Absences so far"],[167.8,360.8,384.5,11.0,9.0,"Each fitted model places Maya relative to a different boundary. The historical examples stay the same."]],[[57.0,31.0,162.8,12.2,10.0,"EXPLANATIONS SOMEONE CAN INSPECT"],[57.0,52.7,568.5,22.7,20.0,"How would each model explain its prediction to Maya?"],[95.9,136.7,32.5,14.7,12.0,"Model"],[235.6,136.7,107.2,14.7,12.0,"Explanation for Maya"],[493.8,136.7,86.4,14.7,12.0,"A question to ask"],[100.9,182.0,22.4,14.7,12.0,"KNN"],[206.1,182.0,166.1,14.7,12.0,"Three of five neighbors at least 75"],[445.9,182.0,182.2,14.7,12.0,"Why count those students as similar?"],[79.4,227.4,65.5,14.7,12.0,"Decision tree"],[223.7,227.4,130.8,14.7,12.0,"This path ends at below 75"],[464.4,227.4,145.2,14.7,12.0,"Are the questions defensible?"],[66.2,272.7,91.7,14.7,12.0,"Logistic regression"],[220.2,272.7,137.9,14.7,12.0,"Estimated probability: 0.398"],[443.9,272.7,186.1,14.7,12.0,"Which inputs pushed that probability?"],[236.3,316.7,247.4,15.9,13.0,"What could Maya check, question, or correct?"],[212.1,360.8,295.8,11.0,9.0,"Maya can inspect the recorded values and question how the model used them."]],[[75.0,119.5,39.5,18.2,16.0,"KNN"],[75.0,194.6,111.9,18.2,16.0,"Decision Tree"],[75.0,269.5,158.7,18.2,16.0,"Logistic Regression"],[57.0,31.0,89.7,12.2,10.0,"KNOWN LIMITATIONS"],[57.0,52.7,443.9,22.7,20.0,"Each familiar mechanism can also mislead"],[195.1,360.8,330.0,11.0,9.0,"A useful model still needs evidence about where its assumptions fit and where they fail."]],[[57.0,31.0,69.6,12.2,10.0,"A CLAIM TO TEST"],[57.0,52.7,590.2,22.7,20.0,"Two models agree about Maya. Should their vote decide?"],[154.8,142.9,26.4,17.1,14.0,"KNN"],[321.2,142.9,77.5,17.1,14.0,"Decision tree"],[497.8,142.9,108.4,17.1,14.0,"Logistic regression"],[137.4,191.6,61.1,17.1,14.0,"at least 75"],[333.4,191.6,53.1,17.1,14.0,"below 75"],[521.4,191.6,61.1,17.1,14.0,"at least 75"],[79.2,250.7,320.2,17.1,14.0,"Does agreement alone establish Maya’s later outcome?"],[205.6,360.8,308.9,11.0,9.0,"Majority voting is a possible combined model. Its predictions still need evaluation."]],[[57.0,31.0,76.0,12.2,10.0,"OUTCOME REVEAL"],[57.0,52.8,419.1,26.1,23.0,"Maya’s later test score was below 75"],[182.8,127.5,354.3,27.3,24.0,"Recorded outcome: below 75"],[152.2,194.7,67.6,15.9,13.0,"Fitted model"],[363.6,194.7,54.4,15.9,13.0,"Prediction"],[517.1,194.7,95.5,15.9,13.0,"Correct for Maya?"],[174.1,225.7,23.9,15.9,13.0,"KNN"],[363.9,225.7,53.8,15.9,13.0,"at least 75"],[558.0,225.7,13.6,15.9,13.0,"no"],[151.3,256.4,69.5,15.9,13.0,"Decision tree"],[366.9,256.4,47.8,15.9,13.0,"below 75"],[556.2,256.4,17.2,15.9,13.0,"yes"],[137.4,287.1,97.3,15.9,13.0,"Logistic regression"],[363.9,287.1,53.8,15.9,13.0,"at least 75"],[558.0,287.1,13.6,15.9,13.0,"no"],[159.3,360.8,401.4,11.0,9.0,"The tree predicted this outcome correctly. It does not tell the advisor why it happened or what would help."]],[[57.0,31.0,85.7,12.2,10.0,"ALL HELD-OUT CASES"],[57.0,52.7,520.4,22.7,20.0,"Other students reveal a different pattern of errors"],[121.1,135.9,63.7,14.7,12.0,"Fitted model"],[274.3,135.9,84.3,14.7,12.0,"Correct out of 24"],[429.9,128.7,46.2,14.7,12.0,"Below 75"],[424.8,143.9,56.4,14.7,12.0,"not flagged"],[568.2,128.7,51.5,14.7,12.0,"at least 75"],[575.7,143.9,36.6,14.7,12.0,"flagged"],[141.8,177.2,22.4,14.7,12.0,"KNN"],[310.4,177.2,12.2,14.7,12.0,"16"],[449.9,177.2,6.1,14.7,12.0,"2"],[590.9,177.2,6.1,14.7,12.0,"6"],[120.2,218.5,65.5,14.7,12.0,"Decision tree"],[310.4,218.5,12.2,14.7,12.0,"15"],[449.9,218.5,6.1,14.7,12.0,"1"],[590.9,218.5,6.1,14.7,12.0,"8"],[107.1,259.8,91.7,14.7,12.0,"Logistic regression"],[310.4,259.8,12.2,14.7,12.0,"21"],[449.9,259.8,6.1,14.7,12.0,"2"],[590.9,259.8,6.1,14.7,12.0,"1"],[245.8,305.6,228.4,14.7,12.0,"13 below-benchmark cases and 11 who met it"],[169.8,360.8,380.4,11.0,9.0,"These errors concern exam outcomes. They do not establish who needed or benefited from outreach."]],[[57.0,31.0,77.1,12.2,10.0,"Maya HAS A VOICE"],[57.0,52.7,368.0,22.7,20.0,"What should the advisor ask Maya?"],[78.0,134.9,560.0,20.4,18.0,"“You have my grade and my absences. What else would you "],[78.0,157.0,467.9,20.4,18.0,"want to know before deciding what help to offer?”"],[72.0,235.1,380.7,20.8,17.0,"Write one respectful question that could guide support."],[169.8,360.8,380.5,11.0,9.0,"A prediction of an exam result does not identify the cause or the support a student would find useful."]],[[57.0,31.0,86.2,12.2,10.0,"A FAIR COMPARISON"],[57.0,52.7,560.0,22.7,20.0,"Other students deserve the same evaluation challenge"],[75.0,129.4,108.3,13.4,11.0,"SAME TRAINING CASES"],[306.0,125.6,264.5,19.5,16.0,"Learn from the same historical outcomes."],[75.0,200.7,110.2,13.4,11.0,"SAME HELD-OUT CASES"],[306.0,196.9,335.3,19.5,16.0,"Compare predictions against the same known labels."],[75.0,272.0,153.9,13.4,11.0,"SAME AVAILABLE INFORMATION"],[306.0,268.2,314.0,19.5,16.0,"Use features recorded before the outcome being "],[306.0,287.2,65.2,19.5,16.0,"predicted."],[156.9,360.8,406.2,11.0,9.0,"Appropriate preparation can differ: scale for KNN and logistic regression; fit the scaler on training rows only."]],[[57.0,31.0,130.7,12.2,10.0,"YOUR PROVISIONAL JUDGMENT"],[57.0,52.7,472.5,22.7,20.0,"What should Maya’s advisor investigate first?"],[79.2,116.7,125.8,14.7,12.0,"First model to investigate"],[79.2,197.6,273.4,14.7,12.0,"Use the results. Whose errors or burdens concern you?"],[79.2,309.2,325.8,13.4,11.0,"This is a model to investigate. The advisor still needs to talk with Maya."],[190.4,360.8,339.4,11.0,9.0,"An outreach plan needs evidence about predictions and a way for students to ask for help."]],[[57.0,31.0,67.7,12.2,10.0,"SCENARIO PAIRS"],[57.0,52.7,342.6,22.7,20.0,"Other people, different decisions"],[86.0,126.8,3.5,8.5,7.0,"1"],[131.7,126.4,437.7,20.8,17.0,"Identify who is affected and what action follows a prediction."],[86.0,188.5,3.5,8.5,7.0,"2"],[131.7,187.8,347.5,20.8,17.0,"Choose a family to try and a task-specific reason."],[86.0,249.9,3.5,8.5,7.0,"3"],[131.7,249.2,493.0,19.5,16.0,"Name a weakness you accept and evidence that could change your choice."],[187.0,360.8,346.2,11.0,9.0,"Scenario choices are hypotheses to test. No results are supplied for these two organizations."]],[[57.0,31.0,49.8,12.2,10.0,"SCENARIO A"],[57.0,52.7,492.3,22.7,20.0,"A bank wants rapid flags for transaction review"],[75.0,117.3,372.9,20.8,17.0,"A customer’s purchase may be delayed by a false alarm."],[75.0,137.4,489.1,20.8,17.0,"The bank has many labeled transactions with complete numeric features."],[79.2,181.1,125.8,14.7,12.0,"First model to investigate"],[79.2,256.2,248.4,14.7,12.0,"Why this model? Name one weakness or tradeoff."],[154.2,360.8,411.4,11.0,9.0,"Useful evidence might include missed fraud, false alarms, or response time under the bank’s actual workload."]],[[57.0,31.0,49.4,12.2,10.0,"SCENARIO B"],[57.0,52.7,596.5,22.7,20.0,"A music service wants suggestions from a small feedback "],[57.0,76.7,74.0,22.7,20.0,"history"],[75.0,118.2,305.7,19.5,16.0,"A listener wants suggestions that fit their tastes."],[75.0,137.2,399.4,19.5,16.0,"Liked/skipped labels; complete, scaled numeric audio features."],[75.0,156.4,334.1,19.5,16.0,"The team suspects local groups with different tastes."],[79.2,191.6,125.8,14.7,12.0,"First model to investigate"],[79.2,265.1,282.9,14.7,12.0,"Why this model? What evidence could make you switch?"],[177.2,360.8,365.4,11.0,9.0,"A local-similarity model is plausible. The suspected pattern still needs checking on new examples."]],[[57.0,31.0,70.1,12.2,10.0,"PEER CHALLENGE"],[57.0,52.7,473.3,22.7,20.0,"A partner tests the reason behind your choice"],[72.0,112.2,413.3,20.8,17.0,"Exchange one scenario recommendation with another pair."],[75.0,170.0,365.7,20.4,18.0,"Ask: What weakness are you accepting?"],[75.0,192.1,457.0,20.4,18.0,"Ask: What result would make you switch models?"],[79.2,250.2,311.3,14.7,12.0,"After the challenge, keep or revise the choice and explain why."],[187.4,360.8,345.3,11.0,9.0,"Different choices can be reasonable when their assumptions and accepted costs are explicit."]],[[57.0,31.0,33.9,12.2,10.0,"DEBRIEF"],[57.0,52.7,498.9,22.7,20.0,"Back to Maya: a flag should open a conversation"],[75.0,137.1,119.6,19.3,17.0,"Model output"],[75.0,157.2,114.7,19.3,17.0,"A prediction "],[75.0,178.1,131.2,19.3,17.0,"about the next "],[75.0,199.2,105.6,19.3,17.0,"exam score."],[282.0,131.1,181.7,20.4,18.0,"Advisor’s invitation"],[282.0,152.9,357.6,20.4,18.0,"“Would it help to talk about preparing "],[282.0,175.0,181.0,20.4,18.0,"for the next exam?”"],[282.0,243.5,361.8,19.5,16.0,"Ask what Maya wants. Offer practical options. Keep help "],[282.0,262.4,278.0,19.5,16.0,"available to students who were not flagged."],[172.1,360.8,375.9,11.0,9.0,"The prediction can inform an invitation. Maya’s own account should shape the support that follows."]],[[57.0,31.0,61.9,12.2,10.0,"NEXT MEETING"],[57.0,52.8,529.9,26.1,23.0,"Lecture 16 turns comparison into a decision "],[57.0,79.9,91.4,26.1,23.0,"process"],[190.8,131.4,25.0,12.2,10.0,"Today"],[97.5,164.0,216.1,20.4,18.0,"How do models reason "],[87.5,186.1,236.1,20.4,18.0,"about Maya, and what do "],[116.5,207.9,178.1,20.4,18.0,"their outputs leave "],[141.2,229.0,124.0,20.4,18.0,"unanswered?"],[476.2,131.4,81.2,12.2,10.0,"Tuesday October 27"],[419.0,168.6,199.2,19.5,16.0,"Lecture 16: what evidence and "],[429.1,187.6,175.4,19.5,16.0,"constraints justify a choice?"],[401.2,206.5,234.8,19.5,16.0,"Lab 8: compare fitted models on the "],[452.7,224.5,128.2,19.5,16.0,"same student cases."],[199.5,360.8,320.9,11.0,9.0,"Week 9 then examines the preparation choices behind the data given to every model."]],[[57.0,31.0,62.5,12.2,10.0,"EXIT RESPONSE"],[57.0,52.8,583.6,26.1,23.0,"A model recommendation and a question for the "],[57.0,79.9,83.1,26.1,23.0,"person"],[79.2,113.6,229.9,14.7,12.0,"Choose a first model for one of today’s people"],[79.2,188.7,328.0,14.7,12.0,"Name the person, your reason, and evidence that could change it."],[79.2,271.1,334.2,14.7,12.0,"One weakness you accept; one question you would ask the person."],[173.3,360.8,373.3,11.0,9.0,"Connect your recommendation to model evidence, an accepted limitation, and the person affected."]]];
+const LINKS=[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
+const FIELDS=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("W1tdLFtdLFtdLFtdLFtdLFt7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6MzAzLjYsInciOjMzOS44LCJoIjoyMi4zLCJmcyI6MTQuMywiciI6MH1dLFt7InQiOiJjaG9pY2UiLCJ4Ijo3NS4wLCJ5IjoxMzUuOSwidyI6Mjg3LjAsImgiOjE5LjEsImZzIjoxMy4zLCJvIjpbImRlY2lzaW9uIHRyZWUiLCJLTk4iLCJsb2dpc3RpYyByZWdyZXNzaW9uIl0sImEiOjF9LHsidCI6ImNob2ljZSIsIngiOjc1LjAsInkiOjIxMC4xLCJ3IjoyODcuMCwiaCI6MTkuMSwiZnMiOjEzLjMsIm8iOlsiS05OIiwiZGVjaXNpb24gdHJlZSIsImxvZ2lzdGljIHJlZ3Jlc3Npb24iXSwiYSI6MX0seyJ0IjoiY2hvaWNlIiwieCI6NzUuMCwieSI6Mjk0LjEsInciOjI4Ny4wLCJoIjoxOS4xLCJmcyI6MTMuMywibyI6WyJLTk4iLCJkZWNpc2lvbiB0cmVlIiwibG9naXN0aWMgcmVncmVzc2lvbiJdLCJhIjoyfV0sW10sW3sidCI6InJhZGlvIiwieCI6NDcxLjIsInkiOjM0MC4yLCJzIjoxNS44LCJnIjowLCJhIjpmYWxzZX0seyJ0IjoicmFkaW8iLCJ4Ijo0NzEuMiwieSI6MzYxLjMsInMiOjE1LjgsImciOjAsImEiOnRydWV9XSxbXSxbXSxbXSxbXSxbXSxbeyJ0IjoidGV4dCIsIngiOjczLjAsInkiOjEzNC45LCJ3IjoyMzkuNCwiaCI6MjEuMSwiZnMiOjEzLjMsInIiOjB9LHsidCI6InRleHQiLCJ4Ijo3My4wLCJ5IjoyMDkuMSwidyI6MjM5LjQsImgiOjIxLjEsImZzIjoxMy4zLCJyIjowfSx7InQiOiJ0ZXh0IiwieCI6NzMuMCwieSI6MjkzLjEsInciOjIzOS40LCJoIjoyMS4xLCJmcyI6MTMuMywiciI6MH1dLFt7InQiOiJjaG9pY2UiLCJ4Ijo3OS4yLCJ5IjoyOTEuMCwidyI6MTM5LjksImgiOjIyLjgsImZzIjoxNi4yLCJvIjpbIk5vIiwiWWVzIl0sImEiOjB9XSxbXSxbXSxbeyJ0IjoidGV4dCIsIngiOjcwLjAsInkiOjI3MC4wLCJ3IjozMzkuOCwiaCI6MjIuMywiZnMiOjE0LjMsInIiOjB9XSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6NzkuMiwieSI6MTQxLjcsInciOjI4MC4zLCJoIjoxOS4xLCJmcyI6MTMuMywibyI6WyJLTk4iLCJkZWNpc2lvbiB0cmVlIiwibG9naXN0aWMgcmVncmVzc2lvbiJdfSx7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6MjIxLjgsInciOjI1Ni44LCJoIjoyMi4zLCJmcyI6MTQuMywiciI6MH1dLFtdLFt7InQiOiJjaG9pY2UiLCJ4Ijo3OS4yLCJ5IjoyMDYuMiwidyI6MjgwLjMsImgiOjE5LjEsImZzIjoxMy4zLCJvIjpbIktOTiIsImRlY2lzaW9uIHRyZWUiLCJsb2dpc3RpYyByZWdyZXNzaW9uIl19LHsidCI6InRleHQiLCJ4Ijo3Ny4yLCJ5IjoyODAuNCwidyI6MjU2LjgsImgiOjIyLjMsImZzIjoxNC4zLCJyIjowfV0sW3sidCI6ImNob2ljZSIsIngiOjc5LjIsInkiOjIxNi44LCJ3IjoyODAuMywiaCI6MTkuMSwiZnMiOjEzLjMsIm8iOlsiS05OIiwiZGVjaXNpb24gdHJlZSIsImxvZ2lzdGljIHJlZ3Jlc3Npb24iXX0seyJ0IjoidGV4dCIsIngiOjc3LjIsInkiOjI4OS4yLCJ3IjoyNTYuOCwiaCI6MjIuMywiZnMiOjE0LjMsInIiOjB9XSxbeyJ0IjoidGV4dCIsIngiOjc3LjIsInkiOjI3NC40LCJ3IjoyNTYuOCwiaCI6MjIuMywiZnMiOjE0LjMsInIiOjB9XSxbXSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6NzkuMiwieSI6MTM4LjgsInciOjI4MC4zLCJoIjoxOS4xLCJmcyI6MTMuMywibyI6WyJLTk4iLCJkZWNpc2lvbiB0cmVlIiwibG9naXN0aWMgcmVncmVzc2lvbiJdfSx7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6MjEyLjksInciOjc1LjUsImgiOjIyLjMsImZzIjoxNC4zLCJyIjowfSx7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6Mjk1LjIsInciOjc1LjUsImgiOjIyLjMsImZzIjoxNC4zLCJyIjowfV1d"),c=>c.charCodeAt(0))));
+const HASKEY=FIELDS.some(fl=>fl.some(f=>'a' in f));
+const N=28,W=720,H=405,KEY='slides-annot:lecture15-20afab94',URLS=SLIDES.map(s=>URL.createObjectURL(new Blob([s],{type:'image/svg+xml'}))),src=i=>URLS[i];
+const $=id=>document.getElementById(id);
+let i=0,zoom=0/*0=fit*/,scale=1,tool='select';
+// ---------- storage ----------
+let store={slides:{}},canSave=true;
+try{const s=localStorage.getItem(KEY);if(s)store=JSON.parse(s)}catch(e){canSave=false}
+const S=k=>{const s=store.slides[k]||(store.slides[k]={strokes:[],stickies:[],notes:''});s.fills||(s.fills={});s.emb||(s.emb={});return s};
+const esize=(k,j)=>{const f=FIELDS[k][j],z=S(k).emb[j];return z?[Math.min(z[0],W-f.x),Math.min(z[1],H-f.y)]:[f.w,f.h]};
+const has=k=>{const s=store.slides[k];return s&&(s.strokes.length||s.stickies.length||s.notes.trim()||Object.values(s.fills||{}).some(v=>v===true||(typeof v=='string'&&v.trim())))};
+let saveT;function flush(){if(saveT){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}}
+addEventListener('pagehide',flush);addEventListener('beforeunload',flush);document.addEventListener('visibilitychange',()=>document.hidden&&flush());
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store));$('status').textContent='Saved in this browser'}catch(e){$('status').textContent='⚠ Browser storage unavailable — use Backup'}markThumb(i)},300)}
+$('status').textContent=canSave?'Saved in this browser':'⚠ Browser storage unavailable — use Backup';
+// ---------- layout / zoom ----------
+function layout(){const st=$('stage'),aw=st.clientWidth-32,ah=st.clientHeight-32;
+ const fit=Math.max(.1,Math.min(aw/W,ah/H));scale=zoom?fit*zoom:fit;
+ $('frame').style.width=W*scale+'px';$('frame').style.height=H*scale+'px';
+ $('inner').style.transform=`scale(${scale})`;
+ $('zoomv').textContent=zoom?Math.round(zoom*100)+'%':'Fit';
+ const c=$('ink'),d=devicePixelRatio||1;c.width=Math.round(W*scale*d);c.height=Math.round(H*scale*d);redraw();sizeEmbeds()}
+new ResizeObserver(layout).observe($('stage'));
+const setZoom=z=>{zoom=z&&Math.abs(z-1)<.01?0:z;layout()};
+$('zin').onclick=()=>setZoom(Math.min(5,(zoom||1)*1.25));$('zout').onclick=()=>setZoom(Math.max(.4,(zoom||1)/1.25));$('zfit').onclick=()=>setZoom(0);
+$('stage').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(Math.min(5,Math.max(.4,(zoom||1)*(e.deltaY<0?1.1:1/1.1))))}},{passive:false});
+$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+// ---------- text layer ----------
+const mctx=document.createElement('canvas').getContext('2d');
+function buildText(){const t=$('txt');t.innerHTML='';for(const[x,y,w,h,fs,s]of TEXT[i]){const e=document.createElement('span');
+ e.textContent=s;e.style.left=x+'px';e.style.top=y+'px';e.style.fontSize=h+'px';mctx.font=`${h}px sans-serif`;
+ const m=mctx.measureText(s).width;if(m>0)e.style.transform=`scaleX(${w/m})`;t.appendChild(e);t.appendChild(document.createTextNode('\n'))}}
+// ---------- ink ----------
+const ctx=$('ink').getContext('2d');
+function drawStroke(c,s,k){c.save();c.globalAlpha=s.a;c.strokeStyle=s.c;c.lineWidth=s.w*k;c.lineCap=c.lineJoin='round';
+ if(s.a<1)c.globalCompositeOperation='multiply';c.beginPath();s.p.forEach(([x,y],j)=>j?c.lineTo(x*k,y*k):c.moveTo(x*k,y*k));
+ if(s.p.length==1)c.lineTo(s.p[0][0]*k+.01,s.p[0][1]*k);c.stroke();c.restore()}
+function redraw(){const k=$('ink').width/W;ctx.clearRect(0,0,$('ink').width,$('ink').height);S(i).strokes.forEach(s=>drawStroke(ctx,s,k))}
+const pt=e=>{const r=$('ink').getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]};
+let cur=null;const hist=[];
+$('ink').addEventListener('pointerdown',e=>{const p=pt(e);
+ if(tool=='sticky'){e.preventDefault();addSticky(p[0],p[1]);return}
+ $('ink').setPointerCapture(e.pointerId);
+ if(tool=='erase'){cur='erase';eraseAt(p);return}
+ const hi=tool=='hi';cur={c:$('color').value,w:hi?12:1.6,a:hi?.35:1,p:[p]};if(hi&&cur.c=='#d0303f')cur.c='#ffe14d';});
+$('ink').addEventListener('pointermove',e=>{if(!cur)return;const p=pt(e);if(cur=='erase')return eraseAt(p);
+ cur.p.push(p.map(v=>Math.round(v*10)/10));redraw();drawStroke(ctx,cur,$('ink').width/W)});
+addEventListener('pointerup',()=>{if(cur&&cur!='erase'){S(i).strokes.push(cur);hist.push({k:i,t:'s'});save()}cur=null;redraw()});
+function eraseAt([x,y]){const a=S(i).strokes,n=a.length;S(i).strokes=a.filter(s=>!s.p.some(([u,v])=>Math.hypot(u-x,v-y)<Math.max(5,s.w)));if(S(i).strokes.length!=n){redraw();save()}}
+$('undo').onclick=()=>{for(let j=hist.length-1;j>=0;j--)if(hist[j].k==i){const h=hist.splice(j,1)[0];if(h.t=='s')S(i).strokes.pop();else{S(i).stickies.pop();renderStickies()}redraw();save();return}
+ if(S(i).strokes.length){S(i).strokes.pop();redraw();save()}};
+$('clear').onclick=()=>arm($('clear'),()=>{{S(i).strokes=[];S(i).stickies=[];redraw();renderStickies();save()}});
+// ---------- stickies ----------
+function addSticky(x,y){S(i).stickies.push({x:Math.min(x,W-125),y:Math.min(y,H-60),w:120,h:50,t:''});hist.push({k:i,t:'n'});renderStickies();save();
+ const ta=$('stk').lastChild.querySelector('textarea');setTool('select');setTimeout(()=>ta.focus(),0)}
+function renderStickies(){const L=$('stk');L.innerHTML='';S(i).stickies.forEach((n,j)=>{const d=document.createElement('div');d.className='note';d.style.left=n.x+'px';d.style.top=n.y+'px';
+ d.innerHTML='<div class="h"><b class="dn" title="Smaller text">A−</b><b class="up" title="Larger text">A+</b><i></i><b class="x" title="Delete">✕</b></div><textarea></textarea>';const ta=d.querySelector('textarea');ta.value=n.t;
+ const sz=()=>ta.style.fontSize=(n.fs||9)+'px';sz();
+ d.querySelector('.dn').onclick=()=>{n.fs=Math.max(4,(n.fs||9)-1);sz();save()};d.querySelector('.up').onclick=()=>{n.fs=Math.min(40,(n.fs||9)+1);sz();save()};ta.style.width=n.w+'px';ta.style.height=n.h+'px';
+ ta.oninput=()=>{n.t=ta.value;save()};new ResizeObserver(()=>{const w=ta.offsetWidth,h=ta.offsetHeight;if(w&&(w!=n.w||h!=n.h)){n.w=w;n.h=h;save()}}).observe(ta);
+ d.querySelector('.x').onclick=()=>{S(i).stickies.splice(j,1);renderStickies();save()};
+ d.querySelector('.h').onpointerdown=e=>{if(e.target.tagName=='B')return;e.preventDefault();const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;
+  const mv=ev=>{n.x=ox+(ev.clientX-sx)/scale;n.y=oy+(ev.clientY-sy)/scale;d.style.left=n.x+'px';d.style.top=n.y+'px'};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);save()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
+ L.appendChild(d)})}
+// ---------- interactive fields: blanks, checkboxes, radios, dropdowns ----------
+let checking=false;
+const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+const val=(k,j)=>{const f=FIELDS[k][j],v=S(k).fills[j];return v===undefined&&f.t!='text'&&f.t!='choice'?!!f.i:v};
+function correct(k,j){const f=FIELDS[k][j],v=val(k,j);if(!('a' in f))return null;
+ if(f.t=='text')return f.a.some(a=>norm(a)==norm(v));
+ if(f.t=='choice')return v===f.o[f.a];
+ return !!v===f.a}
+function renderFields(){const L=$('fld');L.innerHTML='';const fl=S(i).fills;
+ FIELDS[i].forEach((f,j)=>{let e;
+  if(f.t=='embed'){e=document.createElement('span');e.hidden=true;L.appendChild(e);return}
+  if(f.t=='text'){e=document.createElement('textarea');e.className='fill'+(f.r?' round':'');e.rows=1;e.spellcheck=false;
+   Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px',fontSize:f.fs+'px'});e.placeholder='?';e.title='Fill in the blank';e.value=fl[j]||'';
+   const pad=()=>{e.style.paddingTop='0';let z=f.fs;e.style.fontSize=z+'px';while(z>f.fs*.45&&(e.scrollHeight>f.h+1||e.scrollWidth>f.w+1)){z*=.92;e.style.fontSize=z+'px'}
+    e.style.paddingTop=Math.max(0,(f.h-Math.min(e.scrollHeight,f.h))/2)+'px'};
+   e.oninput=()=>{fl[j]=e.value;pad();changed()};
+   e.onkeydown=ev=>{if(ev.key=='Enter'&&!ev.shiftKey){ev.preventDefault();const n=L.children[j+1];n?n.focus():e.blur()}};
+   L.appendChild(e);pad();return}
+  if(f.t=='choice'){e=document.createElement('select');e.className='ctl';
+   Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px',fontSize:f.fs+'px'});
+   e.innerHTML='<option value="">—</option>'+f.o.map(o=>`<option>${o.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+   e.value=fl[j]||'';e.onchange=()=>{fl[j]=e.value;changed()}}
+  else{e=document.createElement('input');e.type=f.t=='check'?'checkbox':'radio';e.className='ctl';
+   if(f.t=='radio')e.name=`s${i}g${f.g}`;Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.s+'px',height:f.s+'px'});
+   e.checked=!!val(i,j);
+   e.onchange=()=>{if(f.t=='radio')FIELDS[i].forEach((g,k)=>{if(g.t=='radio'&&g.g==f.g)fl[k]=k==j});else fl[j]=e.checked;changed()}}
+  e.setAttribute('aria-label',`${{text:'Blank',choice:'Choice',check:'Checkbox',radio:'Option'}[f.t]} ${j+1} on slide ${i+1}`);
+  L.appendChild(e)});
+ markAnswers()}
+function changed(){save();if(checking)markAnswers()}
+function markAnswers(){const els=$('fld').children;let ok=0,n=0;const seen=new Set();
+ FIELDS[i].forEach((f,j)=>{const e=els[j];e.classList.remove('ok','bad');if(!checking||!('a' in f))return;
+  if(f.t=='radio'){if(seen.has(f.g))return;seen.add(f.g);const grp=FIELDS[i].map((g,k)=>[g,k]).filter(([g])=>g.t=='radio'&&g.g==f.g);
+   const good=grp.every(([g,k])=>correct(i,k));n++;ok+=good;
+   const sel=grp.find(([g,k])=>val(i,k));(sel?[sel]:grp).forEach(([g,k])=>els[k].classList.add(good?'ok':'bad'));return}
+  const c=correct(i,j);n++;ok+=c;e.classList.add(c?'ok':'bad')});
+ if(checking)msg(n?`Slide ${i+1}: ${ok} of ${n} correct`:'No answer key on this slide')}
+$('chk').onclick=()=>{checking=!checking;$('chk').classList.toggle('on',checking);if(!checking)msg('Saved in this browser');markAnswers()};
+if(!HASKEY)$('chkg').style.display='none';
+// ---------- tools ----------
+function setTool(t){tool=t;document.querySelectorAll('#tools [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));
+ document.body.classList.remove('select','draw','erase','sticky');document.body.classList.add(t=='pen'||t=='hi'?'draw':t)}
+document.querySelectorAll('#tools [data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+// ---------- notes panel / thumbs ----------
+$('notes').oninput=()=>{S(i).notes=$('notes').value;save()};
+const UIK=KEY+':ui';let ui={notes:true,thumbs:true};try{Object.assign(ui,JSON.parse(localStorage.getItem(UIK)||'{}'))}catch(e){}
+function applyUI(){const B=document.body.classList;B.toggle('nonotes',!ui.notes);B.toggle('nothumbs',!ui.thumbs);
+ for(const[id,on]of[['tnotes',ui.notes],['tthumbs',ui.thumbs],['tfocus',!ui.notes&&!ui.thumbs]]){$(id).classList.toggle('on',on);$(id).setAttribute('aria-pressed',on)}
+ try{localStorage.setItem(UIK,JSON.stringify(ui))}catch(e){}}
+$('tnotes').onclick=()=>{ui.notes=!ui.notes;applyUI()};$('tthumbs').onclick=()=>{ui.thumbs=!ui.thumbs;applyUI()};
+$('tfocus').onclick=()=>{const f=!(ui.notes||ui.thumbs);ui.notes=ui.thumbs=f;applyUI()};applyUI();
+for(let k=0;k<N;k++){const d=document.createElement('div'),t=new Image();t.src=src(k);t.alt='Slide '+(k+1);t.title='Slide '+(k+1);t.onclick=()=>go(k);d.appendChild(t);$('thumbs').appendChild(d);markThumb(k)}
+function markThumb(k){$('thumbs').children[k].classList.toggle('dot',!!has(k))}
+// ---------- embeds (click to load, sandboxed) ----------
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function renderEmbeds(){const L=$('emb');L.innerHTML='';
+ FIELDS[i].forEach((f,j)=>{if(f.t!='embed')return;let host='';try{host=new URL(f.u).hostname}catch(_){return}
+  const [ew,eh]=esize(i,j);
+  const d=document.createElement('div');d.className='embed';Object.assign(d.style,{left:f.x+'px',top:f.y+'px',width:ew+'px',height:eh+'px'});
+  d.innerHTML=`<div class="bar"><b>${esc(host)}</b><a href="${esc(f.u)}" target="_blank" rel="noopener noreferrer" title="Open in a new tab">Open ↗</a></div>
+   <div class="card"><button class="go">Load ${esc(host)}</button><small>${navigator.onLine?'Loads an external page. Some sites refuse to appear inside other pages — use “Open ↗” then.':'You appear to be offline. This content needs an internet connection.'}</small></div>`;
+  d.querySelector('.go').onclick=()=>loadEmbed(d,f);
+  const g=document.createElement('div');g.className='grip';g.title='Drag to resize · double-click to reset';d.appendChild(g);
+  g.onpointerdown=e=>{e.preventDefault();e.stopPropagation();g.setPointerCapture(e.pointerId);d.classList.add('resizing');
+   const sx=e.clientX,sy=e.clientY,ow=d.offsetWidth,oh=d.offsetHeight;
+   g.onpointermove=ev=>{const w=Math.max(80,Math.min(W-f.x,ow+(ev.clientX-sx)/scale)),h=Math.max(50,Math.min(H-f.y,oh+(ev.clientY-sy)/scale));
+    d.style.width=w+'px';d.style.height=h+'px';sizeEmbeds()};
+   g.onpointerup=()=>{g.onpointermove=g.onpointerup=null;d.classList.remove('resizing');S(i).emb[j]=[Math.round(d.offsetWidth*10)/10,Math.round(d.offsetHeight*10)/10];save()}};
+  g.ondblclick=()=>{delete S(i).emb[j];d.style.width=f.w+'px';d.style.height=f.h+'px';sizeEmbeds();save()};
+  L.appendChild(d)})}
+function loadEmbed(d,f){const same=(()=>{try{return new URL(f.u).origin===location.origin}catch(_){return true}})();
+ const fr=document.createElement('iframe');
+ // No allow-same-origin unless the author trusted this domain AND it isn't our own origin:
+ // the embedded page can then never read this page or students' saved work.
+ fr.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation'+(f.tr&&!same?' allow-same-origin':''));
+ fr.setAttribute('allow',f.tr&&!same?'fullscreen; autoplay; encrypted-media; picture-in-picture':'fullscreen');
+ fr.referrerPolicy='no-referrer';fr.setAttribute('credentialless','');fr.title='Embedded page: '+f.u;fr.src=f.u;
+ const vp=document.createElement('div');vp.className='vp';vp.appendChild(fr);
+ const hint=document.createElement('div');hint.className='hint';hint.textContent='Click outside this frame to use slide keys again';vp.appendChild(hint);
+ d.querySelector('.card').replaceWith(vp);
+ const un=document.createElement('button');un.textContent='Close ✕';un.title='Unload this page';un.onclick=()=>renderEmbeds();d.querySelector('.bar').appendChild(un);
+ sizeEmbeds()}
+// Lay the frame out in real screen pixels (so sites don't get their phone layout), then scale it back down to slide size.
+function sizeEmbeds(){document.querySelectorAll('#emb .vp').forEach(vp=>{const fr=vp.firstChild,w=vp.offsetWidth,h=vp.offsetHeight;
+ Object.assign(fr.style,{width:w*scale+'px',height:h*scale+'px',transform:`scale(${1/scale})`})})}
+addEventListener('blur',()=>setTimeout(()=>{const a=document.activeElement;document.querySelectorAll('.embed').forEach(e=>e.classList.toggle('active',!!a&&e.contains(a)))}));
+addEventListener('focus',()=>document.querySelectorAll('.embed.active').forEach(e=>e.classList.remove('active')));
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.embed'))document.querySelectorAll('.embed.active').forEach(x=>x.classList.remove('active'))});
+// ---------- links ----------
+function renderLinks(){const L=$('lnk');L.innerHTML='';for(const[x,y,w,h,kind,t]of LINKS[i]){const a=document.createElement('a');
+ Object.assign(a.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+ if(kind=='u'){a.href=t;a.target='_blank';a.rel='noopener noreferrer';a.title=t}
+ else{a.href='#'+(t+1);a.title='Go to slide '+(t+1);a.onclick=e=>{e.preventDefault();go(t)}}
+ a.setAttribute('aria-label',a.title);L.appendChild(a)}}
+// ---------- navigation ----------
+function go(k){i=Math.max(0,Math.min(N-1,k));$('img').src=src(i);$('img').alt='Slide '+(i+1);
+ $('count').textContent=`${i+1} / ${N}`;$('bar').style.width=((i+1)/N*100)+'%';$('nh').textContent=`Notes — slide ${i+1}`;
+ [...$('thumbs').children].forEach((t,j)=>t.classList.toggle('on',j==i));$('thumbs').children[i].scrollIntoView({block:'nearest',inline:'center'});
+ $('notes').value=S(i).notes;checking=false;$('chk').classList.remove('on');buildText();renderLinks();renderEmbeds();renderFields();redraw();renderStickies();$('stage').scrollTo(0,0);history.replaceState(null,'','#'+(i+1))}
+$('prev').onclick=()=>go(i-1);$('next').onclick=()=>go(i+1);
+addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg=='TEXTAREA'||tg=='INPUT')return;
+ if((e.ctrlKey||e.metaKey)&&e.key=='z'){e.preventDefault();$('undo').click();return}if(e.ctrlKey||e.metaKey)return;
+ const m={ArrowRight:()=>go(i+1),PageDown:()=>go(i+1),' ':()=>go(i+1),ArrowLeft:()=>go(i-1),PageUp:()=>go(i-1),Home:()=>go(0),End:()=>go(N-1),
+ '+':()=>$('zin').click(),'=':()=>$('zin').click(),'-':()=>$('zout').click(),'0':()=>setZoom(0),f:()=>$('fs').click(),
+ v:()=>setTool('select'),t:()=>$('tthumbs').click(),']':()=>$('tnotes').click(),'\\':()=>$('tfocus').click(),p:()=>setTool('pen'),h:()=>setTool('hi'),n:()=>setTool('sticky'),e:()=>setTool('erase')}[e.key];if(m){e.preventDefault();m()}});
+let x0;$('stage').addEventListener('touchstart',e=>x0=tool=='select'&&!zoom?e.touches[0].clientX:null,{passive:true});
+$('stage').addEventListener('touchend',e=>{if(x0==null)return;const d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>60)go(i+(d<0?1:-1))});
+// ---------- backup / restore ----------
+let dlr=null;try{claude.use('downloads').then(d=>dlr=d)}catch(_){}
+function msg(t){$('status').textContent=t}
+function arm(b,f){if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl;f()}else{b.dataset.lbl=b.textContent;b.dataset.arm=1;b.textContent='Click again to confirm';setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl}},3000)}}
+async function dl(blob,name){if(dlr){try{await dlr.save({filename:name,data:blob});msg('Downloaded '+name)}catch(e){msg(e.code=='declined'?'Download cancelled':'Download unavailable here')}return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('exp').onclick=()=>dl(new Blob([JSON.stringify({deck:KEY,...store})],{type:'application/json'}),'lecture15-annotations.json');
+$('imp').onclick=()=>$('impf').click();
+$('impf').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!d.slides)throw 0;
+ store={slides:d.slides};save();for(let k=0;k<N;k++)markThumb(k);go(i)}catch(_){msg('⚠ Not a valid annotations backup')}e.target.value=''};
+// ---------- PDF export ----------
+const loadImg=s=>new Promise((r,j)=>{const m=new Image();m.onload=()=>r(m);m.onerror=j;m.src=s});
+$('pdf').onclick=()=>makePdf($('pdf'),false);$('pdfa').onclick=()=>makePdf($('pdfa'),true);
+async function makePdf(b,only){const lbl=b.textContent;
+ b.disabled=true;const list=[...Array(N).keys()].filter(k=>!only||has(k));if(!list.length){msg('No annotated slides yet');b.disabled=false;return}
+ const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'landscape',unit:'pt',format:[W,H]}),R=3;
+ const pageOf={},jumps=[];
+ for(const[n,k]of list.entries()){b.textContent=`Saving ${n+1}/${list.length}…`;
+  const c=document.createElement('canvas');c.width=W*R;c.height=H*R;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+  g.drawImage(await loadImg(src(k)),0,0,c.width,c.height);S(k).strokes.forEach(s=>drawStroke(g,s,R));
+  if(n)doc.addPage([W,H],'landscape');doc.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,W,H);pageOf[k]=doc.getNumberOfPages();
+  for(const[x,y,w,hh,kind,t]of LINKS[k]){if(kind=='u')doc.link(x,y,w,hh,{url:t});else jumps.push([pageOf[k],x,y,w,hh,t])}
+  for(const[x,y,w,hh,fs,s]of TEXT[k]){doc.setFontSize(hh);doc.text(s,x,y+hh*.8,{renderingMode:'invisible',maxWidth:w+20})}
+  FIELDS[k].forEach((f0,j)=>{if(f0.t!='embed')return;const [ew,eh]=esize(k,j),f={...f0,w:ew,h:eh};doc.setFillColor(246,244,238);doc.setDrawColor(201,196,182);doc.setLineWidth(.6);doc.rect(f.x,f.y,f.w,f.h,'FD');
+   doc.setFillColor(61,64,88);doc.rect(f.x,f.y,f.w,12,'F');doc.setFontSize(7);doc.setTextColor(236,234,228);let host=f.u;try{host=new URL(f.u).hostname}catch(_){}doc.text('Embedded: '+host,f.x+4,f.y+8.2);
+   doc.setFontSize(8);doc.setTextColor(29,63,138);doc.text(doc.splitTextToSize(f.u,f.w-16),f.x+f.w/2,f.y+12+(f.h-12)/2,{align:'center',baseline:'middle'});doc.link(f.x,f.y,f.w,f.h,{url:f.u})});
+  FIELDS[k].forEach((f,j)=>{if(f.t=='embed')return;const v=val(k,j);doc.setDrawColor(200,85,58);doc.setLineWidth(.8);doc.setTextColor(29,63,138);
+   if(f.t=='text'){const t=(v||'').trim();doc.setLineDashPattern([2,2],0);if(f.r)doc.ellipse(f.x+f.w/2,f.y+f.h/2,f.w/2,f.h/2,'S');else doc.line(f.x,f.y+f.h,f.x+f.w,f.y+f.h);doc.setLineDashPattern([],0);
+    if(t){let z=f.fs,ls;do{doc.setFontSize(z);ls=doc.splitTextToSize(t,f.w-4);if(ls.length*z*1.15<=f.h||z<f.fs*.45)break;z*=.92}while(1);
+     doc.text(ls,f.x+f.w/2,f.y+f.h/2-(ls.length-1)*z*1.15/2,{align:'center',baseline:'middle',lineHeightFactor:1.15})}}
+   else if(f.t=='choice'){doc.setLineDashPattern([2,2],0);doc.rect(f.x,f.y,f.w,f.h,'S');doc.setLineDashPattern([],0);
+    const a=f.x+f.w-f.h*.55,b=f.y+f.h*.4;doc.setFillColor(200,85,58);doc.triangle(a-f.h*.18,b,a+f.h*.18,b,a,b+f.h*.25,'F');
+    if(v){doc.setFontSize(f.fs);doc.text(String(v),f.x+3,f.y+f.h/2,{baseline:'middle',maxWidth:f.w-f.h})}}
+   else if(f.t=='check'){doc.rect(f.x,f.y,f.s,f.s,'S');if(v){doc.setDrawColor(29,63,138);doc.setLineWidth(1.4);doc.line(f.x+f.s*.2,f.y+f.s*.55,f.x+f.s*.42,f.y+f.s*.78);doc.line(f.x+f.s*.42,f.y+f.s*.78,f.x+f.s*.82,f.y+f.s*.22)}}
+   else{doc.circle(f.x+f.s/2,f.y+f.s/2,f.s/2,'S');if(v){doc.setFillColor(29,63,138);doc.circle(f.x+f.s/2,f.y+f.s/2,f.s*.25,'F')}}});
+  for(const s of S(k).stickies){doc.setFillColor(255,246,168);doc.setDrawColor(216,198,74);doc.rect(s.x,s.y,s.w,s.h+11,'FD');doc.setFillColor(240,220,90);doc.rect(s.x,s.y,s.w,11,'F');
+   const fz=s.fs||9;doc.setFontSize(fz);doc.setTextColor(34);doc.text(doc.splitTextToSize(s.t,s.w-6),s.x+3,s.y+11+3+fz*.85,{lineHeightFactor:1.25})}
+  if(S(k).notes.trim()){doc.addPage([W,H],'landscape');doc.setFontSize(16);doc.setTextColor(34);doc.text(`Notes — slide ${k+1}`,36,44);
+   doc.setFontSize(11);let y=72;for(const ln of doc.splitTextToSize(S(k).notes,W-72)){if(y>H-30){doc.addPage([W,H],'landscape');y=44}doc.text(ln,36,y);y+=15}}}
+ for(const[pg,x,y,w,hh,t]of jumps)if(pageOf[t]){doc.setPage(pg);doc.link(x,y,w,hh,{pageNumber:pageOf[t]})}
+ await dl(doc.output('blob'),'lecture15-annotated.pdf');b.textContent=lbl;b.disabled=false}
+go((parseInt(location.hash.slice(1))||1)-1);layout();
+</script></body></html>
