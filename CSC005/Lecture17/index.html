@@ -1,1 +1,323 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lecture17</title>
+<script src="jspdf.umd.min.js"></script><script src="slides.js"></script>
+<style>
+:root{--bg:#f1efe8;--panel:#fff;--fg:#22232b;--muted:#6b6b76;--line:#d9d6cc;--accent:#d0603f;--sel:rgba(208,96,63,.3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}}
+:root[data-theme="dark"]{--bg:#1b1d24;--panel:#262932;--fg:#eceae4;--muted:#9a9aa6;--line:#3a3d48}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);height:100vh;overflow:hidden}
+header{display:flex;gap:6px;align-items:center;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.grp{display:flex;gap:4px;align-items:center;padding-right:8px;margin-right:4px;border-right:1px solid var(--line)}
+.grp:last-child{border:0}
+button{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font:inherit;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=color]{width:30px;height:28px;border:1px solid var(--line);border-radius:6px;padding:1px;background:transparent}
+#count{min-width:62px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+#zoomv{min-width:44px;text-align:center;color:var(--muted)}
 
+.lbl{color:var(--muted);font-size:12px;margin-right:2px}
+#status{margin-left:auto;color:var(--muted);font-size:12px}
+#bar{height:3px;background:var(--accent);width:0;transition:width .2s}
+main{display:flex;min-height:0;min-width:0;overflow:hidden}
+#stage{flex:1;overflow:auto;display:flex;padding:16px;min-width:0}
+#frame{margin:auto;flex:none;position:relative;box-shadow:0 6px 30px #0005;border-radius:3px;overflow:hidden;background:#fff}
+#inner{position:absolute;left:0;top:0;width:720px;height:405px;transform-origin:0 0}
+#inner>*{position:absolute;inset:0}
+#img{width:720px;height:405px;user-select:none;-webkit-user-drag:none}
+#lnk,#emb{pointer-events:none}
+.embed{position:absolute;pointer-events:auto;background:#f6f4ee;border:1px solid #c9c4b6;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;font-family:system-ui,sans-serif;color:#33343c}
+.embed .bar{flex:none;display:flex;align-items:center;gap:4px;height:12px;padding:0 4px;background:#3d4058;color:#eceae4;font-size:6.5px}
+.embed .bar b{font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.embed .bar a,.embed .bar button{color:#eceae4;font:inherit;background:none;border:0;padding:0 3px;cursor:pointer;text-decoration:none;border-radius:2px}
+.embed .bar a:hover,.embed .bar button:hover{background:#ffffff26}
+.embed .card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:6px}
+.embed .card .go{font:600 9px system-ui,sans-serif;color:#fff;background:#c8553a;border:0;border-radius:4px;padding:4px 12px;cursor:pointer}
+.embed .card .go:hover{background:#a9442d}
+.embed .card small{font-size:6px;color:#6b6b76;max-width:90%;overflow-wrap:anywhere}
+.embed .vp{flex:1;position:relative;overflow:hidden}
+.embed iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#fff}
+.embed.active{outline:2px solid #c8553a;outline-offset:1px}
+.embed .hint{position:absolute;right:4px;bottom:4px;background:#3d4058e6;color:#fff;font-size:6px;padding:2px 5px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .2s}
+.embed.active .hint{opacity:1}
+body:not(.select) .embed{pointer-events:none}
+.embed .grip{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize;z-index:2;touch-action:none;
+ background:linear-gradient(135deg,transparent 0 45%,#3d4058 45% 52%,transparent 52% 64%,#3d4058 64% 71%,transparent 71% 83%,#3d4058 83% 90%,transparent 90%);opacity:.75}
+.embed .grip:hover{opacity:1}
+.embed.resizing iframe{pointer-events:none}
+#lnk a{position:absolute;pointer-events:auto;border-radius:2px;cursor:pointer}
+#lnk a:hover,#lnk a:focus-visible{background:rgba(29,63,138,.12);outline:1px solid rgba(29,63,138,.45);outline-offset:1px}
+body:not(.select) #lnk a{pointer-events:none}
+#txt span{position:absolute;color:transparent;white-space:pre;transform-origin:0 0;line-height:1;cursor:text;font-family:sans-serif}
+#txt span::selection{background:var(--sel);color:transparent}
+#ink{width:720px;height:405px;pointer-events:none}
+#stk,#fld{pointer-events:none}
+.fill{position:absolute;pointer-events:auto;margin:0;border:0;border-bottom:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;text-align:center;resize:none;outline:none;overflow:hidden;line-height:1.15;padding:0 2px;border-radius:2px}
+.fill.round{border:1.5px dashed #c8553a;border-radius:40%/50%}
+.fill:focus{background:rgba(255,244,190,.95);border-color:#c8553a;border-style:solid;box-shadow:0 0 0 2px rgba(200,85,58,.25)}
+.ctl{position:absolute;pointer-events:auto;margin:0;accent-color:#c8553a;cursor:pointer}
+select.ctl{border:1.5px dashed #c8553a;background:rgba(255,244,190,.6);color:#1d3f8a;font-family:system-ui,sans-serif;font-weight:600;border-radius:3px;padding:0 2px;outline:none}
+select.ctl:focus{border-style:solid;background:rgba(255,244,190,.95)}
+.ok{outline:2px solid #2e8b57!important;outline-offset:1px;box-shadow:0 0 0 3px rgba(46,139,87,.25)}
+.bad{outline:2px solid #d0303f!important;outline-offset:1px;box-shadow:0 0 0 3px rgba(208,48,63,.25)}
+#chk.on{background:#2e8b57;border-color:#2e8b57}
+.fill::placeholder{color:#c8553a;opacity:.55;font-weight:400}
+body.draw #ink{pointer-events:auto;cursor:crosshair}body.erase #ink{pointer-events:auto;cursor:cell}
+body.sticky #ink{pointer-events:auto;cursor:copy}
+body:not(.select) #txt{pointer-events:none}
+.note{position:absolute;pointer-events:auto;background:#fff6a8;border:1px solid #d8c64a;border-radius:3px;box-shadow:0 2px 6px #0003;display:flex;flex-direction:column;min-width:60px}
+.note .h{height:11px;background:#f0dc5a;cursor:move;display:flex;justify-content:flex-end;align-items:center;gap:1px}
+.note .h b{font:bold 8px/11px sans-serif;padding:0 3px;cursor:pointer;color:#6b5d00;border-radius:2px;user-select:none}.note .h b:hover{background:#e2cb3c}.note .h i{flex:1}
+.note textarea{border:0;background:transparent;resize:both;font:9px/1.25 system-ui,sans-serif;color:#222;padding:3px;width:120px;height:50px;outline:none}
+aside{width:300px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;padding:12px;gap:8px}
+body.nonotes aside{display:none}
+aside h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
+#notes{flex:1;resize:none;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:10px}
+#thumbs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+#thumbs div{position:relative;flex:none}
+#thumbs img{height:50px;display:block;border:2px solid transparent;border-radius:3px;cursor:pointer;opacity:.6;background:#fff}
+#thumbs .on img{border-color:var(--accent);opacity:1}
+#thumbs .dot::after{content:"";position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+body.nothumbs #thumbs{display:none}
+@media (max-width:700px){aside{position:fixed;inset:auto 0 0 0;width:auto;height:40vh;border-left:0;border-top:1px solid var(--line);z-index:5}}
+</style></head><body class="select">
+<header>
+ <div class="grp"><button id="prev" title="Previous (←)">◀</button><span id="count"></span><button id="next" title="Next (→)">▶</button></div>
+ <div class="grp"><button id="zout" title="Zoom out (−)">−</button><span id="zoomv">Fit</span><button id="zin" title="Zoom in (+)">+</button><button id="zfit" title="Fit to window (0)">Fit</button><button id="fs" title="Fullscreen (F)">⛶</button></div>
+ <div class="grp" id="tools">
+  <button data-t="select" class="on" title="Select text (V)">Select</button>
+  <button data-t="pen" title="Pen (P)">Pen</button>
+  <button data-t="hi" title="Highlighter (H)">Highlight</button>
+  <button data-t="sticky" title="Sticky note (N)">Sticky</button>
+  <button data-t="erase" title="Eraser (E)">Erase</button>
+  <input type="color" id="color" value="#d0303f" title="Ink color">
+  <button id="undo" title="Undo (Ctrl+Z)">Undo</button><button id="clear" title="Clear this slide's ink and stickies">Clear</button>
+ </div>
+ <div class="grp" id="chkg"><button id="chk" title="Mark this slide's answers right or wrong">Check answers</button></div>
+ <div class="grp"><span class="lbl">Panels</span><button id="tthumbs" class="on" title="Show/hide slide strip (T)" aria-pressed="true">▤ Strip</button><button id="tnotes" class="on" title="Show/hide notes panel (])" aria-pressed="true">▥ Notes</button><button id="tfocus" title="Hide both panels for the largest slide (\\)">⤢ Focus</button></div>
+ <div class="grp"><button id="pdf" title="PDF of all slides with your annotations and notes">PDF: all</button><button id="pdfa" title="PDF of only the slides you annotated">PDF: annotated</button><button id="exp" title="Back up annotations to a file">Backup</button><button id="imp" title="Restore annotations from a backup file">Restore</button><input type="file" id="impf" accept=".json" hidden></div>
+ <span id="status"></span>
+</header>
+<div id="bar"></div>
+<main>
+ <div id="stage"><div id="frame"><div id="inner"><img id="img" alt=""><div id="txt"></div><div id="lnk"></div><div id="emb"></div><canvas id="ink"></canvas><div id="stk"></div><div id="fld"></div></div></div></div>
+ <aside><h2 id="nh">Notes</h2><textarea id="notes" placeholder="Type notes for this slide…"></textarea></aside>
+</main>
+<div id="thumbs"></div>
+<script>
+const TEXT=[[[65.7,108.5,280.4,32.9,29.0,"Preparing the data"],[65.7,199.8,60.3,17.1,14.0,"Lecture 17"],[65.7,238.7,215.9,17.1,14.0,"Fitness app churn and data preparation"],[99.8,80.2,32.2,12.2,10.0,"CSC 005"]],[[64.2,34.6,115.8,12.2,10.0,"YOUR STARTUP: MOVEWELL"],[64.2,56.4,388.7,26.1,23.0,"Your New Fitness-Tracking App!"],[430.7,126.1,144.4,22.0,18.0,"A social fitness app:"],[430.7,148.1,6.3,20.1,18.0,"•"],[453.2,147.3,243.1,22.0,18.0,"Helps former teammates reunite "],[430.7,169.9,6.3,20.1,18.0,"•"],[453.2,169.1,217.4,22.0,18.0,"Intelligent AI trainer: custom, "],[453.2,191.2,152.5,22.0,18.0,"injury-free workouts "],[430.7,212.9,6.3,20.1,18.0,"•"],[453.2,212.1,199.0,22.0,18.0,"Casual, private team space "],[430.7,235.0,6.3,20.1,18.0,"•"],[453.2,234.1,190.8,22.0,18.0,"No stressful leaderboards "],[430.7,256.1,6.3,20.1,18.0,"•"],[453.2,255.3,191.6,22.0,18.0,"Locker-room camaraderie "],[430.7,300.0,6.3,20.1,18.0,"•"],[453.2,299.2,167.1,22.0,18.0,"Reclaim your wellness!"]],[[64.2,34.6,68.0,12.2,10.0,"SOCIAL FEATURE"],[64.2,56.4,183.2,26.1,23.0,"Social Features"]],[[64.2,34.6,134.4,12.2,10.0,"WORKS WITH FITNESS TRACKERS"],[64.2,56.4,270.1,26.1,23.0,"All the latest trappings"]],[[64.2,34.6,26.1,12.2,10.0,"Great!"],[64.2,55.3,285.0,22.7,20.0,"People are signing up (yay!)"]],[[64.2,34.6,29.0,12.2,10.0,"Uh Oh!"],[64.2,55.3,586.4,22.7,20.0,"People are signing up (yay!) … and then dropping (uh oh)"]],[[64.2,34.6,100.8,12.2,10.0,"A PREDICTION PROBLEM"],[64.2,56.4,511.5,26.1,23.0,"Which subscribers will cancel next month?"],[170.9,154.5,377.8,22.7,20.0,"MoveWell wants to offer help before"],[182.7,178.5,354.5,22.7,20.0,"a paid subscriber decides to leave."],[194.0,261.5,332.0,22.0,18.0,"Churn = cancellation of the paid subscription"],[239.9,360.8,240.3,11.0,9.0,"What could the service offer that would actually help someone?"]],[[64.2,34.6,116.1,12.2,10.0,"HISTORICAL TRAINING DATA"],[64.2,56.4,555.6,26.1,23.0,"Four features now, cancellation observed later"],[76.4,125.6,59.0,17.1,14.0,"Subscriber"],[175.7,125.6,66.7,17.1,14.0,"Session min"],[278.9,125.6,51.5,17.1,14.0,"App days"],[360.7,125.6,97.8,17.1,14.0,"Tracker workouts"],[483.8,125.6,87.8,17.1,14.0,"Team messages"],[598.3,125.6,48.6,17.1,14.0,"Cancels?"],[98.5,164.5,14.7,17.1,14.0,"R1"],[202.0,164.5,14.0,17.1,14.0,"42"],[301.1,164.5,7.1,17.1,14.0,"4"],[406.1,164.5,7.1,17.1,14.0,"2"],[520.8,164.5,14.0,17.1,14.0,"12"],[614.6,164.5,16.1,17.1,14.0,"No"],[98.5,203.2,14.7,17.1,14.0,"R2"],[202.0,203.2,14.0,17.1,14.0,"34"],[301.1,203.2,7.1,17.1,14.0,"3"],[406.1,203.2,7.1,17.1,14.0,"0"],[524.2,203.2,7.1,17.1,14.0,"0"],[613.2,203.2,18.8,17.1,14.0,"Yes"],[79.2,251.4,356.2,20.8,17.0,"Features: recorded usage during the previous 7 days"],[79.2,287.4,368.8,20.8,17.0,"Label: cancels the paid subscription in the next month"],[166.6,360.8,386.8,11.0,9.0,"Team messages = messages sent to the private team space in the previous 7 days. Churn = cancellation."]],[[64.2,34.6,50.1,12.2,10.0,"PREDICTION"],[64.2,56.4,241.8,26.1,23.0,"What we’d like to do"],[529.2,298.2,52.7,22.0,18.0,"Churn?"],[50.3,156.8,59.0,17.1,14.0,"Subscriber"],[149.6,156.8,66.7,17.1,14.0,"Session min"],[252.8,156.8,51.5,17.1,14.0,"App days"],[334.6,156.8,97.8,17.1,14.0,"Tracker workouts"],[457.7,156.8,87.8,17.1,14.0,"Team messages"],[66.4,195.7,26.7,17.1,14.0,"Next"],[175.9,195.7,14.0,17.1,14.0,"27"],[275.0,195.7,7.1,17.1,14.0,"6"],[380.0,195.7,7.1,17.1,14.0,"1"],[498.1,195.7,7.1,17.1,14.0,"4"]],[[64.2,34.6,50.1,12.2,10.0,"PREDICTION"],[64.2,56.4,185.8,26.1,23.0,"Data Problems!"],[72.7,108.6,43.8,18.3,15.0,"Record"],[146.2,108.6,73.7,18.3,15.0,"Session min"],[246.9,108.6,57.0,18.3,15.0,"App days"],[325.9,108.6,109.1,18.3,15.0,"Tracker workouts"],[458.9,108.6,97.6,18.3,15.0,"Team messages"],[86.5,140.8,16.1,18.3,15.0,"R3"],[175.4,140.8,15.2,18.3,15.0,"31"],[376.6,140.8,7.6,18.3,15.0,"1"],[86.5,173.2,16.1,18.3,15.0,"R4"],[271.6,173.2,7.6,18.3,15.0,"2"],[376.6,173.2,7.6,18.3,15.0,"0"],[503.9,173.2,7.6,18.3,15.0,"5"],[70.6,251.9,43.8,18.3,15.0,"Record"],[139.2,251.9,73.7,18.3,15.0,"Session min"],[234.7,251.9,57.0,18.3,15.0,"App days"],[339.2,243.0,49.9,18.3,15.0,"Tracker "],[332.8,261.0,59.2,18.3,15.0,"workouts"],[433.8,251.9,97.6,18.3,15.0,"Team messages"],[573.2,243.0,59.4,18.3,15.0,"Preferred"],[579.2,261.0,47.4,18.3,15.0,"Activity"],[84.4,289.6,16.1,18.3,15.0,"R1"],[168.4,289.6,15.2,18.3,15.0,"42"],[259.4,289.6,7.6,18.3,15.0,"4"],[358.6,289.6,7.6,18.3,15.0,"2"],[475.0,289.6,15.2,18.3,15.0,"12"],[588.3,289.6,29.3,18.3,15.0,"Yoga"],[84.4,322.0,16.1,18.3,15.0,"R2"],[168.4,322.0,15.2,18.3,15.0,"34"],[259.4,322.0,7.6,18.3,15.0,"3"],[358.6,322.0,7.6,18.3,15.0,"0"],[478.8,322.0,7.6,18.3,15.0,"0"],[578.3,322.0,49.3,18.3,15.0,"Walking"],[264.7,82.7,154.0,22.0,18.0,"What’s the problem?"],[326.6,216.6,154.0,22.0,18.0,"What’s the problem?"]],[[64.2,34.6,50.1,12.2,10.0,"PREDICTION"],[64.2,56.4,255.6,26.1,23.0,"More Data Problems!"],[70.6,191.4,43.8,18.3,15.0,"Record"],[139.2,191.4,73.7,18.3,15.0,"Session min"],[234.7,191.4,57.0,18.3,15.0,"App days"],[339.2,182.5,49.9,18.3,15.0,"Tracker "],[332.8,200.5,59.2,18.3,15.0,"workouts"],[433.8,191.4,97.6,18.3,15.0,"Team messages"],[573.2,182.5,59.4,18.3,15.0,"Preferred"],[579.2,200.5,47.4,18.3,15.0,"Activity"],[84.4,229.1,16.1,18.3,15.0,"R1"],[168.4,229.1,15.2,18.3,15.0,"42"],[259.4,229.1,7.6,18.3,15.0,"4"],[358.6,229.1,7.6,18.3,15.0,"2"],[475.0,229.1,15.2,18.3,15.0,"12"],[588.3,229.1,29.3,18.3,15.0,"Yoga"],[84.4,261.5,16.1,18.3,15.0,"R2"],[168.4,261.5,15.2,18.3,15.0,"34"],[259.4,261.5,7.6,18.3,15.0,"3"],[358.6,261.5,7.6,18.3,15.0,"0"],[478.8,261.5,7.6,18.3,15.0,"0"],[578.3,261.5,49.3,18.3,15.0,"Walking"],[47.4,142.0,154.0,22.0,18.0,"What’s the problem?"]],[[64.2,34.6,50.1,12.2,10.0,"PREDICTION"],[64.2,56.4,408.6,26.1,23.0,"Problem: Garbage In-Garbage Out"]],[[64.2,34.6,131.4,12.2,10.0,"WHERE PREPARATION BELONGS"],[64.2,56.4,547.2,26.1,23.0,"Model receives the representation we prepare"],[106.2,139.8,93.4,13.4,11.0,"TRAINING RECORDS"],[99.4,197.6,107.4,21.6,19.0,"Inspect the"],[109.2,220.7,92.5,21.6,19.0,"recorded "],[119.2,242.7,67.6,21.6,19.0,"values."],[326.2,139.8,67.5,13.4,11.0,"PREPARATION"],[310.8,197.6,103.3,21.6,19.0,"Learn and "],[333.6,220.7,53.1,21.6,19.0,"apply"],[308.2,242.7,108.4,21.6,19.0,"the chosen "],[332.3,265.8,55.6,21.6,19.0,"rules."],[529.9,139.8,74.1,13.4,11.0,"MODEL FITTING"],[507.1,197.6,120.0,21.6,19.0,"Fit using the"],[522.4,220.7,94.1,21.6,19.0,"prepared "],[533.1,242.7,68.0,21.6,19.0,"inputs."],[143.6,360.8,432.9,11.0,9.0,"Split first. Learn averages, scales and category mappings from training data. Apply the same rules to held-out cases."]],[[64.2,34.6,126.1,12.2,10.0,"FICTIONAL TRAINING RECORDS"],[64.2,56.4,572.6,26.1,23.0,"Some entries are known zeros. Others are blank"],[211.4,360.8,297.2,11.0,9.0,"R2 has a verified zero from its tracker. R5’s tracker entry is blank. What differs?"],[72.7,121.6,43.8,18.3,15.0,"Record"],[146.2,121.6,73.7,18.3,15.0,"Session min"],[246.9,121.6,57.0,18.3,15.0,"App days"],[325.9,121.6,109.1,18.3,15.0,"Tracker workouts"],[458.9,121.6,97.6,18.3,15.0,"Team messages"],[86.5,154.0,16.1,18.3,15.0,"R1"],[175.4,154.0,15.2,18.3,15.0,"42"],[271.6,154.0,7.6,18.3,15.0,"4"],[376.6,154.0,7.6,18.3,15.0,"2"],[500.1,154.0,15.2,18.3,15.0,"12"],[86.5,186.1,16.1,18.3,15.0,"R2"],[175.4,186.1,15.2,18.3,15.0,"34"],[271.6,186.1,7.6,18.3,15.0,"3"],[376.6,186.1,7.6,18.3,15.0,"0"],[503.9,186.1,7.6,18.3,15.0,"0"],[86.5,218.3,16.1,18.3,15.0,"R3"],[175.4,218.3,15.2,18.3,15.0,"31"],[376.6,218.3,7.6,18.3,15.0,"1"],[86.5,250.7,16.1,18.3,15.0,"R4"],[271.6,250.7,7.6,18.3,15.0,"2"],[376.6,250.7,7.6,18.3,15.0,"0"],[503.9,250.7,7.6,18.3,15.0,"5"],[86.5,282.8,16.1,18.3,15.0,"R5"],[175.4,282.8,15.2,18.3,15.0,"28"],[271.6,282.8,7.6,18.3,15.0,"1"],[503.9,282.8,7.6,18.3,15.0,"3"]],[[64.2,34.6,55.1,12.2,10.0,"QUICK CHECK"],[64.2,56.4,487.3,26.1,23.0,"Does a blank mean no tracker workouts?"],[87.9,159.1,389.4,23.9,21.0,"R5’s tracker-workout entry is blank."]],[[64.2,34.6,154.9,12.2,10.0,"MISSINGNESS HAS DIFFERENT CAUSES"],[64.2,56.4,439.4,26.1,23.0,"The empty cell does not explain itself"],[147.0,126.8,112.8,13.4,11.0,"NO TRACKER CONNECTED"],[128.1,155.8,150.0,19.3,17.0,"The app received"],[133.1,175.7,140.2,19.3,17.0,"no tracker feed."],[469.6,126.8,94.6,13.4,11.0,"OPTIONAL QUESTION"],[433.6,155.8,166.3,19.3,17.0,"The subscriber left"],[452.3,175.7,128.8,19.3,17.0,"a rating blank."],[166.3,236.5,74.1,13.4,11.0,"NOT APPLICABLE"],[124.8,265.2,156.9,19.3,17.0,"No app workouts,"],[119.6,285.4,167.3,19.3,17.0,"so no mean length."],[482.5,236.5,69.0,13.4,11.0,"SYNC PROBLEM"],[411.3,265.2,211.0,19.3,17.0,"The tracker recorded it."],[402.1,285.4,229.3,19.3,17.0,"The app did not receive it."]],[[64.2,34.6,87.6,12.2,10.0,"POSSIBLE RESPONSES"],[64.2,56.4,587.9,26.1,23.0,"Each response makes a choice about the evidence"],[131.2,139.8,43.3,13.4,11.0,"CHOICE 1"],[123.4,153.0,59.1,13.4,11.0,"DROP ROWS"],[114.0,197.6,82.8,21.6,19.0,"Remove "],[98.9,220.7,108.4,21.6,19.0,"incomplete"],[104.4,242.7,97.3,21.6,19.0,"examples."],[338.3,139.8,43.3,13.4,11.0,"CHOICE 2"],[331.7,153.0,56.5,13.4,11.0,"FILL VALUES"],[316.2,197.6,92.5,21.6,19.0,"Insert an "],[318.6,220.7,83.0,21.6,19.0,"estimate"],[300.4,242.7,119.2,21.6,19.0,"using a rule."],[545.3,139.8,43.3,13.4,11.0,"CHOICE 3"],[521.4,153.0,91.0,13.4,11.0,"FLAG MISSINGNESS"],[499.8,197.6,139.2,21.6,19.0,"Keep a record "],[547.6,220.7,38.9,21.6,19.0,"that"],[502.4,242.7,133.9,21.6,19.0,"the value was "],[526.4,265.8,81.4,21.6,19.0,"missing."],[181.4,360.8,357.2,11.0,9.0,"Imputation means filling a missing value with an estimate. A flag can accompany that estimate."]],[[119.4,121.6,43.8,18.3,15.0,"Record"],[193.0,121.6,73.7,18.3,15.0,"Session min"],[293.6,121.6,57.0,18.3,15.0,"App days"],[372.6,121.6,109.1,18.3,15.0,"Tracker workouts"],[505.7,121.6,97.6,18.3,15.0,"Team messages"],[133.2,154.0,16.1,18.3,15.0,"R1"],[222.2,154.0,15.2,18.3,15.0,"42"],[318.3,154.0,7.6,18.3,15.0,"4"],[423.3,154.0,7.6,18.3,15.0,"2"],[546.8,154.0,15.2,18.3,15.0,"12"],[133.2,186.1,16.1,18.3,15.0,"R2"],[222.2,186.1,15.2,18.3,15.0,"34"],[318.3,186.1,7.6,18.3,15.0,"3"],[423.3,186.1,7.6,18.3,15.0,"0"],[550.7,186.1,7.6,18.3,15.0,"0"],[133.2,218.3,16.1,18.3,15.0,"R3"],[222.2,218.3,15.2,18.3,15.0,"31"],[423.3,218.3,7.6,18.3,15.0,"1"],[133.2,250.7,16.1,18.3,15.0,"R4"],[318.3,250.7,7.6,18.3,15.0,"2"],[423.3,250.7,7.6,18.3,15.0,"0"],[550.7,250.7,7.6,18.3,15.0,"5"],[133.2,282.8,16.1,18.3,15.0,"R5"],[222.2,282.8,15.2,18.3,15.0,"28"],[318.3,282.8,7.6,18.3,15.0,"1"],[550.7,282.8,7.6,18.3,15.0,"3"],[64.2,34.6,169.9,12.2,10.0,"CHOICE 1: DROPPING INCOMPLETE ROWS"],[64.2,56.4,420.2,26.1,23.0,"Only two of the five records remain"],[64.2,328.7,484.6,22.0,18.0,"What if we have tons of data even after dropping missing records?"]],[[79.6,121.6,43.8,18.3,15.0,"Record"],[153.1,121.6,73.7,18.3,15.0,"Session min"],[253.8,121.6,57.0,18.3,15.0,"App days"],[332.7,121.6,109.1,18.3,15.0,"Tracker workouts"],[465.8,121.6,97.6,18.3,15.0,"Team messages"],[93.4,154.0,16.1,18.3,15.0,"R1"],[182.3,154.0,15.2,18.3,15.0,"42"],[278.4,154.0,7.6,18.3,15.0,"4"],[383.5,154.0,7.6,18.3,15.0,"2"],[507.0,154.0,15.2,18.3,15.0,"12"],[93.4,186.1,16.1,18.3,15.0,"R2"],[182.3,186.1,15.2,18.3,15.0,"34"],[278.4,186.1,7.6,18.3,15.0,"3"],[383.5,186.1,7.6,18.3,15.0,"0"],[510.8,186.1,7.6,18.3,15.0,"0"],[93.4,218.3,16.1,18.3,15.0,"R3"],[182.3,218.3,15.2,18.3,15.0,"31"],[383.5,218.3,7.6,18.3,15.0,"1"],[93.4,250.7,16.1,18.3,15.0,"R4"],[278.4,250.7,7.6,18.3,15.0,"2"],[383.5,250.7,7.6,18.3,15.0,"0"],[510.8,250.7,7.6,18.3,15.0,"5"],[93.4,282.8,16.1,18.3,15.0,"R5"],[182.3,282.8,15.2,18.3,15.0,"28"],[278.4,282.8,7.6,18.3,15.0,"1"],[510.8,282.8,7.6,18.3,15.0,"3"],[64.2,34.6,129.7,12.2,10.0,"CHOICE 2: A POSSIBLE FILL RULE"],[64.2,56.4,564.0,26.1,23.0,"What median would these session lengths give?"]],[[64.2,34.6,87.0,12.2,10.0,"A POSSIBLE FILL RULE"],[64.2,56.4,564.0,26.1,23.0,"What median would these session lengths give?"],[103.9,152.6,92.5,23.2,19.0,"Session min"],[286.0,152.6,19.1,23.2,19.0,"28"],[391.0,152.6,19.1,23.2,19.0,"31"],[496.0,152.6,19.1,23.2,19.0,"34"],[601.0,152.6,19.1,23.2,19.0,"42"],[72.1,223.1,117.6,22.0,18.0,"Finding median:"],[72.1,244.2,294.2,22.0,18.0,"1. Arrange numbers in increasing order"],[72.1,266.3,301.1,22.0,18.0,"2. If list is odd length, then middle value"],[72.1,288.1,292.6,22.0,18.0,"3. Otherwise, average of middle values"]],[[64.2,34.6,126.5,12.2,10.0,"AN ESTIMATE AND ITS RECORD"],[64.2,56.4,384.5,26.1,23.0,"The filled number is an estimate"],[110.6,144.1,50.1,20.8,17.0,"Record"],[276.3,144.1,100.5,20.8,17.0,"Filled minutes"],[481.8,144.1,138.1,20.8,17.0,"Length was missing"],[126.5,198.6,18.4,20.8,17.0,"R4"],[311.3,198.6,30.5,20.8,17.0,"32.5"],[546.5,198.6,8.6,20.8,17.0,"1"],[159.2,268.9,401.6,21.6,19.0,"32.5 estimates the missing session length."],[181.2,291.9,357.7,21.6,19.0,"The flag preserves the original blank."],[204.2,360.8,311.5,11.0,9.0,"This candidate treatment assumes a lost value. It does not explain the missingness."]],[[64.2,34.6,87.0,12.2,10.0,"A POSSIBLE FILL RULE"],[64.2,56.4,564.0,26.1,23.0,"What median would these session lengths give?"],[17.7,130.2,46.1,19.5,16.0,"Record"],[88.7,120.6,52.4,19.5,16.0,"Session "],[100.5,139.6,25.2,19.5,16.0,"min"],[165.5,130.2,64.5,19.5,16.0,"Estimate?"],[264.4,120.6,30.1,19.5,16.0,"App "],[262.6,139.6,30.1,19.5,16.0,"days"],[354.3,120.6,52.4,19.5,16.0,"Tracker "],[347.7,139.6,62.3,19.5,16.0,"workouts"],[458.1,130.4,97.6,18.3,15.0,"Team messages"],[32.2,168.6,17.0,19.5,16.0,"R1"],[105.0,168.6,16.1,19.5,16.0,"42"],[193.6,168.6,8.1,19.5,16.0,"0"],[273.6,168.6,8.1,19.5,16.0,"4"],[374.7,168.6,8.1,19.5,16.0,"2"],[499.3,168.8,15.2,18.3,15.0,"12"],[32.2,200.3,17.0,19.5,16.0,"R2"],[105.0,200.3,16.1,19.5,16.0,"34"],[193.6,200.3,8.1,19.5,16.0,"0"],[273.6,200.3,8.1,19.5,16.0,"3"],[374.7,200.3,8.1,19.5,16.0,"0"],[503.1,200.8,7.6,18.3,15.0,"0"],[32.2,232.2,17.0,19.5,16.0,"R3"],[105.0,232.2,16.1,19.5,16.0,"31"],[193.6,232.2,8.1,19.5,16.0,"0"],[374.7,232.2,8.1,19.5,16.0,"1"],[32.2,263.9,17.0,19.5,16.0,"R4"],[92.6,262.7,40.8,22.0,18.0,"32.5*"],[193.1,262.7,9.1,22.0,18.0,"1"],[273.6,263.9,8.1,19.5,16.0,"2"],[374.7,263.9,8.1,19.5,16.0,"0"],[503.1,264.4,7.6,18.3,15.0,"5"],[32.2,295.8,17.0,19.5,16.0,"R5"],[105.0,295.8,16.1,19.5,16.0,"28"],[193.6,295.8,8.1,19.5,16.0,"0"],[273.6,295.8,8.1,19.5,16.0,"1"],[503.1,296.3,7.6,18.3,15.0,"3"],[76.9,362.3,330.1,22.0,18.0,"Why record that we filled in a missing value? "]],[[64.2,34.6,76.2,12.2,10.0,"A JUDGMENT CALL"],[64.2,56.4,486.3,26.1,23.0,"A subscriber skips the satisfaction rating"],[186.3,153.5,347.4,23.9,21.0,"The optional 1–5 rating is blank."],[198.1,179.7,323.9,23.9,21.0,"The form does not tell us why."],[79.2,319.1,331.4,19.5,16.0,"What assumption would your next step introduce?"]],[[64.2,34.6,82.0,12.2,10.0,"CATEGORICAL DATA"],[64.2,56.4,234.2,26.1,23.0,"Preferred Activities"],[300.9,117.5,118.3,20.8,17.0,"Common Choices"],[332.1,148.2,56.0,20.8,17.0,"Walking"],[330.5,178.7,59.2,20.8,17.0,"Strength"],[343.2,209.4,33.8,20.8,17.0,"Yoga"],[142.5,286.0,430.7,22.0,18.0,"Most models can only deal with numbers (including LLMs!)"]],[[64.2,34.6,145.4,12.2,10.0,"CATEGORIES CAN BE INCONSISTENT"],[64.2,56.4,539.6,26.1,23.0,"Would these become six different categories?"],[265.9,117.5,188.2,20.8,17.0,"Recorded preferred activity"],[332.1,148.2,56.0,20.8,17.0,"Walking"],[333.5,178.7,53.2,20.8,17.0,"walking"],[330.5,209.4,59.2,20.8,17.0,"Strength"],[323.5,240.1,73.4,20.8,17.0,"STRENGTH"],[343.2,270.6,33.8,20.8,17.0,"Yoga"],[343.6,301.3,36.6,20.8,17.0,"yoga "]],[[64.2,34.6,149.7,12.2,10.0,"TWO DIFFERENT PREPARATION JOBS"],[64.2,56.4,477.8,26.1,23.0,"Consistent names come before numeric "],[64.2,83.5,178.4,26.1,23.0,"representation"],[160.0,136.6,86.7,13.4,11.0,"NORMALIZE LABELS"],[97.4,181.3,212.0,22.7,20.0,"Walking and walking"],[100.3,204.1,206.1,22.7,20.0,"can share one name."],[469.9,136.6,93.8,13.4,11.0,"ENCODE CATEGORIES"],[439.5,181.3,159.6,22.7,20.0,"Represent each "],[471.9,204.1,90.0,22.7,20.0,"intended"],[407.7,228.1,218.3,22.7,20.0,"category numerically."],[174.1,360.8,371.8,11.0,9.0,"Confirm the meanings before merging labels. A spelling rule and an encoding rule do different jobs."]],[[64.2,34.6,99.5,12.2,10.0,"A PROPOSED ENCODING"],[64.2,56.4,455.9,26.1,23.0,"Do these numbers create a real order?"],[86.2,145.1,124.5,20.8,17.0,"Preferred activity"],[281.4,145.1,58.2,20.8,17.0,"Walking"],[420.8,145.1,61.4,20.8,17.0,"Strength"],[575.1,145.1,34.8,20.8,17.0,"Yoga"],[95.5,195.3,105.9,20.8,17.0,"Proposed code"],[306.1,195.3,8.6,20.8,17.0,"1"],[447.1,195.3,8.6,20.8,17.0,"2"],[588.1,195.3,8.6,20.8,17.0,"3"]],[[64.2,34.6,101.2,12.2,10.0,"WHAT THE CODES IMPLY"],[64.2,56.4,513.9,26.1,23.0,"Distance can hear a story we did not intend"],[178.5,130.2,109.7,20.8,17.0,"Pair of activities"],[446.9,130.2,178.9,20.8,17.0,"Difference between codes"],[159.2,174.4,148.4,20.8,17.0,"Walking and Strength"],[532.1,174.4,8.6,20.8,17.0,"1"],[171.9,218.3,122.9,20.8,17.0,"Walking and Yoga"],[532.1,218.3,8.6,20.8,17.0,"2"],[170.3,262.5,126.1,20.8,17.0,"Strength and Yoga"],[532.1,262.5,8.6,20.8,17.0,"1"],[153.9,360.8,412.3,11.0,9.0,"The codes make Walking numerically closer to Strength than Yoga. The labels did not supply that relationship."]],[[64.2,34.6,84.3,12.2,10.0,"ONE HOT ENCODING"],[64.2,56.4,456.6,26.1,23.0,"Each column asks a yes or no question"],[104.2,135.0,124.5,20.8,17.0,"Preferred activity"],[307.4,135.0,66.1,20.8,17.0,"Walking?"],[434.8,135.0,69.3,20.8,17.0,"Strength?"],[577.1,135.0,42.7,20.8,17.0,"Yoga?"],[137.4,178.5,58.2,20.8,17.0,"Walking"],[336.1,178.5,8.6,20.8,17.0,"1"],[465.1,178.5,8.6,20.8,17.0,"0"],[594.1,178.5,8.6,20.8,17.0,"0"],[135.8,221.9,61.4,20.8,17.0,"Strength"],[336.1,221.9,8.6,20.8,17.0,"0"],[465.1,221.9,8.6,20.8,17.0,"1"],[594.1,221.9,8.6,20.8,17.0,"0"],[149.1,265.6,34.8,20.8,17.0,"Yoga"],[336.1,265.6,8.6,20.8,17.0,"0"],[465.1,265.6,8.6,20.8,17.0,"0"],[594.1,265.6,8.6,20.8,17.0,"1"],[182.5,360.8,355.1,11.0,9.0,"A 1 marks membership. A 0 means not that category. These columns do not rank the activities."]],[[64.2,34.6,55.1,12.2,10.0,"QUICK CHECK"],[64.2,56.4,388.0,26.1,23.0,"Which row represents Strength?"],[121.8,151.4,72.2,23.2,19.0,"Walking?"],[322.2,151.4,75.7,23.2,19.0,"Strength?"],[538.8,151.4,46.8,23.2,19.0,"Yoga?"]],[[64.2,34.6,125.3,12.2,10.0,"WHAT THE CODES NOW IMPLY"],[64.2,56.4,296.6,26.1,23.0,"What the distances now?"],[190.0,256.2,109.7,20.8,17.0,"Pair of activities"],[353.1,246.4,127.0,20.8,17.0,"Distance between "],[394.9,266.3,39.7,20.8,17.0,"codes"],[170.7,297.7,148.4,20.8,17.0,"Walking and Strength"],[183.4,334.2,122.9,20.8,17.0,"Walking and Yoga"],[181.8,370.5,126.1,20.8,17.0,"Strength and Yoga"],[147.1,104.3,124.5,20.8,17.0,"Preferred activity"],[292.9,104.3,66.1,20.8,17.0,"Walking?"],[377.8,104.3,69.3,20.8,17.0,"Strength?"],[477.6,104.3,42.7,20.8,17.0,"Yoga?"],[180.3,142.7,58.2,20.8,17.0,"Walking"],[321.7,142.7,8.6,20.8,17.0,"1"],[408.2,142.7,8.6,20.8,17.0,"0"],[494.7,142.7,8.6,20.8,17.0,"0"],[178.6,176.1,61.4,20.8,17.0,"Strength"],[321.7,176.1,8.6,20.8,17.0,"0"],[408.2,176.1,8.6,20.8,17.0,"1"],[494.7,176.1,8.6,20.8,17.0,"0"],[191.9,209.2,34.8,20.8,17.0,"Yoga"],[321.7,209.2,8.6,20.8,17.0,"0"],[408.2,209.2,8.6,20.8,17.0,"0"],[494.7,209.2,8.6,20.8,17.0,"1"]],[[64.2,34.6,118.9,12.2,10.0,"WHEN ORDER HAS MEANING"],[64.2,56.4,476.3,26.1,23.0,"Some categories really do have an order"],[157.2,136.6,92.4,13.4,11.0,"PREFERRED ACTIVITY"],[108.5,181.3,194.6,22.7,20.0,"Walking, Strength, "],[178.5,204.1,49.8,22.7,20.0,"Yoga"],[100.9,228.1,204.9,22.7,20.0,"No supplied ranking"],[498.4,136.6,37.0,13.4,11.0,"MEDALS"],[416.2,181.3,201.5,22.7,20.0,"Bronze, Silver, Gold"],[434.2,204.1,165.5,22.7,20.0,"A stated ranking"],[193.9,360.8,332.4,11.0,9.0,"A real order can justify ordered representation. Equal numerical gaps still need a reason."]],[[64.2,34.6,79.2,12.2,10.0,"STANDARDIZATION"],[64.2,56.4,396.0,26.1,23.0,"A common unit is usual variation"],[186.2,136.6,34.2,13.4,11.0,"BEFORE"],[92.6,181.3,221.6,22.7,20.0,"App days and minutes"],[107.9,204.1,191.0,22.7,20.0,"use different units."],[503.0,136.6,27.8,13.4,11.0,"AFTER"],[400.4,181.3,233.0,22.7,20.0,"Each feature uses units"],[416.5,204.1,200.7,22.7,20.0,"of its own variation."],[155.2,360.8,409.7,11.0,9.0,"Standardization uses training means and standard deviations. It does not make every feature range identical."]],[[64.2,34.6,202.7,12.2,10.0,"A PREPARATION RULE TRAVELS WITH THE MODEL"],[64.2,56.4,402.6,26.1,23.0,"A new case uses the training rules"],[181.5,136.6,43.8,13.4,11.0,"TRAINING"],[121.5,181.3,163.7,22.7,20.0,"Learn a median,"],[83.7,204.1,239.3,22.7,20.0,"category map and scale."],[466.7,136.6,100.3,13.4,11.0,"VALIDATION AND TEST"],[412.2,181.3,209.5,22.7,20.0,"Apply the same rules"],[411.0,204.1,211.7,22.7,20.0,"to the held-out cases."],[164.0,360.8,391.9,11.0,9.0,"Recalculating the rules from held-out records changes the evaluation. We examine that risk next lecture."]],[[64.2,34.6,58.4,12.2,10.0,"PAIR ACTIVITY"],[64.2,56.4,313.7,26.1,23.0,"A fix needs an explanation"],[178.6,153.5,362.7,23.9,21.0,"For each table, name the problem"],[218.6,179.7,282.8,23.9,21.0,"before proposing a repair."],[251.1,267.7,217.6,22.7,20.0,"What might it mean?"],[206.4,291.7,306.9,22.7,20.0,"What would your fix assume?"]],[[64.2,34.6,142.8,12.2,10.0,"TABLE A: MOVEWELL SUBSCRIBERS"],[64.2,56.4,541.2,26.1,23.0,"Missing entries may need different responses"],[82.5,107.9,65.2,18.3,15.0,"Subscriber"],[208.5,107.9,57.0,18.3,15.0,"App days"],[346.4,107.9,73.7,18.3,15.0,"Session min"],[509.8,107.9,109.1,18.3,15.0,"Tracker workouts"],[106.8,133.1,16.7,18.3,15.0,"A1"],[233.2,133.1,7.6,18.3,15.0,"5"],[375.6,133.1,15.2,18.3,15.0,"24"],[560.6,133.1,7.6,18.3,15.0,"2"],[106.8,158.3,16.7,18.3,15.0,"A2"],[233.2,158.3,7.6,18.3,15.0,"4"],[375.6,158.3,15.2,18.3,15.0,"31"],[560.6,158.3,7.6,18.3,15.0,"1"],[106.8,185.2,16.7,18.3,15.0,"A3"],[375.6,185.2,15.2,18.3,15.0,"28"],[560.6,185.2,7.6,18.3,15.0,"0"],[106.8,214.0,16.7,18.3,15.0,"A4"],[233.2,214.0,7.6,18.3,15.0,"2"],[560.6,214.0,7.6,18.3,15.0,"4"],[106.8,242.8,16.7,18.3,15.0,"A5"],[233.2,242.8,7.6,18.3,15.0,"3"],[375.6,242.8,15.2,18.3,15.0,"29"],[79.2,268.0,181.4,17.1,14.0,"Problem and possible meaning"],[79.2,325.8,180.6,17.1,14.0,"Possible fix and its assumption"]],[[64.2,34.6,155.8,12.2,10.0,"TABLE B: MOVEWELL ACTIVITY LABELS"],[64.2,56.4,498.4,26.1,23.0,"When labels vary, what should we merge?"],[184.4,102.4,59.0,17.1,14.0,"Subscriber"],[385.7,102.4,97.4,17.1,14.0,"Preferred activity"],[206.5,125.6,14.7,17.1,14.0,"B1"],[414.8,125.6,39.1,17.1,14.0,"Cycling"],[206.5,149.2,14.7,17.1,14.0,"B2"],[415.6,149.2,37.6,17.1,14.0,"cycling"],[206.5,172.4,14.7,17.1,14.0,"B3"],[406.1,172.4,56.5,17.1,14.0,"Stretching"],[206.5,196.0,14.7,17.1,14.0,"B4"],[399.4,196.0,70.1,17.1,14.0,"STRETCHING"],[206.5,219.2,14.7,17.1,14.0,"B5"],[417.1,219.2,34.6,17.1,14.0,"Dance"],[206.5,242.8,14.7,17.1,14.0,"B6"],[417.6,242.8,36.4,17.1,14.0,"dance "],[79.2,268.0,181.4,17.1,14.0,"Problem and possible meaning"],[79.2,325.8,180.6,17.1,14.0,"Possible fix and its assumption"]],[[64.2,34.6,164.6,12.2,10.0,"TABLE C: MOVEWELL TRACKER IMPORTS"],[64.2,56.4,423.2,26.1,23.0,"A suspicious value deserves a check"],[101.2,116.5,65.2,18.3,15.0,"Subscriber"],[238.4,116.5,109.7,18.3,15.0,"Workout minutes"],[460.1,116.5,118.7,18.3,15.0,"Usual workout min"],[126.1,141.7,15.6,18.3,15.0,"C1"],[285.6,141.7,15.2,18.3,15.0,"42"],[511.8,141.7,15.2,18.3,15.0,"51"],[126.1,166.9,15.6,18.3,15.0,"C2"],[285.6,166.9,15.2,18.3,15.0,"58"],[511.8,166.9,15.2,18.3,15.0,"49"],[126.1,192.1,15.6,18.3,15.0,"C3"],[285.6,192.1,15.2,18.3,15.0,"61"],[511.8,192.1,15.2,18.3,15.0,"63"],[126.1,217.3,15.6,18.3,15.0,"C4"],[276.1,217.3,34.2,18.3,15.0,"3,600"],[511.8,217.3,15.2,18.3,15.0,"57"],[126.1,242.5,15.6,18.3,15.0,"C5"],[285.6,242.5,15.2,18.3,15.0,"47"],[511.8,242.5,15.2,18.3,15.0,"52"],[79.2,268.0,278.5,17.1,14.0,"Suspicious value and two possible explanations"],[79.2,325.8,266.4,17.1,14.0,"What would you verify before choosing a fix?"]],[[64.2,34.6,169.6,12.2,10.0,"TABLE D: MOVEWELL DEVICE PLATFORMS"],[64.2,56.4,523.9,26.1,23.0,"Are the numbers only names to the learner?"],[82.1,123.0,115.3,20.8,17.0,"Tracker platform"],[234.9,123.0,101.9,20.8,17.0,"Proposed code"],[102.6,155.9,74.1,20.8,17.0,"Platform A"],[281.6,155.9,8.6,20.8,17.0,"1"],[103.0,188.8,73.3,20.8,17.0,"Platform B"],[281.6,188.8,8.6,20.8,17.0,"2"],[103.2,221.4,72.7,20.8,17.0,"Platform C"],[281.6,221.4,8.6,20.8,17.0,"3"],[419.6,156.9,194.1,22.7,20.0,"“We only renamed"],[435.6,180.9,162.1,22.7,20.0,"the categories.”"],[79.2,268.0,263.5,17.1,14.0,"What relationship might these codes invent?"],[79.2,325.8,320.9,17.1,14.0,"Alternative representation and one remaining concern"]],[[64.2,34.6,92.7,12.2,10.0,"COMPARE AND REVISE"],[64.2,56.4,459.4,26.1,23.0,"Which assumption made you hesitate?"],[239.6,153.5,240.9,23.9,21.0,"“Our fix assumes ___."],[158.4,179.7,403.3,23.9,21.0,"We would check ___ before using it.”"]],[[64.2,34.6,136.7,12.2,10.0,"BACK TO THE BUSINESS DECISION"],[64.2,56.4,468.5,26.1,23.0,"What does a low recorded count mean?"],[169.1,154.5,381.7,22.7,20.0,"Few recorded workouts could reflect"],[146.4,178.5,427.2,22.7,20.0,"a syncing problem or exercise elsewhere."],[87.5,278.1,545.4,22.7,20.0,"A cancellation prediction still needs a useful response."]],[[64.2,34.6,84.7,12.2,10.0,"WHERE WE GO NEXT"],[64.2,56.4,521.6,26.1,23.0,"Clean-looking data can still give misleading "],[64.2,83.5,82.1,26.1,23.0,"results"],[118.4,136.6,169.9,13.4,11.0,"LECTURE 18 AND LAB 9 • NOVEMBER 3"],[122.4,181.3,161.9,22.7,20.0,"Class imbalance"],[139.2,204.1,128.5,22.7,20.0,"Data leakage"],[497.4,136.6,38.8,13.4,11.0,"WEEK 10"],[407.5,181.3,218.7,22.7,20.0,"Which errors matter?"],[419.7,204.1,199.2,22.7,20.0,"How did the failure "],[486.5,228.1,60.7,22.7,20.0,"arise?"],[200.2,360.8,319.6,11.0,9.0,"Lab 9 compares messy and prepared versions of a small Titanic-style classroom table."]],[[64.2,34.6,69.3,12.2,10.0,"EXIT REFLECTION"],[64.2,56.4,512.8,26.1,23.0,"What did your preparation choice assume?"],[210.9,154.5,298.1,22.7,20.0,"“I would handle ___ by ___."],[154.9,178.5,410.1,22.7,20.0,"That assumes ___. I would check ___.”"]]];
+const LINKS=[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
+const FIELDS=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("W1tdLFtdLFtdLFtdLFtdLFtdLFtdLFtdLFtdLFt7InQiOiJ0ZXh0IiwieCI6NDMyLjgsInkiOjc0LjIsInciOjEwNy4yLCJoIjoyNi4wLCJmcyI6MTcuMSwiciI6MH0seyJ0IjoidGV4dCIsIngiOjQ5NC43LCJ5IjoyMDcuOSwidyI6MTA3LjIsImgiOjI2LjAsImZzIjoxNy4xLCJyIjowfV0sW3sidCI6InRleHQiLCJ4IjoyMTUuNSwieSI6MTMzLjUsInciOjEwNy4yLCJoIjoyNi4wLCJmcyI6MTcuMSwiciI6MH1dLFtdLFtdLFtdLFt7InQiOiJjaG9pY2UiLCJ4Ijo3OS4yLCJ5IjoyNzUuNCwidyI6MzI5LjksImgiOjIyLjgsImZzIjoxNi4yLCJvIjpbInllcyIsIndlIGNhbm5vdCB0ZWxsIGZyb20gdGhlIHRhYmxlIl0sImEiOjF9XSxbXSxbXSxbeyJ0IjoidGV4dCIsIngiOjYyLjIsInkiOjM1NS41LCJ3Ijo2MDMuMSwiaCI6MjYuMCwiZnMiOjE3LjEsInIiOjB9XSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6Mzk4LjgsInkiOjMzMS4zLCJ3IjoyMDAuOCwiaCI6MjUuMiwiZnMiOjE4LjEsIm8iOlsiMzEiLCIzMi41IiwiNDIiXSwiYSI6MX1dLFtdLFt7InQiOiJ0ZXh0IiwieCI6NDA1LjEsInkiOjM2MC4zLCJ3IjozMDUuNSwiaCI6MjYuMCwiZnMiOjE3LjEsInIiOjB9XSxbeyJ0IjoiY2hvaWNlIiwieCI6NzkuMiwieSI6Mjc2LjEsInciOjQxMi43LCJoIjoyMC4zLCJmcyI6MTQuMywibyI6WyJkcm9wIHRoZSByZWNvcmQiLCJmaWxsIGFuZCBmbGFnIiwiaW52ZXN0aWdhdGUgdGhlIGNhdXNlIGZpcnN0Il19XSxbXSxbXSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6NzkuMiwieSI6MjgwLjcsInciOjMyNi4xLCJoIjoyMi44LCJmcyI6MTYuMiwibyI6WyJ5ZXMiLCJubyBtZWFuaW5nZnVsIG9yZGVyIGlzIGdpdmVuIl0sImEiOjF9XSxbXSxbXSxbeyJ0IjoiY2hvaWNlIiwieCI6NzkuMiwieSI6MjUzLjgsInciOjI1OS45LCJoIjoyNi40LCJmcyI6MTkuMCwibyI6WyIxIDAgMCIsIjAgMSAwIiwiMCAwIDEiXSwiYSI6MX1dLFt7InQiOiJ0ZXh0IiwieCI6Mzc1LjQsInkiOjI5NC4zLCJ3Ijo4OS41LCJoIjoyNi4wLCJmcyI6MTcuMSwiciI6MH0seyJ0IjoidGV4dCIsIngiOjM3NS40LCJ5IjozMzEuMywidyI6ODkuNSwiaCI6MjYuMCwiZnMiOjE3LjEsInIiOjB9LHsidCI6InRleHQiLCJ4IjozNzUuNCwieSI6MzY3LjcsInciOjg5LjUsImgiOjI2LjAsImZzIjoxNy4xLCJyIjowfV0sW10sW10sW10sW10sW3sidCI6InRleHQiLCJ4Ijo3Ny4yLCJ5IjoyOTAuMiwidyI6NTM3LjAsImgiOjIzLjUsImZzIjoxNS4yLCJyIjowfSx7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6MzQ3LjgsInciOjUzNy4wLCJoIjoyMy41LCJmcyI6MTUuMiwiciI6MH1dLFt7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6MjkwLjIsInciOjUzNy4wLCJoIjoyMy41LCJmcyI6MTUuMiwiciI6MH0seyJ0IjoidGV4dCIsIngiOjc3LjIsInkiOjM0Ny44LCJ3Ijo1MzcuMCwiaCI6MjMuNSwiZnMiOjE1LjIsInIiOjB9XSxbeyJ0IjoidGV4dCIsIngiOjc3LjIsInkiOjI5MC4yLCJ3Ijo1MzcuMCwiaCI6MjMuNSwiZnMiOjE1LjIsInIiOjB9LHsidCI6InRleHQiLCJ4Ijo3Ny4yLCJ5IjozNDcuOCwidyI6NTM3LjAsImgiOjIzLjUsImZzIjoxNS4yLCJyIjowfV0sW3sidCI6InRleHQiLCJ4Ijo3Ny4yLCJ5IjoyOTAuMiwidyI6NTM3LjAsImgiOjIzLjUsImZzIjoxNS4yLCJyIjowfSx7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6MzQ3LjgsInciOjUzNy4wLCJoIjoyMy41LCJmcyI6MTUuMiwiciI6MH1dLFt7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6Mjg0LjksInciOjU3MS44LCJoIjoyNC44LCJmcyI6MTYuMiwiciI6MH1dLFtdLFtdLFt7InQiOiJ0ZXh0IiwieCI6NzcuMiwieSI6Mjg0LjksInciOjg1LjAsImgiOjI0LjgsImZzIjoxNi4yLCJyIjowfV1d"),c=>c.charCodeAt(0))));
+const HASKEY=FIELDS.some(fl=>fl.some(f=>'a' in f));
+const N=43,W=720,H=405,KEY='slides-annot:lecture17-043024d7',URLS=SLIDES.map(s=>URL.createObjectURL(new Blob([s],{type:'image/svg+xml'}))),src=i=>URLS[i];
+const $=id=>document.getElementById(id);
+let i=0,zoom=0/*0=fit*/,scale=1,tool='select';
+// ---------- storage ----------
+let store={slides:{}},canSave=true;
+try{const s=localStorage.getItem(KEY);if(s)store=JSON.parse(s)}catch(e){canSave=false}
+const S=k=>{const s=store.slides[k]||(store.slides[k]={strokes:[],stickies:[],notes:''});s.fills||(s.fills={});s.emb||(s.emb={});return s};
+const esize=(k,j)=>{const f=FIELDS[k][j],z=S(k).emb[j];return z?[Math.min(z[0],W-f.x),Math.min(z[1],H-f.y)]:[f.w,f.h]};
+const has=k=>{const s=store.slides[k];return s&&(s.strokes.length||s.stickies.length||s.notes.trim()||Object.values(s.fills||{}).some(v=>v===true||(typeof v=='string'&&v.trim())))};
+let saveT;function flush(){if(saveT){clearTimeout(saveT);saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}}
+addEventListener('pagehide',flush);addEventListener('beforeunload',flush);document.addEventListener('visibilitychange',()=>document.hidden&&flush());
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{saveT=0;try{localStorage.setItem(KEY,JSON.stringify(store));$('status').textContent='Saved in this browser'}catch(e){$('status').textContent='⚠ Browser storage unavailable — use Backup'}markThumb(i)},300)}
+$('status').textContent=canSave?'Saved in this browser':'⚠ Browser storage unavailable — use Backup';
+// ---------- layout / zoom ----------
+function layout(){const st=$('stage'),aw=st.clientWidth-32,ah=st.clientHeight-32;
+ const fit=Math.max(.1,Math.min(aw/W,ah/H));scale=zoom?fit*zoom:fit;
+ $('frame').style.width=W*scale+'px';$('frame').style.height=H*scale+'px';
+ $('inner').style.transform=`scale(${scale})`;
+ $('zoomv').textContent=zoom?Math.round(zoom*100)+'%':'Fit';
+ const c=$('ink'),d=devicePixelRatio||1;c.width=Math.round(W*scale*d);c.height=Math.round(H*scale*d);redraw();sizeEmbeds()}
+new ResizeObserver(layout).observe($('stage'));
+const setZoom=z=>{zoom=z&&Math.abs(z-1)<.01?0:z;layout()};
+$('zin').onclick=()=>setZoom(Math.min(5,(zoom||1)*1.25));$('zout').onclick=()=>setZoom(Math.max(.4,(zoom||1)/1.25));$('zfit').onclick=()=>setZoom(0);
+$('stage').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(Math.min(5,Math.max(.4,(zoom||1)*(e.deltaY<0?1.1:1/1.1))))}},{passive:false});
+$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+// ---------- text layer ----------
+const mctx=document.createElement('canvas').getContext('2d');
+function buildText(){const t=$('txt');t.innerHTML='';for(const[x,y,w,h,fs,s]of TEXT[i]){const e=document.createElement('span');
+ e.textContent=s;e.style.left=x+'px';e.style.top=y+'px';e.style.fontSize=h+'px';mctx.font=`${h}px sans-serif`;
+ const m=mctx.measureText(s).width;if(m>0)e.style.transform=`scaleX(${w/m})`;t.appendChild(e);t.appendChild(document.createTextNode('\n'))}}
+// ---------- ink ----------
+const ctx=$('ink').getContext('2d');
+function drawStroke(c,s,k){c.save();c.globalAlpha=s.a;c.strokeStyle=s.c;c.lineWidth=s.w*k;c.lineCap=c.lineJoin='round';
+ if(s.a<1)c.globalCompositeOperation='multiply';c.beginPath();s.p.forEach(([x,y],j)=>j?c.lineTo(x*k,y*k):c.moveTo(x*k,y*k));
+ if(s.p.length==1)c.lineTo(s.p[0][0]*k+.01,s.p[0][1]*k);c.stroke();c.restore()}
+function redraw(){const k=$('ink').width/W;ctx.clearRect(0,0,$('ink').width,$('ink').height);S(i).strokes.forEach(s=>drawStroke(ctx,s,k))}
+const pt=e=>{const r=$('ink').getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]};
+let cur=null;const hist=[];
+$('ink').addEventListener('pointerdown',e=>{const p=pt(e);
+ if(tool=='sticky'){e.preventDefault();addSticky(p[0],p[1]);return}
+ $('ink').setPointerCapture(e.pointerId);
+ if(tool=='erase'){cur='erase';eraseAt(p);return}
+ const hi=tool=='hi';cur={c:$('color').value,w:hi?12:1.6,a:hi?.35:1,p:[p]};if(hi&&cur.c=='#d0303f')cur.c='#ffe14d';});
+$('ink').addEventListener('pointermove',e=>{if(!cur)return;const p=pt(e);if(cur=='erase')return eraseAt(p);
+ cur.p.push(p.map(v=>Math.round(v*10)/10));redraw();drawStroke(ctx,cur,$('ink').width/W)});
+addEventListener('pointerup',()=>{if(cur&&cur!='erase'){S(i).strokes.push(cur);hist.push({k:i,t:'s'});save()}cur=null;redraw()});
+function eraseAt([x,y]){const a=S(i).strokes,n=a.length;S(i).strokes=a.filter(s=>!s.p.some(([u,v])=>Math.hypot(u-x,v-y)<Math.max(5,s.w)));if(S(i).strokes.length!=n){redraw();save()}}
+$('undo').onclick=()=>{for(let j=hist.length-1;j>=0;j--)if(hist[j].k==i){const h=hist.splice(j,1)[0];if(h.t=='s')S(i).strokes.pop();else{S(i).stickies.pop();renderStickies()}redraw();save();return}
+ if(S(i).strokes.length){S(i).strokes.pop();redraw();save()}};
+$('clear').onclick=()=>arm($('clear'),()=>{{S(i).strokes=[];S(i).stickies=[];redraw();renderStickies();save()}});
+// ---------- stickies ----------
+function addSticky(x,y){S(i).stickies.push({x:Math.min(x,W-125),y:Math.min(y,H-60),w:120,h:50,t:''});hist.push({k:i,t:'n'});renderStickies();save();
+ const ta=$('stk').lastChild.querySelector('textarea');setTool('select');setTimeout(()=>ta.focus(),0)}
+function renderStickies(){const L=$('stk');L.innerHTML='';S(i).stickies.forEach((n,j)=>{const d=document.createElement('div');d.className='note';d.style.left=n.x+'px';d.style.top=n.y+'px';
+ d.innerHTML='<div class="h"><b class="dn" title="Smaller text">A−</b><b class="up" title="Larger text">A+</b><i></i><b class="x" title="Delete">✕</b></div><textarea></textarea>';const ta=d.querySelector('textarea');ta.value=n.t;
+ const sz=()=>ta.style.fontSize=(n.fs||9)+'px';sz();
+ d.querySelector('.dn').onclick=()=>{n.fs=Math.max(4,(n.fs||9)-1);sz();save()};d.querySelector('.up').onclick=()=>{n.fs=Math.min(40,(n.fs||9)+1);sz();save()};ta.style.width=n.w+'px';ta.style.height=n.h+'px';
+ ta.oninput=()=>{n.t=ta.value;save()};new ResizeObserver(()=>{const w=ta.offsetWidth,h=ta.offsetHeight;if(w&&(w!=n.w||h!=n.h)){n.w=w;n.h=h;save()}}).observe(ta);
+ d.querySelector('.x').onclick=()=>{S(i).stickies.splice(j,1);renderStickies();save()};
+ d.querySelector('.h').onpointerdown=e=>{if(e.target.tagName=='B')return;e.preventDefault();const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;
+  const mv=ev=>{n.x=ox+(ev.clientX-sx)/scale;n.y=oy+(ev.clientY-sy)/scale;d.style.left=n.x+'px';d.style.top=n.y+'px'};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);save()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
+ L.appendChild(d)})}
+// ---------- interactive fields: blanks, checkboxes, radios, dropdowns ----------
+let checking=false;
+const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+const val=(k,j)=>{const f=FIELDS[k][j],v=S(k).fills[j];return v===undefined&&f.t!='text'&&f.t!='choice'?!!f.i:v};
+function correct(k,j){const f=FIELDS[k][j],v=val(k,j);if(!('a' in f))return null;
+ if(f.t=='text')return f.a.some(a=>norm(a)==norm(v));
+ if(f.t=='choice')return v===f.o[f.a];
+ return !!v===f.a}
+function renderFields(){const L=$('fld');L.innerHTML='';const fl=S(i).fills;
+ FIELDS[i].forEach((f,j)=>{let e;
+  if(f.t=='embed'){e=document.createElement('span');e.hidden=true;L.appendChild(e);return}
+  if(f.t=='text'){e=document.createElement('textarea');e.className='fill'+(f.r?' round':'');e.rows=1;e.spellcheck=false;
+   Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px',fontSize:f.fs+'px'});e.placeholder='?';e.title='Fill in the blank';e.value=fl[j]||'';
+   const pad=()=>{e.style.paddingTop='0';let z=f.fs;e.style.fontSize=z+'px';while(z>f.fs*.45&&(e.scrollHeight>f.h+1||e.scrollWidth>f.w+1)){z*=.92;e.style.fontSize=z+'px'}
+    e.style.paddingTop=Math.max(0,(f.h-Math.min(e.scrollHeight,f.h))/2)+'px'};
+   e.oninput=()=>{fl[j]=e.value;pad();changed()};
+   e.onkeydown=ev=>{if(ev.key=='Enter'&&!ev.shiftKey){ev.preventDefault();const n=L.children[j+1];n?n.focus():e.blur()}};
+   L.appendChild(e);pad();return}
+  if(f.t=='choice'){e=document.createElement('select');e.className='ctl';
+   Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px',fontSize:f.fs+'px'});
+   e.innerHTML='<option value="">—</option>'+f.o.map(o=>`<option>${o.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+   e.value=fl[j]||'';e.onchange=()=>{fl[j]=e.value;changed()}}
+  else{e=document.createElement('input');e.type=f.t=='check'?'checkbox':'radio';e.className='ctl';
+   if(f.t=='radio')e.name=`s${i}g${f.g}`;Object.assign(e.style,{left:f.x+'px',top:f.y+'px',width:f.s+'px',height:f.s+'px'});
+   e.checked=!!val(i,j);
+   e.onchange=()=>{if(f.t=='radio')FIELDS[i].forEach((g,k)=>{if(g.t=='radio'&&g.g==f.g)fl[k]=k==j});else fl[j]=e.checked;changed()}}
+  e.setAttribute('aria-label',`${{text:'Blank',choice:'Choice',check:'Checkbox',radio:'Option'}[f.t]} ${j+1} on slide ${i+1}`);
+  L.appendChild(e)});
+ markAnswers()}
+function changed(){save();if(checking)markAnswers()}
+function markAnswers(){const els=$('fld').children;let ok=0,n=0;const seen=new Set();
+ FIELDS[i].forEach((f,j)=>{const e=els[j];e.classList.remove('ok','bad');if(!checking||!('a' in f))return;
+  if(f.t=='radio'){if(seen.has(f.g))return;seen.add(f.g);const grp=FIELDS[i].map((g,k)=>[g,k]).filter(([g])=>g.t=='radio'&&g.g==f.g);
+   const good=grp.every(([g,k])=>correct(i,k));n++;ok+=good;
+   const sel=grp.find(([g,k])=>val(i,k));(sel?[sel]:grp).forEach(([g,k])=>els[k].classList.add(good?'ok':'bad'));return}
+  const c=correct(i,j);n++;ok+=c;e.classList.add(c?'ok':'bad')});
+ if(checking)msg(n?`Slide ${i+1}: ${ok} of ${n} correct`:'No answer key on this slide')}
+$('chk').onclick=()=>{checking=!checking;$('chk').classList.toggle('on',checking);if(!checking)msg('Saved in this browser');markAnswers()};
+if(!HASKEY)$('chkg').style.display='none';
+// ---------- tools ----------
+function setTool(t){tool=t;document.querySelectorAll('#tools [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));
+ document.body.classList.remove('select','draw','erase','sticky');document.body.classList.add(t=='pen'||t=='hi'?'draw':t)}
+document.querySelectorAll('#tools [data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+// ---------- notes panel / thumbs ----------
+$('notes').oninput=()=>{S(i).notes=$('notes').value;save()};
+const UIK=KEY+':ui';let ui={notes:true,thumbs:true};try{Object.assign(ui,JSON.parse(localStorage.getItem(UIK)||'{}'))}catch(e){}
+function applyUI(){const B=document.body.classList;B.toggle('nonotes',!ui.notes);B.toggle('nothumbs',!ui.thumbs);
+ for(const[id,on]of[['tnotes',ui.notes],['tthumbs',ui.thumbs],['tfocus',!ui.notes&&!ui.thumbs]]){$(id).classList.toggle('on',on);$(id).setAttribute('aria-pressed',on)}
+ try{localStorage.setItem(UIK,JSON.stringify(ui))}catch(e){}}
+$('tnotes').onclick=()=>{ui.notes=!ui.notes;applyUI()};$('tthumbs').onclick=()=>{ui.thumbs=!ui.thumbs;applyUI()};
+$('tfocus').onclick=()=>{const f=!(ui.notes||ui.thumbs);ui.notes=ui.thumbs=f;applyUI()};applyUI();
+for(let k=0;k<N;k++){const d=document.createElement('div'),t=new Image();t.src=src(k);t.alt='Slide '+(k+1);t.title='Slide '+(k+1);t.onclick=()=>go(k);d.appendChild(t);$('thumbs').appendChild(d);markThumb(k)}
+function markThumb(k){$('thumbs').children[k].classList.toggle('dot',!!has(k))}
+// ---------- embeds (click to load, sandboxed) ----------
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function renderEmbeds(){const L=$('emb');L.innerHTML='';
+ FIELDS[i].forEach((f,j)=>{if(f.t!='embed')return;let host='';try{host=new URL(f.u).hostname}catch(_){return}
+  const [ew,eh]=esize(i,j);
+  const d=document.createElement('div');d.className='embed';Object.assign(d.style,{left:f.x+'px',top:f.y+'px',width:ew+'px',height:eh+'px'});
+  d.innerHTML=`<div class="bar"><b>${esc(host)}</b><a href="${esc(f.u)}" target="_blank" rel="noopener noreferrer" title="Open in a new tab">Open ↗</a></div>
+   <div class="card"><button class="go">Load ${esc(host)}</button><small>${navigator.onLine?'Loads an external page. Some sites refuse to appear inside other pages — use “Open ↗” then.':'You appear to be offline. This content needs an internet connection.'}</small></div>`;
+  d.querySelector('.go').onclick=()=>loadEmbed(d,f);
+  const g=document.createElement('div');g.className='grip';g.title='Drag to resize · double-click to reset';d.appendChild(g);
+  g.onpointerdown=e=>{e.preventDefault();e.stopPropagation();g.setPointerCapture(e.pointerId);d.classList.add('resizing');
+   const sx=e.clientX,sy=e.clientY,ow=d.offsetWidth,oh=d.offsetHeight;
+   g.onpointermove=ev=>{const w=Math.max(80,Math.min(W-f.x,ow+(ev.clientX-sx)/scale)),h=Math.max(50,Math.min(H-f.y,oh+(ev.clientY-sy)/scale));
+    d.style.width=w+'px';d.style.height=h+'px';sizeEmbeds()};
+   g.onpointerup=()=>{g.onpointermove=g.onpointerup=null;d.classList.remove('resizing');S(i).emb[j]=[Math.round(d.offsetWidth*10)/10,Math.round(d.offsetHeight*10)/10];save()}};
+  g.ondblclick=()=>{delete S(i).emb[j];d.style.width=f.w+'px';d.style.height=f.h+'px';sizeEmbeds();save()};
+  L.appendChild(d)})}
+function loadEmbed(d,f){const same=(()=>{try{return new URL(f.u).origin===location.origin}catch(_){return true}})();
+ const fr=document.createElement('iframe');
+ // No allow-same-origin unless the author trusted this domain AND it isn't our own origin:
+ // the embedded page can then never read this page or students' saved work.
+ fr.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation'+(f.tr&&!same?' allow-same-origin':''));
+ fr.setAttribute('allow',f.tr&&!same?'fullscreen; autoplay; encrypted-media; picture-in-picture':'fullscreen');
+ fr.referrerPolicy='no-referrer';fr.setAttribute('credentialless','');fr.title='Embedded page: '+f.u;fr.src=f.u;
+ const vp=document.createElement('div');vp.className='vp';vp.appendChild(fr);
+ const hint=document.createElement('div');hint.className='hint';hint.textContent='Click outside this frame to use slide keys again';vp.appendChild(hint);
+ d.querySelector('.card').replaceWith(vp);
+ const un=document.createElement('button');un.textContent='Close ✕';un.title='Unload this page';un.onclick=()=>renderEmbeds();d.querySelector('.bar').appendChild(un);
+ sizeEmbeds()}
+// Lay the frame out in real screen pixels (so sites don't get their phone layout), then scale it back down to slide size.
+function sizeEmbeds(){document.querySelectorAll('#emb .vp').forEach(vp=>{const fr=vp.firstChild,w=vp.offsetWidth,h=vp.offsetHeight;
+ Object.assign(fr.style,{width:w*scale+'px',height:h*scale+'px',transform:`scale(${1/scale})`})})}
+addEventListener('blur',()=>setTimeout(()=>{const a=document.activeElement;document.querySelectorAll('.embed').forEach(e=>e.classList.toggle('active',!!a&&e.contains(a)))}));
+addEventListener('focus',()=>document.querySelectorAll('.embed.active').forEach(e=>e.classList.remove('active')));
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.embed'))document.querySelectorAll('.embed.active').forEach(x=>x.classList.remove('active'))});
+// ---------- links ----------
+function renderLinks(){const L=$('lnk');L.innerHTML='';for(const[x,y,w,h,kind,t]of LINKS[i]){const a=document.createElement('a');
+ Object.assign(a.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+ if(kind=='u'){a.href=t;a.target='_blank';a.rel='noopener noreferrer';a.title=t}
+ else{a.href='#'+(t+1);a.title='Go to slide '+(t+1);a.onclick=e=>{e.preventDefault();go(t)}}
+ a.setAttribute('aria-label',a.title);L.appendChild(a)}}
+// ---------- navigation ----------
+function go(k){i=Math.max(0,Math.min(N-1,k));$('img').src=src(i);$('img').alt='Slide '+(i+1);
+ $('count').textContent=`${i+1} / ${N}`;$('bar').style.width=((i+1)/N*100)+'%';$('nh').textContent=`Notes — slide ${i+1}`;
+ [...$('thumbs').children].forEach((t,j)=>t.classList.toggle('on',j==i));$('thumbs').children[i].scrollIntoView({block:'nearest',inline:'center'});
+ $('notes').value=S(i).notes;checking=false;$('chk').classList.remove('on');buildText();renderLinks();renderEmbeds();renderFields();redraw();renderStickies();$('stage').scrollTo(0,0);history.replaceState(null,'','#'+(i+1))}
+$('prev').onclick=()=>go(i-1);$('next').onclick=()=>go(i+1);
+addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg=='TEXTAREA'||tg=='INPUT')return;
+ if((e.ctrlKey||e.metaKey)&&e.key=='z'){e.preventDefault();$('undo').click();return}if(e.ctrlKey||e.metaKey)return;
+ const m={ArrowRight:()=>go(i+1),PageDown:()=>go(i+1),' ':()=>go(i+1),ArrowLeft:()=>go(i-1),PageUp:()=>go(i-1),Home:()=>go(0),End:()=>go(N-1),
+ '+':()=>$('zin').click(),'=':()=>$('zin').click(),'-':()=>$('zout').click(),'0':()=>setZoom(0),f:()=>$('fs').click(),
+ v:()=>setTool('select'),t:()=>$('tthumbs').click(),']':()=>$('tnotes').click(),'\\':()=>$('tfocus').click(),p:()=>setTool('pen'),h:()=>setTool('hi'),n:()=>setTool('sticky'),e:()=>setTool('erase')}[e.key];if(m){e.preventDefault();m()}});
+let x0;$('stage').addEventListener('touchstart',e=>x0=tool=='select'&&!zoom?e.touches[0].clientX:null,{passive:true});
+$('stage').addEventListener('touchend',e=>{if(x0==null)return;const d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>60)go(i+(d<0?1:-1))});
+// ---------- backup / restore ----------
+let dlr=null;try{claude.use('downloads').then(d=>dlr=d)}catch(_){}
+function msg(t){$('status').textContent=t}
+function arm(b,f){if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl;f()}else{b.dataset.lbl=b.textContent;b.dataset.arm=1;b.textContent='Click again to confirm';setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;b.textContent=b.dataset.lbl}},3000)}}
+async function dl(blob,name){if(dlr){try{await dlr.save({filename:name,data:blob});msg('Downloaded '+name)}catch(e){msg(e.code=='declined'?'Download cancelled':'Download unavailable here')}return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('exp').onclick=()=>dl(new Blob([JSON.stringify({deck:KEY,...store})],{type:'application/json'}),'lecture17-annotations.json');
+$('imp').onclick=()=>$('impf').click();
+$('impf').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!d.slides)throw 0;
+ store={slides:d.slides};save();for(let k=0;k<N;k++)markThumb(k);go(i)}catch(_){msg('⚠ Not a valid annotations backup')}e.target.value=''};
+// ---------- PDF export ----------
+const loadImg=s=>new Promise((r,j)=>{const m=new Image();m.onload=()=>r(m);m.onerror=j;m.src=s});
+$('pdf').onclick=()=>makePdf($('pdf'),false);$('pdfa').onclick=()=>makePdf($('pdfa'),true);
+async function makePdf(b,only){const lbl=b.textContent;
+ b.disabled=true;const list=[...Array(N).keys()].filter(k=>!only||has(k));if(!list.length){msg('No annotated slides yet');b.disabled=false;return}
+ const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'landscape',unit:'pt',format:[W,H]}),R=3;
+ const pageOf={},jumps=[];
+ for(const[n,k]of list.entries()){b.textContent=`Saving ${n+1}/${list.length}…`;
+  const c=document.createElement('canvas');c.width=W*R;c.height=H*R;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+  g.drawImage(await loadImg(src(k)),0,0,c.width,c.height);S(k).strokes.forEach(s=>drawStroke(g,s,R));
+  if(n)doc.addPage([W,H],'landscape');doc.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,W,H);pageOf[k]=doc.getNumberOfPages();
+  for(const[x,y,w,hh,kind,t]of LINKS[k]){if(kind=='u')doc.link(x,y,w,hh,{url:t});else jumps.push([pageOf[k],x,y,w,hh,t])}
+  for(const[x,y,w,hh,fs,s]of TEXT[k]){doc.setFontSize(hh);doc.text(s,x,y+hh*.8,{renderingMode:'invisible',maxWidth:w+20})}
+  FIELDS[k].forEach((f0,j)=>{if(f0.t!='embed')return;const [ew,eh]=esize(k,j),f={...f0,w:ew,h:eh};doc.setFillColor(246,244,238);doc.setDrawColor(201,196,182);doc.setLineWidth(.6);doc.rect(f.x,f.y,f.w,f.h,'FD');
+   doc.setFillColor(61,64,88);doc.rect(f.x,f.y,f.w,12,'F');doc.setFontSize(7);doc.setTextColor(236,234,228);let host=f.u;try{host=new URL(f.u).hostname}catch(_){}doc.text('Embedded: '+host,f.x+4,f.y+8.2);
+   doc.setFontSize(8);doc.setTextColor(29,63,138);doc.text(doc.splitTextToSize(f.u,f.w-16),f.x+f.w/2,f.y+12+(f.h-12)/2,{align:'center',baseline:'middle'});doc.link(f.x,f.y,f.w,f.h,{url:f.u})});
+  FIELDS[k].forEach((f,j)=>{if(f.t=='embed')return;const v=val(k,j);doc.setDrawColor(200,85,58);doc.setLineWidth(.8);doc.setTextColor(29,63,138);
+   if(f.t=='text'){const t=(v||'').trim();doc.setLineDashPattern([2,2],0);if(f.r)doc.ellipse(f.x+f.w/2,f.y+f.h/2,f.w/2,f.h/2,'S');else doc.line(f.x,f.y+f.h,f.x+f.w,f.y+f.h);doc.setLineDashPattern([],0);
+    if(t){let z=f.fs,ls;do{doc.setFontSize(z);ls=doc.splitTextToSize(t,f.w-4);if(ls.length*z*1.15<=f.h||z<f.fs*.45)break;z*=.92}while(1);
+     doc.text(ls,f.x+f.w/2,f.y+f.h/2-(ls.length-1)*z*1.15/2,{align:'center',baseline:'middle',lineHeightFactor:1.15})}}
+   else if(f.t=='choice'){doc.setLineDashPattern([2,2],0);doc.rect(f.x,f.y,f.w,f.h,'S');doc.setLineDashPattern([],0);
+    const a=f.x+f.w-f.h*.55,b=f.y+f.h*.4;doc.setFillColor(200,85,58);doc.triangle(a-f.h*.18,b,a+f.h*.18,b,a,b+f.h*.25,'F');
+    if(v){doc.setFontSize(f.fs);doc.text(String(v),f.x+3,f.y+f.h/2,{baseline:'middle',maxWidth:f.w-f.h})}}
+   else if(f.t=='check'){doc.rect(f.x,f.y,f.s,f.s,'S');if(v){doc.setDrawColor(29,63,138);doc.setLineWidth(1.4);doc.line(f.x+f.s*.2,f.y+f.s*.55,f.x+f.s*.42,f.y+f.s*.78);doc.line(f.x+f.s*.42,f.y+f.s*.78,f.x+f.s*.82,f.y+f.s*.22)}}
+   else{doc.circle(f.x+f.s/2,f.y+f.s/2,f.s/2,'S');if(v){doc.setFillColor(29,63,138);doc.circle(f.x+f.s/2,f.y+f.s/2,f.s*.25,'F')}}});
+  for(const s of S(k).stickies){doc.setFillColor(255,246,168);doc.setDrawColor(216,198,74);doc.rect(s.x,s.y,s.w,s.h+11,'FD');doc.setFillColor(240,220,90);doc.rect(s.x,s.y,s.w,11,'F');
+   const fz=s.fs||9;doc.setFontSize(fz);doc.setTextColor(34);doc.text(doc.splitTextToSize(s.t,s.w-6),s.x+3,s.y+11+3+fz*.85,{lineHeightFactor:1.25})}
+  if(S(k).notes.trim()){doc.addPage([W,H],'landscape');doc.setFontSize(16);doc.setTextColor(34);doc.text(`Notes — slide ${k+1}`,36,44);
+   doc.setFontSize(11);let y=72;for(const ln of doc.splitTextToSize(S(k).notes,W-72)){if(y>H-30){doc.addPage([W,H],'landscape');y=44}doc.text(ln,36,y);y+=15}}}
+ for(const[pg,x,y,w,hh,t]of jumps)if(pageOf[t]){doc.setPage(pg);doc.link(x,y,w,hh,{pageNumber:pageOf[t]})}
+ await dl(doc.output('blob'),'lecture17-annotated.pdf');b.textContent=lbl;b.disabled=false}
+go((parseInt(location.hash.slice(1))||1)-1);layout();
+</script></body></html>
